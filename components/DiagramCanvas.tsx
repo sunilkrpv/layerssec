@@ -44,6 +44,10 @@ import DottedLineNode from './nodes/DottedLineNode';
 import ActorNode from './nodes/ActorNode';
 import CylinderNode from './nodes/CylinderNode';
 import TriangleNode from './nodes/TriangleNode';
+import SystemContextNode from './nodes/SystemContextNode';
+import ContainerNode from './nodes/ContainerNode';
+import ComponentNode from './nodes/ComponentNode';
+import CodeNode from './nodes/CodeNode';
 
 // ── Helper: recompute a line node's position/width to maintain endpoint attachments ──────────────
 function computeUpdatedLinePosition(
@@ -112,6 +116,10 @@ const NODE_TYPES = {
   actor: ActorNode,
   cylinder: CylinderNode,
   triangle: TriangleNode,
+  systemcontext: SystemContextNode,
+  container: ContainerNode,
+  component: ComponentNode,
+  code: CodeNode,
 };
 
 export type ExtendedRFInstance = ReactFlowInstance & {

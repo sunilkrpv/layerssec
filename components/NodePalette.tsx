@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, type DragEvent } from 'react';
-import { ChevronDown, ChevronRight, PanelLeftClose, PanelLeftOpen, Cloud, Square } from 'lucide-react';
+import { ChevronDown, ChevronRight, PanelLeftClose, PanelLeftOpen, Cloud, Square, NotebookPenIcon } from 'lucide-react';
 import { PALETTE_ITEMS } from '@/lib/nodeConfig';
 import type { NodeType } from '@/lib/types';
 
@@ -12,10 +12,12 @@ interface NodePaletteProps {
 
 const cloudItems = PALETTE_ITEMS.filter((i) => i.group === 'cloud');
 const shapeItems = PALETTE_ITEMS.filter((i) => i.group === 'shape');
+const c4Items = PALETTE_ITEMS.filter((i) => i.group === 'c4');
 
 const SECTIONS = [
   { key: 'cloud', label: 'Cloud Services', icon: Cloud, items: cloudItems },
   { key: 'shape', label: 'Shapes', icon: Square, items: shapeItems },
+  { key: 'c4', label: 'C4 Model - Software Architecture', icon: NotebookPenIcon, items: c4Items },
 ];
 
 export default function NodePalette({ onDragStart, onAddNode }: NodePaletteProps) {
@@ -137,7 +139,7 @@ export default function NodePalette({ onDragStart, onAddNode }: NodePaletteProps
                         onClick={() => onAddNode(item.type)}
                         onDragStart={(e) => onDragStart(e, item.type)}
                         className={`flex cursor-pointer select-none items-center gap-2.5 rounded-lg border-2 px-2.5 py-2 transition-all hover:shadow-sm active:scale-95 ${item.bgColor} ${item.borderColor}`}
-                        title={`${item.description} — click to add, drag to place`}
+                        title={`${item.description} - click to add, drag to place`}
                       >
                         <div className={`flex-shrink-0 ${item.color}`}>
                           <Icon size={15} />

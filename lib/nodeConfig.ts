@@ -20,6 +20,10 @@ import {
   Cylinder,
   Triangle,
   type LucideIcon,
+  Component,
+  Code,
+  RectangleCircle,
+  PackageOpen,
 } from 'lucide-react';
 import type { NodeType } from './types';
 
@@ -31,7 +35,7 @@ export interface PaletteItem {
   color: string;
   bgColor: string;
   borderColor: string;
-  group: 'cloud' | 'shape';
+  group: 'cloud' | 'shape' | 'c4';
 }
 
 /** Node types that represent lines/connectors — no drill-down option */
@@ -250,5 +254,45 @@ export const PALETTE_ITEMS: PaletteItem[] = [
     bgColor: 'bg-white',
     borderColor: 'border-slate-400',
     group: 'shape',
+  },
+  {
+    type: 'systemcontext',
+    label: 'System Context',
+    description: 'High-level System Context view how it interacts with users and other systems (e.g., APIs, databases).',
+    icon: RectangleCircle,
+    color: 'text-blue-700',
+    bgColor: 'bg-blue-50',
+    borderColor: 'border-blue-300',
+    group: 'c4',
+  },
+  {
+    type: 'container',
+    label: 'Container',
+    description: 'High-level architecture view of Web applications, mobile apps, databases, and microservices',
+    icon: PackageOpen,
+    color: 'text-blue-700',
+    bgColor: 'bg-blue-50',
+    borderColor: 'border-blue-300',
+    group: 'c4',
+  },
+  {
+    type: 'component',
+    label: 'Component',
+    description: 'Breaks down each container into its components (e.g., controllers, services)',
+    icon: Component,
+    color: 'text-blue-700',
+    bgColor: 'bg-blue-50',
+    borderColor: 'border-blue-300',
+    group: 'c4',
+  },
+  {
+    type: 'code',
+    label: 'Code',
+    description: 'The lowest level, detailing how components are implemented, typically showing class diagrams or code structures.',
+    icon: Code,
+    color: 'text-red-700',
+    bgColor: 'bg-red-50',
+    borderColor: 'border-red-300',
+    group: 'c4',
   },
 ];

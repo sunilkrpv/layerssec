@@ -21,7 +21,11 @@ export type NodeType =
   | 'dottedline'
   | 'actor'
   | 'cylinder'
-  | 'triangle';
+  | 'triangle'
+  | 'systemcontext'
+  | 'container'
+  | 'component'
+  | 'code';
 
 export interface NodeData {
   label: string;
