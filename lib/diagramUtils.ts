@@ -1,5 +1,12 @@
-import type { Node, Edge } from 'reactflow';
+import { MarkerType, type Node, type Edge } from 'reactflow';
 import type { DiagramNode, DiagramEdge, NodeData } from './types';
+
+export const EDGE_MARKER = {
+  type: MarkerType.ArrowClosed,
+  color: '#64748b',
+  width: 18,
+  height: 18,
+};
 
 export function toReactFlowNodes(nodes: DiagramNode[]): Node<NodeData>[] {
   return nodes.map((n) => ({
@@ -23,6 +30,7 @@ export function toReactFlowEdges(edges: DiagramEdge[]): Edge[] {
     animated: e.animated ?? false,
     type: e.type ?? 'smoothstep',
     style: e.style ?? { strokeWidth: 2, stroke: '#64748b' },
+    markerEnd: EDGE_MARKER,
     labelStyle: { fontSize: 11, fill: '#475569' },
     labelBgStyle: { fill: '#f8fafc', fillOpacity: 0.8 },
   }));

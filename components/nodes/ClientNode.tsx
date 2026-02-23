@@ -1,8 +1,9 @@
 'use client';
 
-import { Handle, Position, type NodeProps } from 'reactflow';
+import { Handle, Position, type NodeProps, NodeResizer } from 'reactflow';
 import { Monitor } from 'lucide-react';
 import type { NodeData } from '@/lib/types';
+import ChildLayerBadge from './ChildLayerBadge';
 
 export default function ClientNode({ data, selected }: NodeProps<NodeData>) {
   return (
@@ -13,6 +14,7 @@ export default function ClientNode({ data, selected }: NodeProps<NodeData>) {
           : 'border-purple-300 hover:border-purple-400 hover:shadow-md'
       }`}
     >
+      <NodeResizer minWidth={120} minHeight={80} isVisible={selected} lineClassName="border-purple-400" handleClassName="h-2.5 w-2.5 rounded-full bg-purple-400" />
       <Handle type="target" position={Position.Left} />
       <Handle type="source" position={Position.Right} />
       <Handle type="target" position={Position.Top} id="top" />
@@ -28,6 +30,7 @@ export default function ClientNode({ data, selected }: NodeProps<NodeData>) {
           <span className="text-xs text-slate-500">{data.technology}</span>
         )}
       </div>
+      {data._childLayerId && <ChildLayerBadge childLayerId={data._childLayerId} />}
     </div>
   );
 }

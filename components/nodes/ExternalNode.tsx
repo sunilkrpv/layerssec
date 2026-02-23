@@ -1,27 +1,27 @@
 'use client';
 
 import { Handle, Position, type NodeProps, NodeResizer } from 'reactflow';
-import { MessageSquare } from 'lucide-react';
+import { ExternalLink } from 'lucide-react';
 import type { NodeData } from '@/lib/types';
 import ChildLayerBadge from './ChildLayerBadge';
 
-export default function QueueNode({ data, selected }: NodeProps<NodeData>) {
+export default function ExternalNode({ data, selected }: NodeProps<NodeData>) {
   return (
     <div
       className={`relative min-w-[140px] rounded-xl border-2 bg-white shadow-sm transition-all ${
         selected
-          ? 'border-yellow-500 shadow-md shadow-yellow-200'
-          : 'border-yellow-300 hover:border-yellow-400 hover:shadow-md'
+          ? 'border-slate-500 shadow-md shadow-slate-200'
+          : 'border-slate-300 hover:border-slate-400 hover:shadow-md'
       }`}
     >
-      <NodeResizer minWidth={120} minHeight={80} isVisible={selected} lineClassName="border-yellow-400" handleClassName="h-2.5 w-2.5 rounded-full bg-yellow-400" />
+      <NodeResizer minWidth={120} minHeight={80} isVisible={selected} lineClassName="border-slate-400" handleClassName="h-2.5 w-2.5 rounded-full bg-slate-400" />
       <Handle type="target" position={Position.Left} />
       <Handle type="source" position={Position.Right} />
       <Handle type="target" position={Position.Top} id="top" />
       <Handle type="source" position={Position.Bottom} id="bottom" />
       <div className="flex flex-col items-center gap-1 px-4 py-3">
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-yellow-50">
-          <MessageSquare size={20} className="text-yellow-600" />
+        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100">
+          <ExternalLink size={20} className="text-slate-600" />
         </div>
         <span className="text-center text-sm font-semibold leading-tight text-slate-800">
           {data.label}

@@ -8,6 +8,17 @@ interface NodePaletteProps {
   onDragStart: (event: DragEvent<HTMLDivElement>, nodeType: NodeType) => void;
 }
 
+const cloudItems = PALETTE_ITEMS.filter((i) => i.group === 'cloud');
+const shapeItems = PALETTE_ITEMS.filter((i) => i.group === 'shape');
+
+function SectionLabel({ label }: { label: string }) {
+  return (
+    <p className="mb-1.5 mt-3 px-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 first:mt-0">
+      {label}
+    </p>
+  );
+}
+
 export default function NodePalette({ onDragStart }: NodePaletteProps) {
   return (
     <aside className="flex h-full w-56 flex-col border-r border-slate-200 bg-white shadow-sm">
@@ -16,26 +27,52 @@ export default function NodePalette({ onDragStart }: NodePaletteProps) {
         <p className="mt-0.5 text-xs text-slate-400">Drag onto canvas</p>
       </div>
 
-      <div className="flex-1 space-y-2 overflow-y-auto p-3">
-        {PALETTE_ITEMS.map((item) => {
-          const Icon = item.icon;
-          return (
-            <div
-              key={item.type}
-              draggable
-              onDragStart={(e) => onDragStart(e, item.type)}
-              className={`flex cursor-grab select-none items-center gap-3 rounded-lg border-2 px-3 py-2.5 transition-all hover:shadow-sm active:cursor-grabbing ${item.bgColor} ${item.borderColor}`}
-            >
-              <div className={`flex-shrink-0 ${item.color}`}>
-                <Icon size={18} />
+      <div className="flex-1 overflow-y-auto p-3">
+        <SectionLabel label="Cloud Services" />
+        <div className="space-y-1.5">
+          {cloudItems.map((item) => {
+            const Icon = item.icon;
+            return (
+              <div
+                key={item.type}
+                draggable
+                onDragStart={(e) => onDragStart(e, item.type)}
+                className={`flex cursor-grab select-none items-center gap-3 rounded-lg border-2 px-3 py-2.5 transition-all hover:shadow-sm active:cursor-grabbing ${item.bgColor} ${item.borderColor}`}
+              >
+                <div className={`flex-shrink-0 ${item.color}`}>
+                  <Icon size={16} />
+                </div>
+                <div className="min-w-0">
+                  <p className={`text-sm font-medium ${item.color}`}>{item.label}</p>
+                  <p className="truncate text-xs text-slate-400">{item.description}</p>
+                </div>
               </div>
-              <div className="min-w-0">
-                <p className={`text-sm font-medium ${item.color}`}>{item.label}</p>
-                <p className="truncate text-xs text-slate-400">{item.description}</p>
+            );
+          })}
+        </div>
+
+        <SectionLabel label="Shapes" />
+        <div className="space-y-1.5">
+          {shapeItems.map((item) => {
+            const Icon = item.icon;
+            return (
+              <div
+                key={item.type}
+                draggable
+                onDragStart={(e) => onDragStart(e, item.type)}
+                className={`flex cursor-grab select-none items-center gap-3 rounded-lg border-2 px-3 py-2.5 transition-all hover:shadow-sm active:cursor-grabbing ${item.bgColor} ${item.borderColor}`}
+              >
+                <div className={`flex-shrink-0 ${item.color}`}>
+                  <Icon size={16} />
+                </div>
+                <div className="min-w-0">
+                  <p className={`text-sm font-medium ${item.color}`}>{item.label}</p>
+                  <p className="truncate text-xs text-slate-400">{item.description}</p>
+                </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
     </aside>
   );

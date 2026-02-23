@@ -3,6 +3,7 @@
 import { type NodeProps, NodeResizer } from 'reactflow';
 import { Cloud } from 'lucide-react';
 import type { NodeData } from '@/lib/types';
+import ChildLayerBadge from './ChildLayerBadge';
 
 export default function GroupNode({ data, selected }: NodeProps<NodeData>) {
   return (
@@ -22,6 +23,7 @@ export default function GroupNode({ data, selected }: NodeProps<NodeData>) {
         <Cloud size={14} className="text-slate-500" />
         <span className="text-xs font-semibold text-slate-600">{data.label}</span>
       </div>
+      {data._childLayerId && <ChildLayerBadge childLayerId={data._childLayerId} />}
     </div>
   );
 }

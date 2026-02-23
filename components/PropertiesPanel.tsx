@@ -1,7 +1,7 @@
 'use client';
 
 import type { Node } from 'reactflow';
-import { X, Info } from 'lucide-react';
+import { X, Info, Trash2 } from 'lucide-react';
 import type { NodeData, NodeType } from '@/lib/types';
 import { PALETTE_ITEMS } from '@/lib/nodeConfig';
 
@@ -9,9 +9,10 @@ interface PropertiesPanelProps {
   node: Node<NodeData>;
   onClose: () => void;
   onUpdate: (nodeId: string, data: Partial<NodeData>) => void;
+  onDelete: (nodeId: string) => void;
 }
 
-export default function PropertiesPanel({ node, onClose, onUpdate }: PropertiesPanelProps) {
+export default function PropertiesPanel({ node, onClose, onUpdate, onDelete }: PropertiesPanelProps) {
   const palette = PALETTE_ITEMS.find((item) => item.type === (node.type as NodeType));
   const Icon = palette?.icon;
 
@@ -99,7 +100,14 @@ export default function PropertiesPanel({ node, onClose, onUpdate }: PropertiesP
         </div>
       </div>
 
-      <div className="border-t border-slate-100 px-4 py-3">
+      <div className="border-t border-slate-100 px-4 py-3 space-y-3">
+        <button
+          onClick={() => { onDelete(node.id); onClose(); }}
+          className="flex w-full items-center justify-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-600 transition-colors hover:bg-red-100"
+        >
+          <Trash2 size={14} />
+          Delete node
+        </button>
         <div className="flex items-start gap-2 text-xs text-slate-400">
           <Info size={12} className="mt-0.5 flex-shrink-0" />
           <span>Drag handles to connect nodes. Backspace to delete selected node.</span>

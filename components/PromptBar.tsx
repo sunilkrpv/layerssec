@@ -6,6 +6,7 @@ import { Sparkles, Loader2, Send, ChevronUp, ChevronDown } from 'lucide-react';
 interface PromptBarProps {
   onGenerate: (prompt: string) => Promise<void>;
   isLoading: boolean;
+  status?: string;
 }
 
 const EXAMPLES = [
@@ -16,7 +17,7 @@ const EXAMPLES = [
   'Build an auth service with OAuth and JWT',
 ];
 
-export default function PromptBar({ onGenerate, isLoading }: PromptBarProps) {
+export default function PromptBar({ onGenerate, isLoading, status }: PromptBarProps) {
   const [prompt, setPrompt] = useState('');
   const [showExamples, setShowExamples] = useState(false);
 
@@ -57,7 +58,7 @@ export default function PromptBar({ onGenerate, isLoading }: PromptBarProps) {
 
       <div className="flex items-end gap-3 px-4 py-3">
         <div className="flex-shrink-0 pb-1">
-          <Sparkles size={20} className="text-blue-500" />
+          <Sparkles size={20} className={isLoading ? 'animate-pulse text-blue-400' : 'text-blue-500'} />
         </div>
 
         <textarea
@@ -86,7 +87,7 @@ export default function PromptBar({ onGenerate, isLoading }: PromptBarProps) {
           {isLoading ? (
             <>
               <Loader2 size={16} className="animate-spin" />
-              <span>Generating...</span>
+              <span>{status || 'Generating...'}</span>
             </>
           ) : (
             <>

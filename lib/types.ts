@@ -8,12 +8,27 @@ export type NodeType =
   | 'loadbalancer'
   | 'queue'
   | 'cache'
-  | 'group';
+  | 'group'
+  | 'storage'
+  | 'serverless'
+  | 'cdn'
+  | 'external'
+  | 'rectangle'
+  | 'circle'
+  | 'ellipse'
+  | 'line'
+  | 'arrowline'
+  | 'dottedline'
+  | 'actor'
+  | 'cylinder'
+  | 'triangle';
 
 export interface NodeData {
   label: string;
   description?: string;
   technology?: string;
+  /** ID of the child layer created by drilling into this node */
+  _childLayerId?: string;
 }
 
 export interface DiagramNode {
