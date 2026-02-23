@@ -3,8 +3,8 @@
 import { Handle, Position, type NodeProps, NodeResizer } from 'reactflow';
 import type { NodeData } from '@/lib/types';
 
-export default function ArrowLineNode({ selected }: NodeProps<NodeData>) {
-  const color = selected ? '#475569' : '#64748b';
+export default function ArrowLineNode({ data, selected }: NodeProps<NodeData>) {
+  const color = data.borderColor ?? (selected ? '#475569' : '#64748b');
 
   return (
     <div className="relative" style={{ minWidth: 80, minHeight: 20, height: '100%', width: '100%' }}>

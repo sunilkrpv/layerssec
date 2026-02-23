@@ -1,15 +1,16 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { type CSSProperties, useEffect, useRef, useState } from 'react';
 import { useCanvasContext } from '@/lib/canvasContext';
 
 interface EditableLabelProps {
   nodeId: string;
   label: string;
   className?: string;
+  style?: CSSProperties;
 }
 
-export default function EditableLabel({ nodeId, label, className }: EditableLabelProps) {
+export default function EditableLabel({ nodeId, label, className, style }: EditableLabelProps) {
   const { editingNodeId, editInitialChar, updateNodeData, startEditing, stopEditing } =
     useCanvasContext();
 
@@ -47,6 +48,7 @@ export default function EditableLabel({ nodeId, label, className }: EditableLabe
         ref={inputRef}
         autoFocus
         value={value}
+        style={style}
         onChange={(e) => setValue(e.target.value)}
         onBlur={commit}
         onKeyDown={(e) => {
@@ -62,7 +64,7 @@ export default function EditableLabel({ nodeId, label, className }: EditableLabe
           e.stopPropagation();
         }}
         onClick={(e) => e.stopPropagation()}
-        className="nodrag nowheel w-full rounded border border-blue-300 bg-blue-50 px-1 text-center text-sm font-semibold text-slate-800 outline-none focus:ring-1 focus:ring-blue-400"
+        className="nodrag nowheel w-full rounded border border-blue-300 bg-blue-50 px-1 text-center text-sm font-semibold outline-none focus:ring-1 focus:ring-blue-400"
       />
     );
   }
@@ -74,6 +76,7 @@ export default function EditableLabel({ nodeId, label, className }: EditableLabe
         startEditing(nodeId);
       }}
       title="Double-click to edit label"
+      style={style}
       className={`cursor-text select-none ${className ?? ''}`}
     >
       {label}

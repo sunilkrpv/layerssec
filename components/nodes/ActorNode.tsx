@@ -13,6 +13,7 @@ export default function ActorNode({ id, data, selected }: NodeProps<NodeData>) {
           ? 'border-slate-600 shadow-md'
           : 'border-slate-300 hover:border-slate-400'
       }`}
+          style={{ borderColor: data.borderColor || undefined, backgroundColor: data.fillColor || undefined }}
     >
       <NodeResizer
         minWidth={60}
@@ -39,7 +40,8 @@ export default function ActorNode({ id, data, selected }: NodeProps<NodeData>) {
         <line x1="20" y1="38" x2="32" y2="54" stroke="#475569" strokeWidth="2" />
       </svg>
 
-      <EditableLabel nodeId={id} label={data.label} className="text-center text-xs font-medium text-slate-700" />
+      <EditableLabel nodeId={id} label={data.label} className="text-center text-xs font-medium text-slate-700" style={{ color: data.textColor || undefined }}
+/>
       {data._childLayerId && <ChildLayerBadge childLayerId={data._childLayerId} />}
     </div>
   );

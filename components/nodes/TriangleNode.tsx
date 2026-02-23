@@ -6,7 +6,8 @@ import ChildLayerBadge from './ChildLayerBadge';
 import EditableLabel from './EditableLabel';
 
 export default function TriangleNode({ id, data, selected }: NodeProps<NodeData>) {
-  const stroke = selected ? '#475569' : '#94a3b8';
+  const stroke = data.borderColor ?? (selected ? '#475569' : '#94a3b8');
+  const fill = data.fillColor || 'white';
 
   return (
     <div className="relative flex min-h-[80px] min-w-[80px] flex-col items-center bg-transparent">
@@ -31,7 +32,7 @@ export default function TriangleNode({ id, data, selected }: NodeProps<NodeData>
       >
         <polygon
           points="50,4 96,86 4,86"
-          fill="white"
+          fill={fill}
           stroke={stroke}
           strokeWidth="2"
           strokeLinejoin="round"
@@ -42,7 +43,8 @@ export default function TriangleNode({ id, data, selected }: NodeProps<NodeData>
         nodeId={id}
         label={data.label}
         className="absolute text-center text-sm font-medium text-slate-700"
-      />
+          style={{ color: data.textColor || undefined }}
+        />
       {data._childLayerId && <ChildLayerBadge childLayerId={data._childLayerId} />}
     </div>
   );

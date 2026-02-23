@@ -3,7 +3,59 @@
 import type { Node } from 'reactflow';
 import { X, Info, Trash2 } from 'lucide-react';
 import type { NodeData, NodeType } from '@/lib/types';
-import { PALETTE_ITEMS } from '@/lib/nodeConfig';
+import { PALETTE_ITEMS, LINE_NODE_TYPES } from '@/lib/nodeConfig';
+
+const COLOR_SWATCHES = [
+  { value: '#ffffff', label: 'White' },
+  { value: '#f1f5f9', label: 'Light gray' },
+  { value: '#3b82f6', label: 'Blue' },
+  { value: '#06b6d4', label: 'Cyan' },
+  { value: '#22c55e', label: 'Green' },
+  { value: '#eab308', label: 'Yellow' },
+  { value: '#f97316', label: 'Orange' },
+  { value: '#ef4444', label: 'Red' },
+  { value: '#a855f7', label: 'Purple' },
+];
+
+interface ColorRowProps {
+  label: string;
+  value: string | undefined;
+  onChange: (color: string | undefined) => void;
+}
+
+function ColorRow({ label, value, onChange }: ColorRowProps) {
+  return (
+    <div>
+      <div className="mb-1.5 flex items-center justify-between">
+        <span className="text-xs font-medium text-slate-600">{label}</span>
+        {value && (
+          <button
+            onClick={() => onChange(undefined)}
+            title="Reset to default"
+            className="text-[10px] text-slate-400 hover:text-slate-600"
+          >
+            ✕ reset
+          </button>
+        )}
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        {COLOR_SWATCHES.map((swatch) => (
+          <button
+            key={swatch.value}
+            title={swatch.label}
+            onClick={() => onChange(swatch.value)}
+            className={`h-5 w-5 flex-shrink-0 rounded-full border transition-all hover:scale-110 ${
+              value === swatch.value
+                ? 'border-blue-500 ring-2 ring-blue-300 ring-offset-1'
+                : 'border-slate-300 hover:border-slate-400'
+            }`}
+            style={{ backgroundColor: swatch.value }}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
 
 interface PropertiesPanelProps {
   node: Node<NodeData>;
@@ -15,6 +67,7 @@ interface PropertiesPanelProps {
 export default function PropertiesPanel({ node, onClose, onUpdate, onDelete }: PropertiesPanelProps) {
   const palette = PALETTE_ITEMS.find((item) => item.type === (node.type as NodeType));
   const Icon = palette?.icon;
+  const isLine = LINE_NODE_TYPES.has(node.type as string);
 
   return (
     <aside className="flex h-full w-64 flex-col border-l border-slate-200 bg-white shadow-sm">
@@ -55,18 +108,20 @@ export default function PropertiesPanel({ node, onClose, onUpdate, onDelete }: P
           />
         </div>
 
-        <div>
-          <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">
-            Technology
-          </label>
-          <input
-            type="text"
-            value={node.data.technology ?? ''}
-            placeholder="e.g. Node.js, PostgreSQL"
-            onChange={(e) => onUpdate(node.id, { technology: e.target.value })}
-            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 placeholder-slate-300 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
-          />
-        </div>
+        {!isLine && (
+          <div>
+            <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">
+              Technology
+            </label>
+            <input
+              type="text"
+              value={node.data.technology ?? ''}
+              placeholder="e.g. Node.js, PostgreSQL"
+              onChange={(e) => onUpdate(node.id, { technology: e.target.value })}
+              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 placeholder-slate-300 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
+            />
+          </div>
+        )}
 
         <div>
           <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">
@@ -79,6 +134,30 @@ export default function PropertiesPanel({ node, onClose, onUpdate, onDelete }: P
             onChange={(e) => onUpdate(node.id, { description: e.target.value })}
             className="w-full resize-none rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 placeholder-slate-300 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
           />
+        </div>
+
+        {/* Colors */}
+        <div className="space-y-3 rounded-lg border border-slate-100 bg-slate-50 p-3">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Colors</p>
+          <ColorRow
+            label="Border"
+            value={node.data.borderColor}
+            onChange={(c) => onUpdate(node.id, { borderColor: c })}
+          />
+          {!isLine && (
+            <>
+              <ColorRow
+                label="Fill"
+                value={node.data.fillColor}
+                onChange={(c) => onUpdate(node.id, { fillColor: c })}
+              />
+              <ColorRow
+                label="Text"
+                value={node.data.textColor}
+                onChange={(c) => onUpdate(node.id, { textColor: c })}
+              />
+            </>
+          )}
         </div>
 
         <div>
@@ -100,7 +179,7 @@ export default function PropertiesPanel({ node, onClose, onUpdate, onDelete }: P
         </div>
       </div>
 
-      <div className="border-t border-slate-100 px-4 py-3 space-y-3">
+      <div className="space-y-3 border-t border-slate-100 px-4 py-3">
         <button
           onClick={() => { onDelete(node.id); onClose(); }}
           className="flex w-full items-center justify-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-600 transition-colors hover:bg-red-100"

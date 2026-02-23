@@ -29,6 +29,12 @@ export interface NodeData {
   technology?: string;
   /** ID of the child layer created by drilling into this node */
   _childLayerId?: string;
+  /** CSS color string for the node border, e.g. '#ef4444' */
+  borderColor?: string;
+  /** CSS color string for the node background fill */
+  fillColor?: string;
+  /** CSS color string for the node label text */
+  textColor?: string;
 }
 
 export interface DiagramNode {

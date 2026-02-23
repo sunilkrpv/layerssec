@@ -14,6 +14,7 @@ export default function QueueNode({ id, data, selected }: NodeProps<NodeData>) {
           ? 'border-yellow-500 shadow-md shadow-yellow-200'
           : 'border-yellow-300 hover:border-yellow-400 hover:shadow-md'
       }`}
+          style={{ borderColor: data.borderColor || undefined, backgroundColor: data.fillColor || undefined }}
     >
       <NodeResizer minWidth={120} minHeight={80} isVisible={selected} lineClassName="border-yellow-400" handleClassName="h-2.5 w-2.5 rounded-full bg-yellow-400" />
       <Handle type="target" position={Position.Left} />
@@ -24,7 +25,8 @@ export default function QueueNode({ id, data, selected }: NodeProps<NodeData>) {
         <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-yellow-50">
           <MessageSquare size={20} className="text-yellow-600" />
         </div>
-        <EditableLabel nodeId={id} label={data.label} className="text-center text-sm font-semibold leading-tight text-slate-800" />
+        <EditableLabel nodeId={id} label={data.label} className="text-center text-sm font-semibold leading-tight text-slate-800" style={{ color: data.textColor || undefined }}
+/>
         {data.technology && (
           <span className="text-xs text-slate-500">{data.technology}</span>
         )}

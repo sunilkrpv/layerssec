@@ -10,6 +10,7 @@ import PromptBar from '@/components/PromptBar';
 import PropertiesPanel from '@/components/PropertiesPanel';
 import Toolbar from '@/components/Toolbar';
 import LayerBar from '@/components/LayerBar';
+import LayersPanel from '@/components/LayersPanel';
 import NodeContextMenu from '@/components/NodeContextMenu';
 import DrillDownModal from '@/components/DrillDownModal';
 
@@ -19,6 +20,7 @@ import {
   saveAllLayers,
   createChildLayer,
   findChildLayer,
+  updateLayer,
   ROOT_LAYER_ID,
   type LayerMap,
 } from '@/lib/layerStore';
@@ -60,6 +62,7 @@ export default function Home() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatingStatus, setGeneratingStatus] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [showLayersPanel, setShowLayersPanel] = useState(false);
 
   // Right-click context menu
   const [contextMenu, setContextMenu] = useState<{
@@ -134,6 +137,19 @@ export default function Home() {
     setSelectedNode(null);
     setContextMenu(null);
   }, [navStack.length, currentLayerId, flushCurrentLayer]);
+
+  // ── Layer update (rename / description) ───────────────────────────────────
+
+  const handleUpdateLayer = useCallback(
+    (layerId: string, updates: { name?: string; description?: string }) => {
+      setLayers((prev) => {
+        const updated = updateLayer(prev, layerId, updates);
+        saveAllLayers(updated);
+        return updated;
+      });
+    },
+    [],
+  );
 
   // ── Context menu ──────────────────────────────────────────────────────────
 
@@ -402,6 +418,7 @@ export default function Home() {
             onImportJson={handleImportJson}
             onExportProject={handleExportProject}
             onImportProject={handleImportProject}
+            onShowLayers={() => setShowLayersPanel(true)}
           />
 
           <LayerBar
@@ -475,6 +492,17 @@ export default function Home() {
             defaultName={`${drillTarget.data.label} Layer`}
             onConfirm={handleDrillDownConfirm}
             onCancel={() => setDrillTarget(null)}
+          />
+        )}
+
+        {/* Layers manager modal */}
+        {showLayersPanel && (
+          <LayersPanel
+            layers={layers}
+            currentLayerId={currentLayerId}
+            onClose={() => setShowLayersPanel(false)}
+            onNavigate={navigateTo}
+            onUpdateLayer={handleUpdateLayer}
           />
         )}
       </ReactFlowProvider>

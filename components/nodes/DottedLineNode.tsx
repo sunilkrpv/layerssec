@@ -3,7 +3,7 @@
 import { Handle, Position, type NodeProps, NodeResizer } from 'reactflow';
 import type { NodeData } from '@/lib/types';
 
-export default function DottedLineNode({ selected }: NodeProps<NodeData>) {
+export default function DottedLineNode({ data, selected }: NodeProps<NodeData>) {
   return (
     <div className="relative" style={{ minWidth: 80, minHeight: 20, height: '100%', width: '100%' }}>
       <NodeResizer
@@ -19,7 +19,7 @@ export default function DottedLineNode({ selected }: NodeProps<NodeData>) {
         <div
           className="w-full"
           style={{
-            borderTop: `2px dashed ${selected ? '#475569' : '#94a3b8'}`,
+            borderTop: `2px dashed ${data.borderColor ?? (selected ? '#475569' : '#94a3b8')}`,
           }}
         />
       </div>

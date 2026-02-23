@@ -3,6 +3,7 @@ import type { Node, Edge } from 'reactflow';
 export interface Layer {
   id: string;
   name: string;
+  description?: string;
   parentLayerId: string | null;
   parentNodeId: string | null; // which node was drilled into
   nodes: Node[];
@@ -82,6 +83,16 @@ export function getLayerPath(layers: LayerMap, layerId: string): Layer[] {
     currentId = layer.parentLayerId;
   }
   return path;
+}
+
+/** Update name / description of a layer, returning a new LayerMap */
+export function updateLayer(
+  layers: LayerMap,
+  layerId: string,
+  updates: Partial<Pick<Layer, 'name' | 'description'>>,
+): LayerMap {
+  if (!layers[layerId]) return layers;
+  return { ...layers, [layerId]: { ...layers[layerId], ...updates } };
 }
 
 /** Find a direct child layer for a given node, if one exists */

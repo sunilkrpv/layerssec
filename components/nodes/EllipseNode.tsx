@@ -11,7 +11,8 @@ export default function EllipseNode({ id, data, selected }: NodeProps<NodeData>)
       className={`relative h-full w-full min-h-[60px] min-w-[100px] border-2 bg-white transition-all`}
       style={{
         borderRadius: '50%',
-        borderColor: selected ? '#475569' : '#94a3b8',
+        borderColor: data.borderColor ?? (selected ? '#475569' : '#94a3b8'),
+        backgroundColor: data.fillColor || undefined,
         boxShadow: selected ? '0 4px 12px rgba(0,0,0,0.15)' : undefined,
       }}
     >
@@ -27,7 +28,8 @@ export default function EllipseNode({ id, data, selected }: NodeProps<NodeData>)
       <Handle type="target" position={Position.Top} id="top" />
       <Handle type="source" position={Position.Bottom} id="bottom" />
       <div className="flex h-full w-full items-center justify-center px-4 py-2">
-        <EditableLabel nodeId={id} label={data.label} className="text-center text-sm font-medium text-slate-700" />
+        <EditableLabel nodeId={id} label={data.label} className="text-center text-sm font-medium text-slate-700" style={{ color: data.textColor || undefined }}
+/>
       </div>
       {data._childLayerId && <ChildLayerBadge childLayerId={data._childLayerId} />}
     </div>

@@ -6,7 +6,8 @@ import ChildLayerBadge from './ChildLayerBadge';
 import EditableLabel from './EditableLabel';
 
 export default function CylinderNode({ id, data, selected }: NodeProps<NodeData>) {
-  const stroke = selected ? '#475569' : '#94a3b8';
+  const stroke = data.borderColor ?? (selected ? '#475569' : '#94a3b8');
+  const fill = data.fillColor || 'white';
 
   return (
     <div
@@ -32,9 +33,9 @@ export default function CylinderNode({ id, data, selected }: NodeProps<NodeData>
         preserveAspectRatio="none"
       >
         {/* Body rect */}
-        <rect x="2" y="14" width="76" height="80" fill="white" stroke={stroke} strokeWidth="2" />
+        <rect x="2" y="14" width="76" height="80" fill={fill} stroke={stroke} strokeWidth="2" />
         {/* Bottom ellipse (cap) */}
-        <ellipse cx="40" cy="94" rx="38" ry="10" fill="white" stroke={stroke} strokeWidth="2" />
+        <ellipse cx="40" cy="94" rx="38" ry="10" fill={fill} stroke={stroke} strokeWidth="2" />
         {/* Top ellipse */}
         <ellipse cx="40" cy="14" rx="38" ry="10" fill="#f1f5f9" stroke={stroke} strokeWidth="2" />
       </svg>
@@ -43,7 +44,8 @@ export default function CylinderNode({ id, data, selected }: NodeProps<NodeData>
         nodeId={id}
         label={data.label}
         className="absolute text-center text-sm font-medium text-slate-700"
-      />
+          style={{ color: data.textColor || undefined }}
+        />
       {data._childLayerId && <ChildLayerBadge childLayerId={data._childLayerId} />}
     </div>
   );

@@ -14,6 +14,7 @@ export default function ExternalNode({ id, data, selected }: NodeProps<NodeData>
           ? 'border-slate-500 shadow-md shadow-slate-200'
           : 'border-slate-300 hover:border-slate-400 hover:shadow-md'
       }`}
+          style={{ borderColor: data.borderColor || undefined, backgroundColor: data.fillColor || undefined }}
     >
       <NodeResizer minWidth={120} minHeight={80} isVisible={selected} lineClassName="border-slate-400" handleClassName="h-2.5 w-2.5 rounded-full bg-slate-400" />
       <Handle type="target" position={Position.Left} />
@@ -24,7 +25,8 @@ export default function ExternalNode({ id, data, selected }: NodeProps<NodeData>
         <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100">
           <ExternalLink size={20} className="text-slate-600" />
         </div>
-        <EditableLabel nodeId={id} label={data.label} className="text-center text-sm font-semibold leading-tight text-slate-800" />
+        <EditableLabel nodeId={id} label={data.label} className="text-center text-sm font-semibold leading-tight text-slate-800" style={{ color: data.textColor || undefined }}
+/>
         {data.technology && (
           <span className="text-xs text-slate-500">{data.technology}</span>
         )}

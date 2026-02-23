@@ -12,6 +12,7 @@ export default function GroupNode({ id, data, selected }: NodeProps<NodeData>) {
       className={`relative h-full w-full rounded-2xl border-2 border-dashed transition-all ${
         selected ? 'border-slate-500 bg-slate-100/60' : 'border-slate-300 bg-slate-50/50'
       }`}
+          style={{ borderColor: data.borderColor || undefined, backgroundColor: data.fillColor || undefined }}
     >
       <NodeResizer
         minWidth={200}
@@ -22,7 +23,8 @@ export default function GroupNode({ id, data, selected }: NodeProps<NodeData>) {
       />
       <div className="absolute left-3 top-2 flex items-center gap-1.5">
         <Cloud size={14} className="text-slate-500" />
-        <EditableLabel nodeId={id} label={data.label} className="text-xs font-semibold text-slate-600" />
+        <EditableLabel nodeId={id} label={data.label} className="text-xs font-semibold text-slate-600" style={{ color: data.textColor || undefined }}
+/>
       </div>
       {data._childLayerId && <ChildLayerBadge childLayerId={data._childLayerId} />}
     </div>

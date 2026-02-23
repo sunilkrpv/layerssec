@@ -3,7 +3,7 @@
 import { Handle, Position, type NodeProps, NodeResizer } from 'reactflow';
 import type { NodeData } from '@/lib/types';
 
-export default function LineNode({ selected }: NodeProps<NodeData>) {
+export default function LineNode({ data, selected }: NodeProps<NodeData>) {
   return (
     <div className="relative" style={{ minWidth: 80, minHeight: 20, height: '100%', width: '100%' }}>
       <NodeResizer
@@ -18,7 +18,7 @@ export default function LineNode({ selected }: NodeProps<NodeData>) {
       <div className="flex h-full w-full items-center">
         <div
           className="w-full"
-          style={{ borderTop: `2px solid ${selected ? '#475569' : '#64748b'}` }}
+          style={{ borderTop: `2px solid ${data.borderColor ?? (selected ? '#475569' : '#64748b')}` }}
         />
       </div>
     </div>

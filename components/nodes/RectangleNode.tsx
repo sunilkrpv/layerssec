@@ -13,6 +13,7 @@ export default function RectangleNode({ id, data, selected }: NodeProps<NodeData
           ? 'border-slate-600 shadow-md'
           : 'border-slate-400 hover:border-slate-500'
       }`}
+          style={{ borderColor: data.borderColor || undefined, backgroundColor: data.fillColor || undefined }}
     >
       <NodeResizer
         minWidth={80}
@@ -26,7 +27,8 @@ export default function RectangleNode({ id, data, selected }: NodeProps<NodeData
       <Handle type="target" position={Position.Top} id="top" />
       <Handle type="source" position={Position.Bottom} id="bottom" />
       <div className="flex h-full w-full items-center justify-center px-3 py-2">
-        <EditableLabel nodeId={id} label={data.label} className="text-center text-sm font-medium text-slate-700" />
+        <EditableLabel nodeId={id} label={data.label} className="text-center text-sm font-medium text-slate-700" style={{ color: data.textColor || undefined }}
+/>
       </div>
       {data._childLayerId && <ChildLayerBadge childLayerId={data._childLayerId} />}
     </div>

@@ -13,6 +13,7 @@ import {
   Share2,
   FolderDown,
   FolderUp,
+  Layers,
 } from 'lucide-react';
 
 interface ToolbarProps {
@@ -22,6 +23,7 @@ interface ToolbarProps {
   onImportJson: (file: File) => void;
   onExportProject: () => void;
   onImportProject: (file: File) => void;
+  onShowLayers: () => void;
 }
 
 function ToolBtn({
@@ -57,6 +59,7 @@ export default function Toolbar({
   onImportJson,
   onExportProject,
   onImportProject,
+  onShowLayers,
 }: ToolbarProps) {
   const { zoomIn, zoomOut, fitView } = useReactFlow();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -94,6 +97,13 @@ export default function Toolbar({
         </ToolBtn>
         <ToolBtn onClick={() => fitView({ padding: 0.15 })} title="Fit View">
           <Maximize2 size={16} />
+        </ToolBtn>
+
+        <div className="mx-1 h-5 w-px bg-slate-200" />
+
+        {/* Layers manager */}
+        <ToolBtn onClick={onShowLayers} title="Manage layers">
+          <Layers size={16} />
         </ToolBtn>
 
         <div className="mx-1 h-5 w-px bg-slate-200" />
