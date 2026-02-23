@@ -4,8 +4,9 @@ import { type NodeProps, NodeResizer } from 'reactflow';
 import { Cloud } from 'lucide-react';
 import type { NodeData } from '@/lib/types';
 import ChildLayerBadge from './ChildLayerBadge';
+import EditableLabel from './EditableLabel';
 
-export default function GroupNode({ data, selected }: NodeProps<NodeData>) {
+export default function GroupNode({ id, data, selected }: NodeProps<NodeData>) {
   return (
     <div
       className={`relative h-full w-full rounded-2xl border-2 border-dashed transition-all ${
@@ -21,7 +22,7 @@ export default function GroupNode({ data, selected }: NodeProps<NodeData>) {
       />
       <div className="absolute left-3 top-2 flex items-center gap-1.5">
         <Cloud size={14} className="text-slate-500" />
-        <span className="text-xs font-semibold text-slate-600">{data.label}</span>
+        <EditableLabel nodeId={id} label={data.label} className="text-xs font-semibold text-slate-600" />
       </div>
       {data._childLayerId && <ChildLayerBadge childLayerId={data._childLayerId} />}
     </div>

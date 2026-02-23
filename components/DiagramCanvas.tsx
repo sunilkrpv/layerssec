@@ -73,6 +73,7 @@ export type ExtendedRFInstance = ReactFlowInstance & {
   clearDiagram: () => void;
   updateNodeData: (nodeId: string, data: Partial<NodeData>) => void;
   deleteNode: (nodeId: string) => void;
+  addNodeAtCenter: (nodeType: NodeType) => void;
 };
 
 interface DiagramCanvasProps {
@@ -87,6 +88,8 @@ interface DiagramCanvasProps {
   onLayerSave: (nodes: Node<NodeData>[], edges: Edge[]) => void;
   /** Called on right-click so the parent can show a context menu */
   onNodeContextMenu: (event: React.MouseEvent, node: Node<NodeData>) => void;
+  /** Called when a node should enter label-edit mode (click-to-add or keypress-to-edit) */
+  onRequestEdit?: (nodeId: string, initialChar?: string) => void;
 }
 
 export default function DiagramCanvas({
@@ -97,18 +100,33 @@ export default function DiagramCanvas({
   initialEdges,
   onLayerSave,
   onNodeContextMenu,
+  onRequestEdit,
 }: DiagramCanvasProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState<NodeData>(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>(initialEdges);
-  const { screenToFlowPosition } = useReactFlow();
+  const { screenToFlowPosition, getNodes, getEdges } = useReactFlow();
 
-  // Use a ref so the debounced effect always calls the latest version without
-  // needing it in the dependency array (prevents unnecessary re-subscriptions).
+  // Stable ref for onLayerSave to avoid stale closures in the debounced effect
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const onLayerSaveRef = useRef(onLayerSave);
   useEffect(() => {
     onLayerSaveRef.current = onLayerSave;
   }, [onLayerSave]);
+
+  // Stable ref for onRequestEdit
+  const onRequestEditRef = useRef(onRequestEdit);
+  useEffect(() => {
+    onRequestEditRef.current = onRequestEdit;
+  }, [onRequestEdit]);
+
+  // Track currently selected nodes for keypress-to-edit
+  const selectedNodesRef = useRef<Node<NodeData>[]>([]);
+
+  // Clipboard for copy/paste
+  const clipboardRef = useRef<{ nodes: Node<NodeData>[]; edges: Edge[] }>({
+    nodes: [],
+    edges: [],
+  });
 
   // Debounced save to parent on every nodes/edges change
   useEffect(() => {
@@ -120,6 +138,73 @@ export default function DiagramCanvas({
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     };
   }, [nodes, edges]);
+
+  // ── Copy / Paste ────────────────────────────────────────────────────────────
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const isTyping =
+        e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement;
+
+      // Copy/Paste
+      if ((e.ctrlKey || e.metaKey) && !isTyping) {
+        if (e.key === 'c') {
+          const selected = getNodes().filter((n) => n.selected);
+          if (selected.length === 0) return;
+          const selectedIds = new Set(selected.map((n) => n.id));
+          const relatedEdges = getEdges().filter(
+            (edge) => selectedIds.has(edge.source) && selectedIds.has(edge.target),
+          );
+          clipboardRef.current = { nodes: selected, edges: relatedEdges };
+          return;
+        }
+        if (e.key === 'v') {
+          const { nodes: clipNodes, edges: clipEdges } = clipboardRef.current;
+          if (clipNodes.length === 0) return;
+          const OFFSET = 30;
+          const idMap = new Map<string, string>();
+          const newNodes: Node<NodeData>[] = clipNodes.map((n) => {
+            const newId = generateId();
+            idMap.set(n.id, newId);
+            return {
+              ...n,
+              id: newId,
+              position: { x: n.position.x + OFFSET, y: n.position.y + OFFSET },
+              selected: true,
+            };
+          });
+          const newEdges: Edge[] = clipEdges.map((edge) => ({
+            ...edge,
+            id: generateId(),
+            source: idMap.get(edge.source) ?? edge.source,
+            target: idMap.get(edge.target) ?? edge.target,
+          }));
+          setNodes((nds) => [...nds.map((n) => ({ ...n, selected: false })), ...newNodes]);
+          setEdges((eds) => [...eds, ...newEdges]);
+          return;
+        }
+      }
+
+      // Type-to-edit: printable key pressed while exactly one node is selected
+      if (
+        !isTyping &&
+        !e.ctrlKey &&
+        !e.metaKey &&
+        !e.altKey &&
+        e.key.length === 1 &&
+        e.key !== ' ' // Space toggles selection in RF, skip
+      ) {
+        const selected = selectedNodesRef.current;
+        if (selected.length === 1) {
+          e.preventDefault();
+          onRequestEditRef.current?.(selected[0].id, e.key);
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const onConnect = useCallback(
     (connection: Connection) =>
@@ -161,6 +246,8 @@ export default function DiagramCanvas({
         },
       };
       setNodes((nds) => nds.concat(newNode));
+      // Auto-enter edit mode for the dropped node
+      onRequestEditRef.current?.(newNode.id);
     },
     [screenToFlowPosition, setNodes],
   );
@@ -177,7 +264,6 @@ export default function DiagramCanvas({
         const newEdges = toReactFlowEdges(diagram.edges);
         setNodes(newNodes);
         setEdges(newEdges);
-        // Save immediately so back-navigation doesn't lose this diagram
         onLayerSaveRef.current(newNodes, newEdges);
       };
 
@@ -198,11 +284,37 @@ export default function DiagramCanvas({
         setEdges((eds) => eds.filter((e) => e.source !== nodeId && e.target !== nodeId));
       };
 
+      const addNodeAtCenter = (nodeType: NodeType) => {
+        const bounds = canvasRef.current?.getBoundingClientRect();
+        const screenCenter = bounds
+          ? { x: bounds.left + bounds.width / 2, y: bounds.top + bounds.height / 2 }
+          : { x: window.innerWidth / 2, y: window.innerHeight / 2 };
+        // Small random offset so repeated clicks don't stack perfectly
+        const jitter = () => (Math.random() - 0.5) * 30;
+        const position = instance.project(screenCenter);
+        position.x += jitter();
+        position.y += jitter();
+        const newNode: Node<NodeData> = {
+          id: generateId(),
+          type: nodeType,
+          position,
+          data: {
+            label: nodeType.charAt(0).toUpperCase() + nodeType.slice(1),
+            description: '',
+            technology: '',
+          },
+        };
+        setNodes((nds) => nds.concat(newNode));
+        // Auto-enter label edit mode
+        onRequestEditRef.current?.(newNode.id);
+      };
+
       rfInstanceRef.current = Object.assign(instance, {
         loadDiagram,
         clearDiagram,
         updateNodeData,
         deleteNode,
+        addNodeAtCenter,
       }) as ExtendedRFInstance;
     },
     // initialNodes.length is intentionally included so fitView fires on remount
@@ -225,6 +337,10 @@ export default function DiagramCanvas({
     [onNodeContextMenu],
   );
 
+  const handleSelectionChange = useCallback(({ nodes: sel }: { nodes: Node[] }) => {
+    selectedNodesRef.current = sel as Node<NodeData>[];
+  }, []);
+
   return (
     <div ref={canvasRef} className="h-full flex-1" onDragOver={onDragOver} onDrop={onDrop}>
       <ReactFlow
@@ -237,6 +353,7 @@ export default function DiagramCanvas({
         onNodeClick={onNodeClick}
         onPaneClick={onPaneClick}
         onNodeContextMenu={handleNodeContextMenu}
+        onSelectionChange={handleSelectionChange}
         nodeTypes={NODE_TYPES}
         selectionMode={SelectionMode.Partial}
         fitView

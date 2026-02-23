@@ -3,8 +3,9 @@
 import { Handle, Position, type NodeProps, NodeResizer } from 'reactflow';
 import type { NodeData } from '@/lib/types';
 import ChildLayerBadge from './ChildLayerBadge';
+import EditableLabel from './EditableLabel';
 
-export default function ActorNode({ data, selected }: NodeProps<NodeData>) {
+export default function ActorNode({ id, data, selected }: NodeProps<NodeData>) {
   return (
     <div
       className={`relative flex min-h-[100px] min-w-[80px] flex-col items-center justify-center gap-1 rounded-lg border-2 bg-white px-3 py-3 transition-all ${
@@ -38,7 +39,7 @@ export default function ActorNode({ data, selected }: NodeProps<NodeData>) {
         <line x1="20" y1="38" x2="32" y2="54" stroke="#475569" strokeWidth="2" />
       </svg>
 
-      <span className="text-center text-xs font-medium text-slate-700">{data.label}</span>
+      <EditableLabel nodeId={id} label={data.label} className="text-center text-xs font-medium text-slate-700" />
       {data._childLayerId && <ChildLayerBadge childLayerId={data._childLayerId} />}
     </div>
   );

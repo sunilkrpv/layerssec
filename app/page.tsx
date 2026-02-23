@@ -354,8 +354,40 @@ export default function Home() {
     rfInstanceRef.current?.deleteNode(nodeId);
   }, []);
 
+  // ── Inline label editing ───────────────────────────────────────────────────
+
+  const [editingNodeId, setEditingNodeId] = useState<string | null>(null);
+  const [editInitialChar, setEditInitialChar] = useState<string | null>(null);
+
+  const startEditing = useCallback((nodeId: string, initialChar?: string) => {
+    setEditingNodeId(nodeId);
+    setEditInitialChar(initialChar ?? null);
+  }, []);
+
+  const stopEditing = useCallback(() => {
+    setEditingNodeId(null);
+    setEditInitialChar(null);
+  }, []);
+
+  // ── Click-to-add from palette ──────────────────────────────────────────────
+
+  const handleAddNode = useCallback((nodeType: NodeType) => {
+    rfInstanceRef.current?.addNodeAtCenter(nodeType);
+  }, []);
+
   // ── CanvasContext value ────────────────────────────────────────────────────
-  const canvasContextValue = useMemo(() => ({ navigateTo }), [navigateTo]);
+  const canvasContextValue = useMemo(
+    () => ({
+      navigateTo,
+      updateNodeData: (nodeId: string, data: Partial<NodeData>) =>
+        rfInstanceRef.current?.updateNodeData(nodeId, data),
+      editingNodeId,
+      editInitialChar,
+      startEditing,
+      stopEditing,
+    }),
+    [navigateTo, editingNodeId, editInitialChar, startEditing, stopEditing],
+  );
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -391,7 +423,7 @@ export default function Home() {
           )}
 
           <div className="flex flex-1 overflow-hidden">
-            <NodePalette onDragStart={onPaletteDragStart} />
+            <NodePalette onDragStart={onPaletteDragStart} onAddNode={handleAddNode} />
 
             {/* key={currentLayerId} forces a remount when switching layers */}
             <DiagramCanvas
@@ -403,6 +435,7 @@ export default function Home() {
               onNodeSelect={setSelectedNode}
               rfInstanceRef={rfInstanceRef}
               canvasRef={canvasRef}
+              onRequestEdit={startEditing}
             />
 
             {selectedNode && (

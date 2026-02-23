@@ -3,8 +3,9 @@
 import { Handle, Position, type NodeProps, NodeResizer } from 'reactflow';
 import type { NodeData } from '@/lib/types';
 import ChildLayerBadge from './ChildLayerBadge';
+import EditableLabel from './EditableLabel';
 
-export default function TriangleNode({ data, selected }: NodeProps<NodeData>) {
+export default function TriangleNode({ id, data, selected }: NodeProps<NodeData>) {
   const stroke = selected ? '#475569' : '#94a3b8';
 
   return (
@@ -37,12 +38,11 @@ export default function TriangleNode({ data, selected }: NodeProps<NodeData>) {
         />
       </svg>
 
-      <span
+      <EditableLabel
+        nodeId={id}
+        label={data.label}
         className="absolute text-center text-sm font-medium text-slate-700"
-        style={{ bottom: '20%', width: '100%', padding: '0 8px' }}
-      >
-        {data.label}
-      </span>
+      />
       {data._childLayerId && <ChildLayerBadge childLayerId={data._childLayerId} />}
     </div>
   );

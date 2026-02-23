@@ -4,8 +4,9 @@ import { Handle, Position, type NodeProps, NodeResizer } from 'reactflow';
 import { Zap } from 'lucide-react';
 import type { NodeData } from '@/lib/types';
 import ChildLayerBadge from './ChildLayerBadge';
+import EditableLabel from './EditableLabel';
 
-export default function CacheNode({ data, selected }: NodeProps<NodeData>) {
+export default function CacheNode({ id, data, selected }: NodeProps<NodeData>) {
   return (
     <div
       className={`relative min-w-[140px] rounded-xl border-2 bg-white shadow-sm transition-all ${
@@ -23,9 +24,7 @@ export default function CacheNode({ data, selected }: NodeProps<NodeData>) {
         <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-cyan-50">
           <Zap size={20} className="text-cyan-600" />
         </div>
-        <span className="text-center text-sm font-semibold leading-tight text-slate-800">
-          {data.label}
-        </span>
+        <EditableLabel nodeId={id} label={data.label} className="text-center text-sm font-semibold leading-tight text-slate-800" />
         {data.technology && (
           <span className="text-xs text-slate-500">{data.technology}</span>
         )}
