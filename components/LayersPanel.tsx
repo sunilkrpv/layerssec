@@ -50,6 +50,7 @@ interface LayerRowProps {
 }
 
 function LayerRow({ layer, depth, isCurrent, onNavigate, onUpdateLayer }: LayerRowProps) {
+  const isRoot = layer.id === ROOT_LAYER_ID;
   const [editingName, setEditingName] = useState(false);
   const [nameValue, setNameValue] = useState(layer.name);
   const [descOpen, setDescOpen] = useState(false);
@@ -87,8 +88,8 @@ function LayerRow({ layer, depth, isCurrent, onNavigate, onUpdateLayer }: LayerR
       <div className="flex items-center gap-2 px-3 py-2">
         <Layers size={13} className={isCurrent ? 'text-blue-500' : 'text-slate-400'} />
 
-        {/* Editable name */}
-        {editingName ? (
+        {/* Editable name — root layer is locked */}
+        {editingName && !isRoot ? (
           <input
             ref={nameInputRef}
             autoFocus
@@ -105,6 +106,14 @@ function LayerRow({ layer, depth, isCurrent, onNavigate, onUpdateLayer }: LayerR
             }}
             className="min-w-0 flex-1 rounded border border-blue-300 bg-white px-2 py-0.5 text-sm font-medium text-slate-800 outline-none focus:ring-1 focus:ring-blue-400"
           />
+        ) : isRoot ? (
+          <span
+            className={`min-w-0 flex-1 truncate text-sm font-medium ${
+              isCurrent ? 'text-blue-700' : 'text-slate-700'
+            }`}
+          >
+            {layer.name}
+          </span>
         ) : (
           <button
             onClick={() => setEditingName(true)}
@@ -233,7 +242,7 @@ export default function LayersPanel({
 
         <div className="border-t border-slate-100 px-5 py-3">
           <p className="text-xs text-slate-400">
-            Click a layer name to rename it. Use the arrow to navigate.
+            Click a layer name to rename it. Use the arrow to navigate. Root layer name is fixed.
           </p>
         </div>
       </div>

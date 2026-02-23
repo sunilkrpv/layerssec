@@ -28,6 +28,11 @@ Provides to all node components without prop-drilling:
 ### ExtendedRFInstance (`components/DiagramCanvas.tsx`)
 Extends `ReactFlowInstance` with custom methods stored on `rfInstanceRef`:
 - `loadDiagram`, `clearDiagram`, `updateNodeData`, `deleteNode`, `addNodeAtCenter`
+- `bringToFront`, `sendToBack` — adjust `zIndex` relative to current min/max
+- `groupNodes(nodeIds)` — calc bounding box, create GroupNode, set `parentNode`+`extent:'parent'` on children
+- `ungroupNode(groupId)` — restore absolute positions, remove `parentNode`/`extent`
+- `updateEdge(edgeId, updates)` — partial edge update
+- `deleteEdge(edgeId)` — remove edge by ID
 
 ### Node Color System (`lib/types.ts` → node files)
 Each `NodeData` carries optional `borderColor`, `fillColor`, `textColor` (CSS color strings).
@@ -68,6 +73,15 @@ When all 21 node files need the same structural change, use a **Python script vi
 - **Layers manager**: modal listing all layers with inline name/description editing, navigate button
 - **Layer descriptions**: `description?: string` added to `Layer` interface
 
+### PR-4 — Z-order, Grouping, Transparent Fill, Edge Properties, Root Bug Fix
+- **Send to Front/Back**: right-click → "Bring to Front" / "Send to Back" — adjusts `zIndex` on node
+- **Group/Ungroup**: select 2+ nodes → right-click → "Group N nodes" — true React Flow parent-child containment; right-click group → "Ungroup"
+- **Transparent fill**: `∅` button in Fill color picker (`fillColor: 'transparent'`)
+- **Edge properties panel**: click an edge → `EdgePropertiesPanel` sidebar with label, arrow direction (→/←/↔/—), stroke color
+- **Edge markers**: `EDGE_MARKER_START` added to `lib/diagramUtils.ts` for backward/bidirectional arrows
+- **Root layer rename bug**: Root layer (`ROOT_LAYER_ID`) renders as plain text in LayersPanel — cannot be renamed
+- **Convention**: CLAUDE.md is updated on every code change
+
 ---
 
 ## Key File Map
@@ -78,9 +92,10 @@ When all 21 node files need the same structural change, use a **Python script vi
 | `lib/layerStore.ts` | Layer CRUD + localStorage persistence |
 | `lib/canvasContext.ts` | React context shared with all node components |
 | `lib/nodeConfig.ts` | `PALETTE_ITEMS`, `LINE_NODE_TYPES` |
-| `lib/diagramUtils.ts` | `generateId`, `toReactFlowNodes/Edges`, `EDGE_MARKER` |
-| `components/DiagramCanvas.tsx` | React Flow wrapper, copy/paste, type-to-edit, addNodeAtCenter |
-| `components/PropertiesPanel.tsx` | Right sidebar for selected node properties + colors |
+| `lib/diagramUtils.ts` | `generateId`, `toReactFlowNodes/Edges`, `EDGE_MARKER`, `EDGE_MARKER_START` |
+| `components/DiagramCanvas.tsx` | React Flow wrapper, copy/paste, type-to-edit, addNodeAtCenter, z-order, group/ungroup, edge CRUD |
+| `components/PropertiesPanel.tsx` | Right sidebar for selected node properties + colors (incl. transparent fill) |
+| `components/EdgePropertiesPanel.tsx` | Right sidebar for selected edge (label, arrow direction, color) |
 | `components/NodePalette.tsx` | Left sidebar, collapsible, click/drag to add |
 | `components/LayersPanel.tsx` | Modal for all layers — rename/describe/navigate |
 | `components/LayerBar.tsx` | Breadcrumb navigation bar |

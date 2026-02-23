@@ -21,9 +21,10 @@ interface ColorRowProps {
   label: string;
   value: string | undefined;
   onChange: (color: string | undefined) => void;
+  showTransparent?: boolean;
 }
 
-function ColorRow({ label, value, onChange }: ColorRowProps) {
+function ColorRow({ label, value, onChange, showTransparent }: ColorRowProps) {
   return (
     <div>
       <div className="mb-1.5 flex items-center justify-between">
@@ -39,6 +40,21 @@ function ColorRow({ label, value, onChange }: ColorRowProps) {
         )}
       </div>
       <div className="flex flex-wrap gap-1.5">
+        {showTransparent && (
+          <button
+            title="No fill (transparent)"
+            onClick={() => onChange('transparent')}
+            className={`relative h-5 w-5 flex-shrink-0 rounded-full border-2 border-dashed bg-white transition-all hover:scale-110 ${
+              value === 'transparent'
+                ? 'border-blue-500 ring-2 ring-blue-300 ring-offset-1'
+                : 'border-slate-300 hover:border-slate-400'
+            }`}
+          >
+            <span className="absolute inset-0 flex items-center justify-center text-[9px] leading-none text-slate-400">
+              ∅
+            </span>
+          </button>
+        )}
         {COLOR_SWATCHES.map((swatch) => (
           <button
             key={swatch.value}
@@ -150,6 +166,7 @@ export default function PropertiesPanel({ node, onClose, onUpdate, onDelete }: P
                 label="Fill"
                 value={node.data.fillColor}
                 onChange={(c) => onUpdate(node.id, { fillColor: c })}
+                showTransparent
               />
               <ColorRow
                 label="Text"

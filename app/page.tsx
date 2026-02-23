@@ -8,6 +8,7 @@ import DiagramCanvas, { type ExtendedRFInstance } from '@/components/DiagramCanv
 import NodePalette from '@/components/NodePalette';
 import PromptBar from '@/components/PromptBar';
 import PropertiesPanel from '@/components/PropertiesPanel';
+import EdgePropertiesPanel from '@/components/EdgePropertiesPanel';
 import Toolbar from '@/components/Toolbar';
 import LayerBar from '@/components/LayerBar';
 import LayersPanel from '@/components/LayersPanel';
@@ -54,21 +55,22 @@ export default function Home() {
 
   // ── Layer state (lazy-init from localStorage) ─────────────────────────────
   const [layers, setLayers] = useState<LayerMap>(() => loadAllLayers());
-  // Navigation stack: array of layer IDs, last = current
   const [navStack, setNavStack] = useState<string[]>([ROOT_LAYER_ID]);
 
   // ── UI state ──────────────────────────────────────────────────────────────
   const [selectedNode, setSelectedNode] = useState<Node<NodeData> | null>(null);
+  const [selectedEdge, setSelectedEdge] = useState<Edge | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatingStatus, setGeneratingStatus] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [showLayersPanel, setShowLayersPanel] = useState(false);
 
-  // Right-click context menu
+  // Right-click context menu (includes selected nodes snapshot)
   const [contextMenu, setContextMenu] = useState<{
     x: number;
     y: number;
     node: Node<NodeData>;
+    selectedNodes: Node<NodeData>[];
   } | null>(null);
 
   // Drill-down naming modal
@@ -121,6 +123,7 @@ export default function Home() {
         return [...stack, targetLayerId];
       });
       setSelectedNode(null);
+      setSelectedEdge(null);
       setContextMenu(null);
     },
     [currentLayerId, flushCurrentLayer],
@@ -135,6 +138,7 @@ export default function Home() {
     });
     setNavStack((stack) => stack.slice(0, -1));
     setSelectedNode(null);
+    setSelectedEdge(null);
     setContextMenu(null);
   }, [navStack.length, currentLayerId, flushCurrentLayer]);
 
@@ -155,7 +159,11 @@ export default function Home() {
 
   const handleNodeContextMenu = useCallback(
     (event: React.MouseEvent, node: Node<NodeData>) => {
-      setContextMenu({ x: event.clientX, y: event.clientY, node });
+      // Capture current selection at the moment of right-click
+      const sel = (rfInstanceRef.current?.getNodes() ?? []).filter(
+        (n) => n.selected,
+      ) as Node<NodeData>[];
+      setContextMenu({ x: event.clientX, y: event.clientY, node, selectedNodes: sel });
     },
     [],
   );
@@ -164,7 +172,6 @@ export default function Home() {
     const node = contextMenu?.node;
     if (!node) return;
     setContextMenu(null);
-
     const existing = findChildLayer(layers, currentLayerId, node.id);
     if (existing) {
       navigateTo(existing.id);
@@ -176,11 +183,8 @@ export default function Home() {
   const handleDrillDownConfirm = useCallback(
     (layerName: string) => {
       if (!drillTarget) return;
-
       setLayers((prev) => {
         const withCurrentSaved = flushCurrentLayer(prev, currentLayerId);
-
-        // Mark the drilled-into node with _childLayerId
         const newLayer = createChildLayer(currentLayerId, drillTarget.id, layerName);
         const parentLayer = withCurrentSaved[currentLayerId];
         const updatedNodes = parentLayer.nodes.map((n) =>
@@ -188,7 +192,6 @@ export default function Home() {
             ? { ...n, data: { ...(n.data as NodeData), _childLayerId: newLayer.id } }
             : n,
         );
-
         const updated: LayerMap = {
           ...withCurrentSaved,
           [currentLayerId]: { ...parentLayer, nodes: updatedNodes },
@@ -210,6 +213,33 @@ export default function Home() {
     if (selectedNode?.id === contextMenu.node.id) setSelectedNode(null);
     setContextMenu(null);
   }, [contextMenu, selectedNode]);
+
+  const handleBringToFront = useCallback(() => {
+    if (!contextMenu) return;
+    rfInstanceRef.current?.bringToFront(contextMenu.node.id);
+    setContextMenu(null);
+  }, [contextMenu]);
+
+  const handleSendToBack = useCallback(() => {
+    if (!contextMenu) return;
+    rfInstanceRef.current?.sendToBack(contextMenu.node.id);
+    setContextMenu(null);
+  }, [contextMenu]);
+
+  const handleGroup = useCallback(() => {
+    if (!contextMenu) return;
+    const ids = contextMenu.selectedNodes.map((n) => n.id);
+    rfInstanceRef.current?.groupNodes(ids);
+    setContextMenu(null);
+    setSelectedNode(null);
+  }, [contextMenu]);
+
+  const handleUngroup = useCallback(() => {
+    if (!contextMenu) return;
+    rfInstanceRef.current?.ungroupNode(contextMenu.node.id);
+    setContextMenu(null);
+    setSelectedNode(null);
+  }, [contextMenu]);
 
   // ── Palette drag ──────────────────────────────────────────────────────────
 
@@ -233,14 +263,11 @@ export default function Home() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt }),
       });
-
       if (!res.ok) {
         const errData = await res.json();
         throw new Error(errData.error ?? `HTTP ${res.status}`);
       }
-
       setGeneratingStatus('Rendering diagram...');
-
       const reader = res.body?.getReader();
       const decoder = new TextDecoder();
       let accumulated = '';
@@ -253,10 +280,8 @@ export default function Home() {
       } else {
         accumulated = await res.text();
       }
-
       const diagram: GenerateResponse = JSON.parse(accumulated);
       rfInstanceRef.current?.loadDiagram(diagram);
-
       setTimeout(() => {
         (rfInstanceRef.current as ReactFlowInstance | null)?.fitView({ padding: 0.15 });
       }, 100);
@@ -273,6 +298,7 @@ export default function Home() {
   const handleClear = useCallback(() => {
     rfInstanceRef.current?.clearDiagram();
     setSelectedNode(null);
+    setSelectedEdge(null);
   }, []);
 
   const handleExportJson = useCallback(() => {
@@ -318,7 +344,6 @@ export default function Home() {
   // ── Project export / import (all layers) ──────────────────────────────────
 
   const handleExportProject = useCallback(() => {
-    // Flush current canvas first so the exported project is up-to-date
     setLayers((prev) => {
       const updated = flushCurrentLayer(prev, currentLayerId);
       saveAllLayers(updated);
@@ -332,10 +357,8 @@ export default function Home() {
     reader.onload = (e) => {
       try {
         const data = JSON.parse(e.target?.result as string);
-        // Accept either { layers, navStack } (full project) or a bare LayerMap
         const importedLayers: LayerMap =
           data.layers && typeof data.layers === 'object' ? data.layers : data;
-
         if (
           typeof importedLayers === 'object' &&
           importedLayers !== null &&
@@ -343,9 +366,9 @@ export default function Home() {
         ) {
           saveAllLayers(importedLayers);
           setLayers(importedLayers);
-          // Always start navigation at root when importing a project
           setNavStack([ROOT_LAYER_ID]);
           setSelectedNode(null);
+          setSelectedEdge(null);
           setContextMenu(null);
         } else {
           setError('Invalid project file.');
@@ -368,6 +391,31 @@ export default function Home() {
 
   const handleNodeDelete = useCallback((nodeId: string) => {
     rfInstanceRef.current?.deleteNode(nodeId);
+    setSelectedNode(null);
+  }, []);
+
+  // ── Edge operations (via EdgePropertiesPanel) ─────────────────────────────
+
+  const handleEdgeSelect = useCallback((edge: Edge | null) => {
+    setSelectedEdge(edge);
+    if (edge) setSelectedNode(null);
+  }, []);
+
+  const handleEdgeUpdate = useCallback((edgeId: string, updates: Partial<Edge>) => {
+    rfInstanceRef.current?.updateEdge(edgeId, updates);
+    setSelectedEdge((prev) => (prev?.id === edgeId ? { ...prev, ...updates } : prev));
+  }, []);
+
+  const handleEdgeDelete = useCallback((edgeId: string) => {
+    rfInstanceRef.current?.deleteEdge(edgeId);
+    setSelectedEdge(null);
+  }, []);
+
+  // ── Node select (clears edge selection) ───────────────────────────────────
+
+  const handleNodeSelect = useCallback((node: Node<NodeData> | null) => {
+    setSelectedNode(node);
+    setSelectedEdge(null);
   }, []);
 
   // ── Inline label editing ───────────────────────────────────────────────────
@@ -449,7 +497,8 @@ export default function Home() {
               initialEdges={currentLayer?.edges ?? []}
               onLayerSave={handleLayerSave}
               onNodeContextMenu={handleNodeContextMenu}
-              onNodeSelect={setSelectedNode}
+              onNodeSelect={handleNodeSelect}
+              onEdgeSelect={handleEdgeSelect}
               rfInstanceRef={rfInstanceRef}
               canvasRef={canvasRef}
               onRequestEdit={startEditing}
@@ -463,6 +512,15 @@ export default function Home() {
                 onDelete={handleNodeDelete}
               />
             )}
+
+            {selectedEdge && !selectedNode && (
+              <EdgePropertiesPanel
+                edge={selectedEdge}
+                onClose={() => setSelectedEdge(null)}
+                onUpdate={handleEdgeUpdate}
+                onDelete={handleEdgeDelete}
+              />
+            )}
           </div>
 
           <PromptBar
@@ -472,7 +530,7 @@ export default function Home() {
           />
         </div>
 
-        {/* Context menu — rendered outside canvas div so z-index works cleanly */}
+        {/* Context menu */}
         {contextMenu && (
           <NodeContextMenu
             x={contextMenu.x}
@@ -480,9 +538,15 @@ export default function Home() {
             nodeLabel={contextMenu.node.data.label}
             hasChildLayer={!!findChildLayer(layers, currentLayerId, contextMenu.node.id)}
             isLine={LINE_NODE_TYPES.has(contextMenu.node.type as string)}
+            isGroup={contextMenu.node.type === 'group'}
+            selectedCount={contextMenu.selectedNodes.length}
             onDrillDown={handleDrillDown}
             onDelete={handleContextMenuDelete}
             onClose={() => setContextMenu(null)}
+            onBringToFront={handleBringToFront}
+            onSendToBack={handleSendToBack}
+            onGroup={handleGroup}
+            onUngroup={handleUngroup}
           />
         )}
 

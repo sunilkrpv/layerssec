@@ -74,10 +74,17 @@ export type ExtendedRFInstance = ReactFlowInstance & {
   updateNodeData: (nodeId: string, data: Partial<NodeData>) => void;
   deleteNode: (nodeId: string) => void;
   addNodeAtCenter: (nodeType: NodeType) => void;
+  bringToFront: (nodeId: string) => void;
+  sendToBack: (nodeId: string) => void;
+  groupNodes: (nodeIds: string[]) => void;
+  ungroupNode: (groupId: string) => void;
+  updateEdge: (edgeId: string, updates: Partial<Edge>) => void;
+  deleteEdge: (edgeId: string) => void;
 };
 
 interface DiagramCanvasProps {
   onNodeSelect: (node: Node<NodeData> | null) => void;
+  onEdgeSelect: (edge: Edge | null) => void;
   rfInstanceRef: MutableRefObject<ExtendedRFInstance | null>;
   canvasRef: MutableRefObject<HTMLDivElement | null>;
   /** Nodes pre-loaded from the current layer */
@@ -94,6 +101,7 @@ interface DiagramCanvasProps {
 
 export default function DiagramCanvas({
   onNodeSelect,
+  onEdgeSelect,
   rfInstanceRef,
   canvasRef,
   initialNodes,
@@ -118,6 +126,12 @@ export default function DiagramCanvas({
   useEffect(() => {
     onRequestEditRef.current = onRequestEdit;
   }, [onRequestEdit]);
+
+  // Stable ref for onEdgeSelect
+  const onEdgeSelectRef = useRef(onEdgeSelect);
+  useEffect(() => {
+    onEdgeSelectRef.current = onEdgeSelect;
+  }, [onEdgeSelect]);
 
   // Track currently selected nodes for keypress-to-edit
   const selectedNodesRef = useRef<Node<NodeData>[]>([]);
@@ -280,7 +294,8 @@ export default function DiagramCanvas({
       };
 
       const deleteNode = (nodeId: string) => {
-        setNodes((nds) => nds.filter((n) => n.id !== nodeId));
+        // Also remove child nodes when deleting a group
+        setNodes((nds) => nds.filter((n) => n.id !== nodeId && n.parentNode !== nodeId));
         setEdges((eds) => eds.filter((e) => e.source !== nodeId && e.target !== nodeId));
       };
 
@@ -289,7 +304,6 @@ export default function DiagramCanvas({
         const screenCenter = bounds
           ? { x: bounds.left + bounds.width / 2, y: bounds.top + bounds.height / 2 }
           : { x: window.innerWidth / 2, y: window.innerHeight / 2 };
-        // Small random offset so repeated clicks don't stack perfectly
         const jitter = () => (Math.random() - 0.5) * 30;
         const position = instance.project(screenCenter);
         position.x += jitter();
@@ -305,8 +319,100 @@ export default function DiagramCanvas({
           },
         };
         setNodes((nds) => nds.concat(newNode));
-        // Auto-enter label edit mode
         onRequestEditRef.current?.(newNode.id);
+      };
+
+      const bringToFront = (nodeId: string) => {
+        setNodes((nds) => {
+          const max = Math.max(0, ...nds.map((n) => n.zIndex ?? 0));
+          return nds.map((n) => (n.id === nodeId ? { ...n, zIndex: max + 1 } : n));
+        });
+      };
+
+      const sendToBack = (nodeId: string) => {
+        setNodes((nds) => {
+          const min = Math.min(0, ...nds.map((n) => n.zIndex ?? 0));
+          return nds.map((n) => (n.id === nodeId ? { ...n, zIndex: min - 1 } : n));
+        });
+      };
+
+      const groupNodes = (nodeIds: string[]) => {
+        setNodes((nds) => {
+          const toGroup = nds.filter((n) => nodeIds.includes(n.id) && !n.parentNode);
+          if (toGroup.length < 2) return nds;
+
+          const PADDING = 20;
+          const DEFAULT_W = 150;
+          const DEFAULT_H = 80;
+
+          const minX = Math.min(...toGroup.map((n) => n.position.x));
+          const minY = Math.min(...toGroup.map((n) => n.position.y));
+          const maxX = Math.max(...toGroup.map((n) => n.position.x + (n.width ?? DEFAULT_W)));
+          const maxY = Math.max(...toGroup.map((n) => n.position.y + (n.height ?? DEFAULT_H)));
+
+          const groupId = generateId();
+          const groupWidth = maxX - minX + PADDING * 2;
+          const groupHeight = maxY - minY + PADDING * 2;
+
+          const groupNode: Node<NodeData> = {
+            id: groupId,
+            type: 'group',
+            position: { x: minX - PADDING, y: minY - PADDING },
+            style: { width: groupWidth, height: groupHeight },
+            data: { label: 'Group', description: '', technology: '' },
+            zIndex: -1,
+          };
+
+          const updatedChildren = toGroup.map((n) => ({
+            ...n,
+            parentNode: groupId,
+            extent: 'parent' as const,
+            position: {
+              x: n.position.x - (minX - PADDING),
+              y: n.position.y - (minY - PADDING),
+            },
+            selected: false,
+          }));
+
+          return [
+            groupNode,
+            ...nds
+              .filter((n) => !nodeIds.includes(n.id))
+              .map((n) => ({ ...n, selected: false })),
+            ...updatedChildren,
+          ];
+        });
+      };
+
+      const ungroupNode = (groupId: string) => {
+        setNodes((nds) => {
+          const groupNode = nds.find((n) => n.id === groupId);
+          if (!groupNode) return nds;
+
+          const children = nds.filter((n) => n.parentNode === groupId);
+          const ungrouped = children.map((n) => ({
+            ...n,
+            parentNode: undefined,
+            extent: undefined,
+            position: {
+              x: groupNode.position.x + n.position.x,
+              y: groupNode.position.y + n.position.y,
+            },
+          }));
+
+          return [
+            ...nds.filter((n) => n.id !== groupId && n.parentNode !== groupId),
+            ...ungrouped,
+          ];
+        });
+      };
+
+      const updateEdge = (edgeId: string, updates: Partial<Edge>) => {
+        setEdges((eds) => eds.map((e) => (e.id === edgeId ? { ...e, ...updates } : e)));
+      };
+
+      const deleteEdge = (edgeId: string) => {
+        setEdges((eds) => eds.filter((e) => e.id !== edgeId));
       };
 
       rfInstanceRef.current = Object.assign(instance, {
@@ -315,6 +421,12 @@ export default function DiagramCanvas({
         updateNodeData,
         deleteNode,
         addNodeAtCenter,
+        bringToFront,
+        sendToBack,
+        groupNodes,
+        ungroupNode,
+        updateEdge,
+        deleteEdge,
       }) as ExtendedRFInstance;
     },
     // initialNodes.length is intentionally included so fitView fires on remount
@@ -323,11 +435,21 @@ export default function DiagramCanvas({
   );
 
   const onNodeClick = useCallback(
-    (_: React.MouseEvent, node: Node<NodeData>) => onNodeSelect(node),
+    (_: React.MouseEvent, node: Node<NodeData>) => {
+      onNodeSelect(node);
+      onEdgeSelectRef.current(null);
+    },
     [onNodeSelect],
   );
 
-  const onPaneClick = useCallback(() => onNodeSelect(null), [onNodeSelect]);
+  const onEdgeClick = useCallback((_: React.MouseEvent, edge: Edge) => {
+    onEdgeSelectRef.current(edge);
+  }, []);
+
+  const onPaneClick = useCallback(() => {
+    onNodeSelect(null);
+    onEdgeSelectRef.current(null);
+  }, [onNodeSelect]);
 
   const handleNodeContextMenu = useCallback(
     (event: React.MouseEvent, node: Node<NodeData>) => {
@@ -351,6 +473,7 @@ export default function DiagramCanvas({
         onConnect={onConnect}
         onInit={onInit}
         onNodeClick={onNodeClick}
+        onEdgeClick={onEdgeClick}
         onPaneClick={onPaneClick}
         onNodeContextMenu={handleNodeContextMenu}
         onSelectionChange={handleSelectionChange}

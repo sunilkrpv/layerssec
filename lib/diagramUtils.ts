@@ -8,6 +8,15 @@ export const EDGE_MARKER = {
   height: 18,
 };
 
+/** Same marker shape used for markerStart to create double-headed arrows */
+export const EDGE_MARKER_START = {
+  type: MarkerType.ArrowClosed,
+  color: '#64748b',
+  width: 18,
+  height: 18,
+  orient: 'auto-start-reverse',
+};
+
 export function toReactFlowNodes(nodes: DiagramNode[]): Node<NodeData>[] {
   return nodes.map((n) => ({
     id: n.id,
