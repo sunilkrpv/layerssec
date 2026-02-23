@@ -449,6 +449,7 @@ export default function Home() {
       editInitialChar,
       startEditing,
       stopEditing,
+      pushHistoryNow: () => rfInstanceRef.current?.pushHistoryNow(),
     }),
     [navigateTo, editingNodeId, editInitialChar, startEditing, stopEditing],
   );

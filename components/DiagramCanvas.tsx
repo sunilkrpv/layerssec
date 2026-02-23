@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, type DragEvent, type MutableRefObject } from 'react';
+import { useCallback, useEffect, useRef, useState, type DragEvent, type MutableRefObject } from 'react';
 import ReactFlow, {
   type Node,
   type Edge,
@@ -10,6 +10,7 @@ import ReactFlow, {
   useNodesState,
   useEdgesState,
   useReactFlow,
+  useViewport,
   Background,
   BackgroundVariant,
   MiniMap,
@@ -20,6 +21,7 @@ import 'reactflow/dist/style.css';
 
 import type { NodeData, NodeType, GenerateResponse } from '@/lib/types';
 import { generateId, toReactFlowNodes, toReactFlowEdges, EDGE_MARKER } from '@/lib/diagramUtils';
+import { LINE_NODE_TYPES } from '@/lib/nodeConfig';
 
 import ServiceNode from './nodes/ServiceNode';
 import DatabaseNode from './nodes/DatabaseNode';
@@ -42,6 +44,50 @@ import DottedLineNode from './nodes/DottedLineNode';
 import ActorNode from './nodes/ActorNode';
 import CylinderNode from './nodes/CylinderNode';
 import TriangleNode from './nodes/TriangleNode';
+
+// ── Helper: recompute a line node's position/width to maintain endpoint attachments ──────────────
+function computeUpdatedLinePosition(
+  line: Node<NodeData>,
+  movedNodeId: string,
+  movedPos: { x: number; y: number },
+  movedSize: { w: number; h: number },
+  allNodes: Node<NodeData>[],
+): Node<NodeData> {
+  const sourceId = line.data.attachedSource;
+  const targetId = line.data.attachedTarget;
+  if (sourceId !== movedNodeId && targetId !== movedNodeId) return line;
+
+  const lineH = line.height ?? 20;
+  const lineW = line.width ?? 150;
+
+  const getInfo = (id: string) => {
+    if (id === movedNodeId) return { x: movedPos.x, y: movedPos.y, w: movedSize.w, h: movedSize.h };
+    const n = allNodes.find((nn) => nn.id === id);
+    return n ? { x: n.position.x, y: n.position.y, w: n.width ?? 150, h: n.height ?? 80 } : null;
+  };
+
+  const src = sourceId ? getInfo(sourceId) : null;
+  const tgt = targetId ? getInfo(targetId) : null;
+
+  let x = line.position.x;
+  let y = line.position.y;
+  let width = lineW;
+  const rightEnd = x + width;
+
+  if (src) {
+    x = src.x + src.w;
+    y = src.y + src.h / 2 - lineH / 2;
+    if (!tgt) width = Math.max(20, rightEnd - x);
+  }
+  if (tgt) {
+    const tgtLeft = tgt.x;
+    width = Math.max(20, tgtLeft - x);
+    const tgtCY = tgt.y + tgt.h / 2;
+    y = src ? (src.y + src.h / 2 + tgtCY) / 2 - lineH / 2 : tgtCY - lineH / 2;
+  }
+
+  return { ...line, position: { x, y }, style: { ...line.style, width, height: lineH } };
+}
 
 // Defined outside component to prevent React Flow re-mounting nodes on every render
 const NODE_TYPES = {
@@ -80,6 +126,7 @@ export type ExtendedRFInstance = ReactFlowInstance & {
   ungroupNode: (groupId: string) => void;
   updateEdge: (edgeId: string, updates: Partial<Edge>) => void;
   deleteEdge: (edgeId: string) => void;
+  pushHistoryNow: () => void;
 };
 
 interface DiagramCanvasProps {
@@ -113,6 +160,35 @@ export default function DiagramCanvas({
   const [nodes, setNodes, onNodesChange] = useNodesState<NodeData>(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>(initialEdges);
   const { screenToFlowPosition, getNodes, getEdges } = useReactFlow();
+  const { x: vpX, y: vpY, zoom } = useViewport();
+
+  // ── Alignment guides state ────────────────────────────────────────────────
+  const [guideLines, setGuideLines] = useState<{ type: 'v' | 'h'; pos: number }[]>([]);
+
+  // ── Snap-to-shape target highlight for line nodes ─────────────────────────
+  const [snapTargetInfo, setSnapTargetInfo] = useState<{
+    x: number;
+    y: number;
+    w: number;
+    h: number;
+  } | null>(null);
+
+  // ── Undo / Redo stacks (refs avoid re-renders) ────────────────────────────
+  const undoStack = useRef<{ nodes: Node<NodeData>[]; edges: Edge[] }[]>([]);
+  const redoStack = useRef<{ nodes: Node<NodeData>[]; edges: Edge[] }[]>([]);
+
+  const pushHistory = useCallback(() => {
+    undoStack.current = [
+      ...undoStack.current,
+      { nodes: getNodes() as Node<NodeData>[], edges: getEdges() },
+    ].slice(-50);
+    redoStack.current = [];
+  }, [getNodes, getEdges]);
+
+  const pushHistoryRef = useRef(pushHistory);
+  useEffect(() => {
+    pushHistoryRef.current = pushHistory;
+  }, [pushHistory]);
 
   // Stable ref for onLayerSave to avoid stale closures in the debounced effect
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -153,11 +229,34 @@ export default function DiagramCanvas({
     };
   }, [nodes, edges]);
 
-  // ── Copy / Paste ────────────────────────────────────────────────────────────
+  // ── Keyboard: Undo / Redo / Copy / Paste / Type-to-edit ──────────────────
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const isTyping =
         e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement;
+
+      // Undo / Redo (Cmd+Z / Cmd+Shift+Z) — all used values are stable refs
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !isTyping) {
+        e.preventDefault();
+        if (e.shiftKey) {
+          // Redo
+          if (redoStack.current.length === 0) return;
+          const cur = { nodes: getNodes() as Node<NodeData>[], edges: getEdges() };
+          undoStack.current = [...undoStack.current, cur].slice(-50);
+          const next = redoStack.current.pop()!;
+          setNodes(next.nodes);
+          setEdges(next.edges);
+        } else {
+          // Undo
+          if (undoStack.current.length === 0) return;
+          const cur = { nodes: getNodes() as Node<NodeData>[], edges: getEdges() };
+          redoStack.current = [...redoStack.current, cur].slice(-50);
+          const prev = undoStack.current.pop()!;
+          setNodes(prev.nodes);
+          setEdges(prev.edges);
+        }
+        return;
+      }
 
       // Copy/Paste
       if ((e.ctrlKey || e.metaKey) && !isTyping) {
@@ -174,6 +273,8 @@ export default function DiagramCanvas({
         if (e.key === 'v') {
           const { nodes: clipNodes, edges: clipEdges } = clipboardRef.current;
           if (clipNodes.length === 0) return;
+          // Push history before paste
+          pushHistoryRef.current();
           const OFFSET = 30;
           const idMap = new Map<string, string>();
           const newNodes: Node<NodeData>[] = clipNodes.map((n) => {
@@ -221,7 +322,8 @@ export default function DiagramCanvas({
   }, []);
 
   const onConnect = useCallback(
-    (connection: Connection) =>
+    (connection: Connection) => {
+      pushHistoryRef.current();
       setEdges((eds) =>
         addEdge(
           {
@@ -233,7 +335,8 @@ export default function DiagramCanvas({
           },
           eds,
         ),
-      ),
+      );
+    },
     [setEdges],
   );
 
@@ -248,6 +351,7 @@ export default function DiagramCanvas({
       const nodeType = event.dataTransfer.getData('application/reactflow') as NodeType;
       if (!nodeType) return;
 
+      pushHistoryRef.current();
       const position = screenToFlowPosition({ x: event.clientX, y: event.clientY });
       const newNode: Node<NodeData> = {
         id: generateId(),
@@ -266,6 +370,187 @@ export default function DiagramCanvas({
     [screenToFlowPosition, setNodes],
   );
 
+  // ── Alignment guides + snap preview: computed during drag ────────────────
+  const onNodeDrag = useCallback(
+    (_: React.MouseEvent, node: Node<NodeData>) => {
+      const nodeW = node.width ?? 150;
+      const nodeH = node.height ?? 80;
+
+      // Alignment guides (all nodes)
+      const THRESHOLD = 5;
+      const checkX = [node.position.x, node.position.x + nodeW / 2, node.position.x + nodeW];
+      const checkY = [node.position.y, node.position.y + nodeH / 2, node.position.y + nodeH];
+      const guides: { type: 'v' | 'h'; pos: number }[] = [];
+      const seen = new Set<string>();
+
+      for (const n of getNodes().filter((n) => n.id !== node.id && !n.selected)) {
+        const nW = n.width ?? 150;
+        const nH = n.height ?? 80;
+        const txs = [n.position.x, n.position.x + nW / 2, n.position.x + nW];
+        const tys = [n.position.y, n.position.y + nH / 2, n.position.y + nH];
+
+        for (const cx of checkX) {
+          for (const tx of txs) {
+            if (Math.abs(cx - tx) < THRESHOLD) {
+              const k = `v${tx}`;
+              if (!seen.has(k)) { seen.add(k); guides.push({ type: 'v', pos: tx }); }
+            }
+          }
+        }
+        for (const cy of checkY) {
+          for (const ty of tys) {
+            if (Math.abs(cy - ty) < THRESHOLD) {
+              const k = `h${ty}`;
+              if (!seen.has(k)) { seen.add(k); guides.push({ type: 'h', pos: ty }); }
+            }
+          }
+        }
+      }
+      setGuideLines(guides);
+
+      // When a non-line node is dragged, live-update any line nodes attached to it
+      if (!LINE_NODE_TYPES.has(node.type ?? '')) {
+        const all = getNodes() as Node<NodeData>[];
+        const hasAttached = all.some(
+          (n) =>
+            LINE_NODE_TYPES.has(n.type ?? '') &&
+            (n.data.attachedSource === node.id || n.data.attachedTarget === node.id),
+        );
+        if (hasAttached) {
+          setNodes((nds) =>
+            (nds as Node<NodeData>[]).map((n) =>
+              computeUpdatedLinePosition(
+                n,
+                node.id,
+                node.position,
+                { w: node.width ?? 150, h: node.height ?? 80 },
+                nds as Node<NodeData>[],
+              ),
+            ),
+          );
+        }
+      }
+
+      // Snap-target highlight (line nodes only)
+      if (LINE_NODE_TYPES.has(node.type ?? '')) {
+        const SNAP_RADIUS = 40;
+        const lineH = node.height ?? 20;
+        const nodeCenterY = node.position.y + lineH / 2;
+        let bestDist = SNAP_RADIUS;
+        let targetInfo: { x: number; y: number; w: number; h: number } | null = null;
+
+        for (const n of getNodes().filter(
+          (n) => n.id !== node.id && !LINE_NODE_TYPES.has(n.type ?? ''),
+        )) {
+          const nW = n.width ?? 150;
+          const nH = n.height ?? 80;
+          const nCenterY = n.position.y + nH / 2;
+          if (Math.abs(nodeCenterY - nCenterY) > nH) continue;
+
+          const d = Math.min(
+            Math.abs(node.position.x - (n.position.x + nW)),          // left end → shape right
+            Math.abs(node.position.x + nodeW - n.position.x),          // right end → shape left
+          );
+          if (d < bestDist) {
+            bestDist = d;
+            targetInfo = { x: n.position.x, y: n.position.y, w: nW, h: nH };
+          }
+        }
+        setSnapTargetInfo(targetInfo);
+      } else {
+        setSnapTargetInfo(null);
+      }
+    },
+    [getNodes],
+  );
+
+  // ── Drag stop: save history + snap line nodes to nearby shapes ────────────
+  const onNodeDragStop = useCallback(
+    (_: React.MouseEvent, node: Node<NodeData>) => {
+      pushHistoryRef.current(); // capture post-drag state for undo
+      setGuideLines([]);
+      setSnapTargetInfo(null);
+
+      if (LINE_NODE_TYPES.has(node.type ?? '')) {
+        // Line node dropped: check for snap + record attachments
+        const SNAP_RADIUS = 40;
+        const nodeW = node.width ?? 150;
+        const nodeH = node.height ?? 20;
+        const nodeCenterY = node.position.y + nodeH / 2;
+
+        let bestDist = SNAP_RADIUS;
+        let snapPos: { x: number; y: number } | null = null;
+        let newAttachedSource: string | undefined;
+        let newAttachedTarget: string | undefined;
+
+        for (const n of getNodes().filter(
+          (n) => n.id !== node.id && !LINE_NODE_TYPES.has(n.type ?? ''),
+        )) {
+          const nW = n.width ?? 150;
+          const nH = n.height ?? 80;
+          const nCenterY = n.position.y + nH / 2;
+          if (Math.abs(nodeCenterY - nCenterY) > nH) continue;
+          const snapY = nCenterY - nodeH / 2;
+
+          // Left end → shape's right edge
+          const d1 = Math.abs(node.position.x - (n.position.x + nW));
+          if (d1 < bestDist) {
+            bestDist = d1;
+            snapPos = { x: n.position.x + nW, y: snapY };
+            newAttachedSource = n.id;
+            newAttachedTarget = undefined;
+          }
+
+          // Right end → shape's left edge
+          const d2 = Math.abs(node.position.x + nodeW - n.position.x);
+          if (d2 < bestDist) {
+            bestDist = d2;
+            snapPos = { x: n.position.x - nodeW, y: snapY };
+            newAttachedSource = undefined;
+            newAttachedTarget = n.id;
+          }
+        }
+
+        setNodes((nds) =>
+          nds.map((n) => {
+            if (n.id !== node.id) return n;
+            return {
+              ...n,
+              position: snapPos ?? n.position,
+              data: {
+                ...n.data,
+                attachedSource: newAttachedSource,
+                attachedTarget: newAttachedTarget,
+              },
+            };
+          }),
+        );
+      } else {
+        // Non-line node dropped: final sync of any attached line nodes
+        const all = getNodes() as Node<NodeData>[];
+        const hasAttached = all.some(
+          (n) =>
+            LINE_NODE_TYPES.has(n.type ?? '') &&
+            (n.data.attachedSource === node.id || n.data.attachedTarget === node.id),
+        );
+        if (hasAttached) {
+          setNodes((nds) =>
+            (nds as Node<NodeData>[]).map((n) =>
+              computeUpdatedLinePosition(
+                n,
+                node.id,
+                node.position,
+                { w: node.width ?? 150, h: node.height ?? 80 },
+                nds as Node<NodeData>[],
+              ),
+            ),
+          );
+        }
+      }
+    },
+    [getNodes, setNodes],
+  );
+
   const onInit = useCallback(
     (instance: ReactFlowInstance) => {
       // Fit the view to the initial nodes (if any)
@@ -274,6 +559,7 @@ export default function DiagramCanvas({
       }
 
       const loadDiagram = (diagram: GenerateResponse) => {
+        pushHistoryRef.current();
         const newNodes = toReactFlowNodes(diagram.nodes) as Node<NodeData>[];
         const newEdges = toReactFlowEdges(diagram.edges);
         setNodes(newNodes);
@@ -282,24 +568,28 @@ export default function DiagramCanvas({
       };
 
       const clearDiagram = () => {
+        pushHistoryRef.current();
         setNodes([]);
         setEdges([]);
         onLayerSaveRef.current([], []);
       };
 
       const updateNodeData = (nodeId: string, data: Partial<NodeData>) => {
+        pushHistoryRef.current();
         setNodes((nds) =>
           nds.map((n) => (n.id === nodeId ? { ...n, data: { ...n.data, ...data } } : n)),
         );
       };
 
       const deleteNode = (nodeId: string) => {
+        pushHistoryRef.current();
         // Also remove child nodes when deleting a group
         setNodes((nds) => nds.filter((n) => n.id !== nodeId && n.parentNode !== nodeId));
         setEdges((eds) => eds.filter((e) => e.source !== nodeId && e.target !== nodeId));
       };
 
       const addNodeAtCenter = (nodeType: NodeType) => {
+        pushHistoryRef.current();
         const bounds = canvasRef.current?.getBoundingClientRect();
         const screenCenter = bounds
           ? { x: bounds.left + bounds.width / 2, y: bounds.top + bounds.height / 2 }
@@ -323,6 +613,7 @@ export default function DiagramCanvas({
       };
 
       const bringToFront = (nodeId: string) => {
+        pushHistoryRef.current();
         setNodes((nds) => {
           const max = Math.max(0, ...nds.map((n) => n.zIndex ?? 0));
           return nds.map((n) => (n.id === nodeId ? { ...n, zIndex: max + 1 } : n));
@@ -330,6 +621,7 @@ export default function DiagramCanvas({
       };
 
       const sendToBack = (nodeId: string) => {
+        pushHistoryRef.current();
         setNodes((nds) => {
           const min = Math.min(0, ...nds.map((n) => n.zIndex ?? 0));
           return nds.map((n) => (n.id === nodeId ? { ...n, zIndex: min - 1 } : n));
@@ -337,6 +629,7 @@ export default function DiagramCanvas({
       };
 
       const groupNodes = (nodeIds: string[]) => {
+        pushHistoryRef.current();
         setNodes((nds) => {
           const toGroup = nds.filter((n) => nodeIds.includes(n.id) && !n.parentNode);
           if (toGroup.length < 2) return nds;
@@ -385,6 +678,7 @@ export default function DiagramCanvas({
       };
 
       const ungroupNode = (groupId: string) => {
+        pushHistoryRef.current();
         setNodes((nds) => {
           const groupNode = nds.find((n) => n.id === groupId);
           if (!groupNode) return nds;
@@ -408,11 +702,17 @@ export default function DiagramCanvas({
       };
 
       const updateEdge = (edgeId: string, updates: Partial<Edge>) => {
+        pushHistoryRef.current();
         setEdges((eds) => eds.map((e) => (e.id === edgeId ? { ...e, ...updates } : e)));
       };
 
       const deleteEdge = (edgeId: string) => {
+        pushHistoryRef.current();
         setEdges((eds) => eds.filter((e) => e.id !== edgeId));
+      };
+
+      const pushHistoryNow = () => {
+        pushHistoryRef.current();
       };
 
       rfInstanceRef.current = Object.assign(instance, {
@@ -427,6 +727,7 @@ export default function DiagramCanvas({
         ungroupNode,
         updateEdge,
         deleteEdge,
+        pushHistoryNow,
       }) as ExtendedRFInstance;
     },
     // initialNodes.length is intentionally included so fitView fires on remount
@@ -464,7 +765,7 @@ export default function DiagramCanvas({
   }, []);
 
   return (
-    <div ref={canvasRef} className="h-full flex-1" onDragOver={onDragOver} onDrop={onDrop}>
+    <div ref={canvasRef} className="relative h-full flex-1" onDragOver={onDragOver} onDrop={onDrop}>
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -477,6 +778,8 @@ export default function DiagramCanvas({
         onPaneClick={onPaneClick}
         onNodeContextMenu={handleNodeContextMenu}
         onSelectionChange={handleSelectionChange}
+        onNodeDrag={onNodeDrag}
+        onNodeDragStop={onNodeDragStop}
         nodeTypes={NODE_TYPES}
         selectionMode={SelectionMode.Partial}
         fitView
@@ -493,6 +796,45 @@ export default function DiagramCanvas({
           className="rounded-xl border border-slate-200 shadow-sm"
         />
       </ReactFlow>
+
+      {/* Snap-target highlight for line nodes */}
+      {snapTargetInfo && (
+        <div
+          className="pointer-events-none absolute rounded-lg border-2 border-blue-400 transition-all duration-75"
+          style={{
+            left: snapTargetInfo.x * zoom + vpX,
+            top: snapTargetInfo.y * zoom + vpY,
+            width: snapTargetInfo.w * zoom,
+            height: snapTargetInfo.h * zoom,
+            zIndex: 9998,
+            boxShadow: '0 0 0 4px rgba(59,130,246,0.2), 0 0 16px rgba(59,130,246,0.35)',
+          }}
+        />
+      )}
+
+      {/* Alignment guide lines — rendered in flow coordinates mapped to screen */}
+      {guideLines.length > 0 && (
+        <div
+          className="pointer-events-none absolute inset-0 overflow-hidden"
+          style={{ zIndex: 9999 }}
+        >
+          {guideLines.map((guide, i) =>
+            guide.type === 'v' ? (
+              <div
+                key={`vg${i}`}
+                className="absolute bottom-0 top-0 border-l-2 border-dashed border-red-400 opacity-80"
+                style={{ left: guide.pos * zoom + vpX }}
+              />
+            ) : (
+              <div
+                key={`hg${i}`}
+                className="absolute left-0 right-0 border-t-2 border-dashed border-red-400 opacity-80"
+                style={{ top: guide.pos * zoom + vpY }}
+              />
+            ),
+          )}
+        </div>
+      )}
     </div>
   );
 }

@@ -1,7 +1,8 @@
 'use client';
 
+import { useState } from 'react';
 import type { Node } from 'reactflow';
-import { X, Info, Trash2 } from 'lucide-react';
+import { X, Info, Trash2, RotateCw } from 'lucide-react';
 import type { NodeData, NodeType } from '@/lib/types';
 import { PALETTE_ITEMS, LINE_NODE_TYPES } from '@/lib/nodeConfig';
 
@@ -84,6 +85,7 @@ export default function PropertiesPanel({ node, onClose, onUpdate, onDelete }: P
   const palette = PALETTE_ITEMS.find((item) => item.type === (node.type as NodeType));
   const Icon = palette?.icon;
   const isLine = LINE_NODE_TYPES.has(node.type as string);
+  const [rotateByInput, setRotateByInput] = useState('');
 
   return (
     <aside className="flex h-full w-64 flex-col border-l border-slate-200 bg-white shadow-sm">
@@ -176,6 +178,60 @@ export default function PropertiesPanel({ node, onClose, onUpdate, onDelete }: P
             </>
           )}
         </div>
+
+        {/* Rotation */}
+        {!isLine && (
+          <div className="space-y-2 rounded-lg border border-slate-100 bg-slate-50 p-3">
+            <div className="flex items-center justify-between">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Rotation</p>
+              <span className="font-mono text-xs text-slate-500">
+                {Math.round(node.data.rotation ?? 0)}°
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                value={rotateByInput}
+                onChange={(e) => setRotateByInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    const delta = parseFloat(rotateByInput);
+                    if (!isNaN(delta)) {
+                      const current = node.data.rotation ?? 0;
+                      onUpdate(node.id, { rotation: current + delta });
+                      setRotateByInput('');
+                    }
+                  }
+                }}
+                placeholder="e.g. 45"
+                className="w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm text-slate-800 placeholder-slate-300 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
+              />
+              <button
+                onClick={() => {
+                  const delta = parseFloat(rotateByInput);
+                  if (!isNaN(delta)) {
+                    const current = node.data.rotation ?? 0;
+                    onUpdate(node.id, { rotation: current + delta });
+                    setRotateByInput('');
+                  }
+                }}
+                title="Apply clockwise rotation"
+                className="flex flex-shrink-0 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-600"
+              >
+                <RotateCw size={12} />
+                CW
+              </button>
+            </div>
+            {(node.data.rotation ?? 0) !== 0 && (
+              <button
+                onClick={() => onUpdate(node.id, { rotation: 0 })}
+                className="w-full rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs text-slate-500 hover:bg-slate-100"
+              >
+                Reset rotation
+              </button>
+            )}
+          </div>
+        )}
 
         <div>
           <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">

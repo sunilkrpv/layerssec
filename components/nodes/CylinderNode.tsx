@@ -4,6 +4,7 @@ import { Handle, Position, type NodeProps, NodeResizer } from 'reactflow';
 import type { NodeData } from '@/lib/types';
 import ChildLayerBadge from './ChildLayerBadge';
 import EditableLabel from './EditableLabel';
+import RotateHandle from './RotateHandle';
 
 export default function CylinderNode({ id, data, selected }: NodeProps<NodeData>) {
   const stroke = data.borderColor ?? (selected ? '#475569' : '#94a3b8');
@@ -12,6 +13,7 @@ export default function CylinderNode({ id, data, selected }: NodeProps<NodeData>
   return (
     <div
       className="relative flex min-h-[100px] min-w-[80px] flex-col items-center justify-center gap-2 bg-transparent"
+      style={{ transform: `rotate(${data.rotation ?? 0}deg)`, transformOrigin: 'center', overflow: 'visible' }}
     >
       <NodeResizer
         minWidth={60}
@@ -20,6 +22,7 @@ export default function CylinderNode({ id, data, selected }: NodeProps<NodeData>
         lineClassName="border-slate-400"
         handleClassName="h-2.5 w-2.5 rounded-full bg-slate-400"
       />
+      <RotateHandle visible={selected} rotation={data.rotation ?? 0} />
       <Handle type="target" position={Position.Left} />
       <Handle type="source" position={Position.Right} />
       <Handle type="target" position={Position.Top} id="top" />

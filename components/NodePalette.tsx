@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, type DragEvent } from 'react';
-import { ChevronDown, ChevronRight, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { ChevronDown, ChevronRight, PanelLeftClose, PanelLeftOpen, Cloud, Square } from 'lucide-react';
 import { PALETTE_ITEMS } from '@/lib/nodeConfig';
 import type { NodeType } from '@/lib/types';
 
@@ -14,13 +14,14 @@ const cloudItems = PALETTE_ITEMS.filter((i) => i.group === 'cloud');
 const shapeItems = PALETTE_ITEMS.filter((i) => i.group === 'shape');
 
 const SECTIONS = [
-  { key: 'cloud', label: 'Cloud Services', items: cloudItems },
-  { key: 'shape', label: 'Shapes', items: shapeItems },
+  { key: 'cloud', label: 'Cloud Services', icon: Cloud, items: cloudItems },
+  { key: 'shape', label: 'Shapes', icon: Square, items: shapeItems },
 ];
 
 export default function NodePalette({ onDragStart, onAddNode }: NodePaletteProps) {
   const [panelOpen, setPanelOpen] = useState(true);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const [openSection, setOpenSection] = useState<string | null>(null);
 
   const toggle = (key: string) =>
     setCollapsed((prev) => {
@@ -34,12 +35,54 @@ export default function NodePalette({ onDragStart, onAddNode }: NodePaletteProps
     return (
       <aside className="flex h-full w-10 flex-col items-center border-r border-slate-200 bg-white pt-2 shadow-sm">
         <button
-          onClick={() => setPanelOpen(true)}
+          onClick={() => { setPanelOpen(true); setOpenSection(null); }}
           title="Expand panel"
           className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-700"
         >
           <PanelLeftOpen size={16} />
         </button>
+
+        <div className="mt-2 flex flex-col items-center gap-1">
+          {SECTIONS.map(({ key, label, icon: SectionIcon, items }) => (
+            <div key={key} className="relative">
+              <button
+                title={label}
+                onClick={() => setOpenSection((p) => (p === key ? null : key))}
+                className={`flex h-8 w-8 items-center justify-center rounded-lg transition-colors ${
+                  openSection === key
+                    ? 'bg-blue-50 text-blue-600'
+                    : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'
+                }`}
+              >
+                <SectionIcon size={16} />
+              </button>
+
+              {openSection === key && (
+                <div className="absolute left-10 top-0 z-50 w-52 rounded-xl border border-slate-200 bg-white py-1 shadow-2xl">
+                  <div className="border-b border-slate-100 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    {label}
+                  </div>
+                  {items.map((item) => {
+                    const Icon = item.icon;
+                    return (
+                      <div
+                        key={item.type}
+                        draggable
+                        onClick={() => { onAddNode(item.type); setOpenSection(null); }}
+                        onDragStart={(e) => { onDragStart(e, item.type); setOpenSection(null); }}
+                        className="flex cursor-pointer items-center gap-2.5 px-3 py-1.5 hover:bg-slate-50"
+                        title={item.description}
+                      >
+                        <Icon size={14} className={item.color} />
+                        <span className={`text-xs font-medium ${item.color}`}>{item.label}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
       </aside>
     );
   }

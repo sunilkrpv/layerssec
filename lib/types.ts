@@ -35,6 +35,12 @@ export interface NodeData {
   fillColor?: string;
   /** CSS color string for the node label text */
   textColor?: string;
+  /** Rotation angle in degrees (clockwise) */
+  rotation?: number;
+  /** Node ID whose right edge the line's left end is attached to */
+  attachedSource?: string;
+  /** Node ID whose left edge the line's right end is attached to */
+  attachedTarget?: string;
 }
 
 export interface DiagramNode {

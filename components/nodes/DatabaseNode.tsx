@@ -5,6 +5,7 @@ import { Database } from 'lucide-react';
 import type { NodeData } from '@/lib/types';
 import ChildLayerBadge from './ChildLayerBadge';
 import EditableLabel from './EditableLabel';
+import RotateHandle from './RotateHandle';
 
 export default function DatabaseNode({ id, data, selected }: NodeProps<NodeData>) {
   return (
@@ -14,9 +15,10 @@ export default function DatabaseNode({ id, data, selected }: NodeProps<NodeData>
           ? 'border-green-500 shadow-md shadow-green-200'
           : 'border-green-300 hover:border-green-400 hover:shadow-md'
       }`}
-          style={{ borderColor: data.borderColor || undefined, backgroundColor: data.fillColor || undefined }}
+          style={{ borderColor: data.borderColor || undefined, backgroundColor: data.fillColor || undefined, transform: `rotate(${data.rotation ?? 0}deg)`, transformOrigin: 'center', overflow: 'visible' }}
     >
       <NodeResizer minWidth={120} minHeight={80} isVisible={selected} lineClassName="border-green-400" handleClassName="h-2.5 w-2.5 rounded-full bg-green-400" />
+      <RotateHandle visible={selected} rotation={data.rotation ?? 0} />
       <Handle type="target" position={Position.Left} />
       <Handle type="source" position={Position.Right} />
       <Handle type="target" position={Position.Top} id="top" />

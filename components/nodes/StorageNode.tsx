@@ -5,6 +5,7 @@ import { HardDrive } from 'lucide-react';
 import type { NodeData } from '@/lib/types';
 import ChildLayerBadge from './ChildLayerBadge';
 import EditableLabel from './EditableLabel';
+import RotateHandle from './RotateHandle';
 
 export default function StorageNode({ id, data, selected }: NodeProps<NodeData>) {
   return (
@@ -14,9 +15,10 @@ export default function StorageNode({ id, data, selected }: NodeProps<NodeData>)
           ? 'border-indigo-500 shadow-md shadow-indigo-200'
           : 'border-indigo-300 hover:border-indigo-400 hover:shadow-md'
       }`}
-          style={{ borderColor: data.borderColor || undefined, backgroundColor: data.fillColor || undefined }}
+          style={{ borderColor: data.borderColor || undefined, backgroundColor: data.fillColor || undefined, transform: `rotate(${data.rotation ?? 0}deg)`, transformOrigin: 'center', overflow: 'visible' }}
     >
       <NodeResizer minWidth={120} minHeight={80} isVisible={selected} lineClassName="border-indigo-400" handleClassName="h-2.5 w-2.5 rounded-full bg-indigo-400" />
+      <RotateHandle visible={selected} rotation={data.rotation ?? 0} />
       <Handle type="target" position={Position.Left} />
       <Handle type="source" position={Position.Right} />
       <Handle type="target" position={Position.Top} id="top" />

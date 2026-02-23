@@ -4,6 +4,7 @@ import { Handle, Position, type NodeProps, NodeResizer } from 'reactflow';
 import type { NodeData } from '@/lib/types';
 import ChildLayerBadge from './ChildLayerBadge';
 import EditableLabel from './EditableLabel';
+import RotateHandle from './RotateHandle';
 
 export default function CircleNode({ id, data, selected }: NodeProps<NodeData>) {
   return (
@@ -13,7 +14,7 @@ export default function CircleNode({ id, data, selected }: NodeProps<NodeData>) 
           ? 'border-slate-600 shadow-md'
           : 'border-slate-400 hover:border-slate-500'
       }`}
-          style={{ borderColor: data.borderColor || undefined, backgroundColor: data.fillColor || undefined }}
+          style={{ borderColor: data.borderColor || undefined, backgroundColor: data.fillColor || undefined, transform: `rotate(${data.rotation ?? 0}deg)`, transformOrigin: 'center', overflow: 'visible' }}
     >
       <NodeResizer
         minWidth={60}
@@ -23,6 +24,7 @@ export default function CircleNode({ id, data, selected }: NodeProps<NodeData>) 
         lineClassName="border-slate-400"
         handleClassName="h-2.5 w-2.5 rounded-full bg-slate-400"
       />
+      <RotateHandle visible={selected} rotation={data.rotation ?? 0} />
       <Handle type="target" position={Position.Left} />
       <Handle type="source" position={Position.Right} />
       <Handle type="target" position={Position.Top} id="top" />

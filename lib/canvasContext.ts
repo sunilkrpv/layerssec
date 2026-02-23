@@ -9,6 +9,8 @@ interface CanvasContextValue {
   editInitialChar: string | null;
   startEditing: (nodeId: string, initialChar?: string) => void;
   stopEditing: () => void;
+  /** Push the current diagram state onto the undo stack (call before a rotation drag begins) */
+  pushHistoryNow: () => void;
 }
 
 export const CanvasContext = createContext<CanvasContextValue>({
@@ -18,6 +20,7 @@ export const CanvasContext = createContext<CanvasContextValue>({
   editInitialChar: null,
   startEditing: () => {},
   stopEditing: () => {},
+  pushHistoryNow: () => {},
 });
 
 export function useCanvasContext(): CanvasContextValue {
