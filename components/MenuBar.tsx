@@ -1,0 +1,236 @@
+'use client';
+
+import { useEffect, useRef, useState } from 'react';
+import { Share2, Minus, Sparkles } from 'lucide-react';
+
+interface MenuBarProps {
+  onNew: () => void;
+  onImportJson: (file: File) => void;
+  onExportJson: () => void;
+  onExportPng: () => void;
+  onImportProject: (file: File) => void;
+  onExportProject: () => void;
+  layersVisible: boolean;
+  onToggleLayers: () => void;
+  onShowAI: () => void;
+}
+
+function useDropdown() {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  return { open, setOpen, ref };
+}
+
+function MenuItem({
+  onClick,
+  children,
+  shortcut,
+  disabled,
+}: {
+  onClick: () => void;
+  children: React.ReactNode;
+  shortcut?: string;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className="flex w-full items-center gap-2 px-4 py-1.5 text-left text-sm text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:text-slate-400"
+    >
+      <span className="flex-1">{children}</span>
+      {shortcut && <span className="ml-4 text-xs text-slate-400">{shortcut}</span>}
+    </button>
+  );
+}
+
+function MenuSeparator() {
+  return <div className="my-1 h-px bg-slate-100" />;
+}
+
+function Dropdown({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  const { open, setOpen, ref } = useDropdown();
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className={`rounded px-3 py-1 text-sm ${
+          open
+            ? 'bg-blue-600 text-white'
+            : 'text-slate-700 hover:bg-slate-200 hover:text-slate-900'
+        }`}
+      >
+        {label}
+      </button>
+      {open && (
+        <div
+          className="absolute left-0 top-full z-50 mt-0.5 min-w-[220px] rounded-lg border border-slate-200 bg-white py-1.5 shadow-xl"
+          onClick={() => setOpen(false)}
+        >
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function MenuBar({
+  onNew,
+  onImportJson,
+  onExportJson,
+  onExportPng,
+  onImportProject,
+  onExportProject,
+  layersVisible,
+  onToggleLayers,
+  onShowAI,
+}: MenuBarProps) {
+  const [showAbout, setShowAbout] = useState(false);
+  const jsonInputRef = useRef<HTMLInputElement>(null);
+  const projectInputRef = useRef<HTMLInputElement>(null);
+
+  return (
+    <>
+      <div className="flex h-9 flex-shrink-0 items-center border-b border-slate-200 bg-slate-50 px-3">
+        {/* Logo */}
+        <div className="mr-4 flex items-center gap-1.5 pl-1">
+          <Share2 size={14} className="text-blue-600" />
+          <span className="text-sm font-bold text-slate-800">Drafter</span>
+        </div>
+
+        {/* Menu items */}
+        <div className="flex items-center gap-0.5">
+          <Dropdown label="File">
+            <MenuItem onClick={onNew} shortcut="⌘N">
+              New
+            </MenuItem>
+            <MenuSeparator />
+            <MenuItem onClick={() => jsonInputRef.current?.click()}>Open / Import JSON</MenuItem>
+            <MenuItem onClick={onExportJson} shortcut="⌘E">
+              Export JSON
+            </MenuItem>
+            <MenuItem onClick={onExportPng} shortcut="⌘⇧E">
+              Save as Image
+            </MenuItem>
+            <MenuSeparator />
+            <MenuItem onClick={() => projectInputRef.current?.click()}>Import Project</MenuItem>
+            <MenuItem onClick={onExportProject}>Export Project</MenuItem>
+          </Dropdown>
+
+          <Dropdown label="View">
+            <MenuItem onClick={onToggleLayers}>
+              {layersVisible ? '✓ ' : ''}Layers Panel
+            </MenuItem>
+            <MenuSeparator />
+            <MenuItem onClick={() => {}} disabled>
+              Zoom In
+            </MenuItem>
+            <MenuItem onClick={() => {}} disabled>
+              Zoom Out
+            </MenuItem>
+            <MenuItem onClick={() => {}} disabled>
+              Fit View
+            </MenuItem>
+          </Dropdown>
+
+          <Dropdown label="AI">
+            <MenuItem onClick={onShowAI}>
+              <span className="flex items-center gap-2">
+                <Sparkles size={13} className="text-blue-500" />
+                Open AI Assistant
+              </span>
+            </MenuItem>
+          </Dropdown>
+
+          <button
+            onClick={() => setShowAbout(true)}
+            className="rounded px-3 py-1 text-sm text-slate-700 hover:bg-slate-200 hover:text-slate-900"
+          >
+            About
+          </button>
+        </div>
+
+        {/* Hidden file inputs */}
+        <input
+          ref={jsonInputRef}
+          type="file"
+          accept=".json"
+          className="hidden"
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) {
+              onImportJson(f);
+              e.target.value = '';
+            }
+          }}
+        />
+        <input
+          ref={projectInputRef}
+          type="file"
+          accept=".json"
+          className="hidden"
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) {
+              onImportProject(f);
+              e.target.value = '';
+            }
+          }}
+        />
+      </div>
+
+      {/* About modal */}
+      {showAbout && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
+          onClick={() => setShowAbout(false)}
+        >
+          <div
+            className="rounded-2xl border border-slate-200 bg-white p-10 text-center shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-600">
+              <Share2 size={28} className="text-white" />
+            </div>
+            <h1 className="text-2xl font-bold text-slate-900">Drafter</h1>
+            <p className="mt-1 text-base font-medium text-slate-500">v0.1 Alpha</p>
+            <p className="mx-auto mt-4 max-w-xs text-sm text-slate-600">
+              A layered AI-powered diagramming tool. Build architecture diagrams, drill into nodes,
+              and generate diagrams with AI.
+            </p>
+            <div className="mt-6 flex items-center justify-center gap-1 text-xs text-slate-400">
+              <Minus size={10} />
+              <span>Built with Next.js, React Flow &amp; Claude</span>
+              <Minus size={10} />
+            </div>
+            <button
+              onClick={() => setShowAbout(false)}
+              className="mt-6 rounded-xl bg-blue-600 px-8 py-2.5 text-sm font-medium text-white hover:bg-blue-700"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}

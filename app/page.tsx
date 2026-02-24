@@ -6,20 +6,22 @@ import { toPng } from 'html-to-image';
 
 import DiagramCanvas, { type ExtendedRFInstance } from '@/components/DiagramCanvas';
 import NodePalette from '@/components/NodePalette';
-import PromptBar from '@/components/PromptBar';
 import PropertiesPanel from '@/components/PropertiesPanel';
 import EdgePropertiesPanel from '@/components/EdgePropertiesPanel';
+import MenuBar from '@/components/MenuBar';
 import Toolbar from '@/components/Toolbar';
 import LayerBar from '@/components/LayerBar';
 import LayersPanel from '@/components/LayersPanel';
 import NodeContextMenu from '@/components/NodeContextMenu';
 import DrillDownModal from '@/components/DrillDownModal';
+import AIChatPanel from '@/components/AIChatPanel';
 
 import type { NodeData, NodeType, GenerateResponse } from '@/lib/types';
 import {
   loadAllLayers,
   saveAllLayers,
   createChildLayer,
+  createStandaloneLayer,
   findChildLayer,
   updateLayer,
   ROOT_LAYER_ID,
@@ -65,6 +67,10 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [showLayersPanel, setShowLayersPanel] = useState(false);
 
+  // AI chat panel state — open by default on first load
+  const [showChatPanel, setShowChatPanel] = useState(true);
+  const [isChatMinimized, setIsChatMinimized] = useState(false);
+
   // Right-click context menu (includes selected nodes snapshot)
   const [contextMenu, setContextMenu] = useState<{
     x: number;
@@ -79,6 +85,7 @@ export default function Home() {
   // ── Derived values ────────────────────────────────────────────────────────
   const currentLayerId = navStack[navStack.length - 1];
   const currentLayer = layers[currentLayerId];
+  const hasNodes = (currentLayer?.nodes.length ?? 0) > 0;
 
   // ── Persist helpers ───────────────────────────────────────────────────────
 
@@ -287,11 +294,35 @@ export default function Home() {
       }, 100);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to generate diagram');
+      throw err;
     } finally {
       setIsGenerating(false);
       setGeneratingStatus('');
     }
   }, []);
+
+  // ── Generate on a new standalone layer ────────────────────────────────────
+
+  const handleGenerateNewLayer = useCallback(
+    async (prompt: string, layerName: string) => {
+      const newLayer = createStandaloneLayer(layerName);
+
+      setLayers((prev) => {
+        const flushed = flushCurrentLayer(prev, currentLayerId);
+        const updated = { ...flushed, [newLayer.id]: newLayer };
+        saveAllLayers(updated);
+        return updated;
+      });
+      setNavStack((stack) => [...stack, newLayer.id]);
+      setSelectedNode(null);
+      setSelectedEdge(null);
+
+      // Wait for canvas to remount after key change
+      await new Promise<void>((resolve) => setTimeout(resolve, 300));
+      await handleGenerate(prompt);
+    },
+    [currentLayerId, flushCurrentLayer, handleGenerate],
+  );
 
   // ── Canvas operations ─────────────────────────────────────────────────────
 
@@ -300,6 +331,12 @@ export default function Home() {
     setSelectedNode(null);
     setSelectedEdge(null);
   }, []);
+
+  const handleNew = useCallback(() => {
+    handleClear();
+    setShowChatPanel(true);
+    setIsChatMinimized(false);
+  }, [handleClear]);
 
   const handleExportJson = useCallback(() => {
     const instance = rfInstanceRef.current as ReactFlowInstance | null;
@@ -456,20 +493,33 @@ export default function Home() {
 
   // ── Render ────────────────────────────────────────────────────────────────
 
+  // Whether the right sidebar is visible (docked layers panel, properties, or edge panel)
+  const showRightSidebar = showLayersPanel || !!selectedNode || (!!selectedEdge && !selectedNode);
+
   return (
     <CanvasContext.Provider value={canvasContextValue}>
       <ReactFlowProvider>
         <div className="flex h-screen flex-col overflow-hidden">
-          <Toolbar
-            onClear={handleClear}
+          {/* ── Menu bar ────────────────────────────────────────────────── */}
+          <MenuBar
+            onNew={handleNew}
+            onImportJson={handleImportJson}
             onExportJson={handleExportJson}
             onExportPng={handleExportPng}
-            onImportJson={handleImportJson}
-            onExportProject={handleExportProject}
             onImportProject={handleImportProject}
-            onShowLayers={() => setShowLayersPanel(true)}
+            onExportProject={handleExportProject}
+            layersVisible={showLayersPanel}
+            onToggleLayers={() => setShowLayersPanel((v) => !v)}
+            onShowAI={() => {
+              setShowChatPanel(true);
+              setIsChatMinimized(false);
+            }}
           />
 
+          {/* ── Toolbar (zoom + clear) ───────────────────────────────────── */}
+          <Toolbar onClear={handleClear} />
+
+          {/* ── Layer breadcrumb bar ─────────────────────────────────────── */}
           <LayerBar
             layers={layers}
             currentLayerId={currentLayerId}
@@ -488,6 +538,7 @@ export default function Home() {
             </div>
           )}
 
+          {/* ── Main content area ────────────────────────────────────────── */}
           <div className="flex flex-1 overflow-hidden">
             <NodePalette onDragStart={onPaletteDragStart} onAddNode={handleAddNode} />
 
@@ -505,33 +556,54 @@ export default function Home() {
               onRequestEdit={startEditing}
             />
 
-            {selectedNode && (
-              <PropertiesPanel
-                node={selectedNode}
-                onClose={() => setSelectedNode(null)}
-                onUpdate={handleNodeUpdate}
-                onDelete={handleNodeDelete}
-              />
-            )}
+            {/* ── Right sidebar (docked layers + properties) ─────────────── */}
+            {showRightSidebar && (
+              <div className="relative flex h-full flex-shrink-0 flex-col">
+                {/* Docked layers panel — base layer of sidebar */}
+                {showLayersPanel && (
+                  <LayersPanel
+                    docked
+                    layers={layers}
+                    currentLayerId={currentLayerId}
+                    onClose={() => setShowLayersPanel(false)}
+                    onNavigate={navigateTo}
+                    onUpdateLayer={handleUpdateLayer}
+                  />
+                )}
 
-            {selectedEdge && !selectedNode && (
-              <EdgePropertiesPanel
-                edge={selectedEdge}
-                onClose={() => setSelectedEdge(null)}
-                onUpdate={handleEdgeUpdate}
-                onDelete={handleEdgeDelete}
-              />
+                {/* Properties panel — overlays layers when node selected */}
+                {selectedNode && (
+                  <div
+                    className={`${showLayersPanel ? 'absolute inset-0 z-10' : 'relative'}`}
+                  >
+                    <PropertiesPanel
+                      node={selectedNode}
+                      onClose={() => setSelectedNode(null)}
+                      onUpdate={handleNodeUpdate}
+                      onDelete={handleNodeDelete}
+                    />
+                  </div>
+                )}
+
+                {/* Edge properties panel */}
+                {selectedEdge && !selectedNode && (
+                  <div
+                    className={`${showLayersPanel ? 'absolute inset-0 z-10' : 'relative'}`}
+                  >
+                    <EdgePropertiesPanel
+                      edge={selectedEdge}
+                      onClose={() => setSelectedEdge(null)}
+                      onUpdate={handleEdgeUpdate}
+                      onDelete={handleEdgeDelete}
+                    />
+                  </div>
+                )}
+              </div>
             )}
           </div>
-
-          <PromptBar
-            onGenerate={handleGenerate}
-            isLoading={isGenerating}
-            status={generatingStatus}
-          />
         </div>
 
-        {/* Context menu */}
+        {/* ── Context menu ────────────────────────────────────────────────── */}
         {contextMenu && (
           <NodeContextMenu
             x={contextMenu.x}
@@ -551,7 +623,7 @@ export default function Home() {
           />
         )}
 
-        {/* Drill-down naming modal */}
+        {/* ── Drill-down naming modal ──────────────────────────────────────── */}
         {drillTarget && (
           <DrillDownModal
             defaultName={`${drillTarget.data.label} Layer`}
@@ -560,14 +632,18 @@ export default function Home() {
           />
         )}
 
-        {/* Layers manager modal */}
-        {showLayersPanel && (
-          <LayersPanel
-            layers={layers}
-            currentLayerId={currentLayerId}
-            onClose={() => setShowLayersPanel(false)}
-            onNavigate={navigateTo}
-            onUpdateLayer={handleUpdateLayer}
+        {/* ── AI chat panel (floating, bottom-right) ──────────────────────── */}
+        {showChatPanel && (
+          <AIChatPanel
+            onGenerate={handleGenerate}
+            onGenerateNewLayer={handleGenerateNewLayer}
+            isLoading={isGenerating}
+            status={generatingStatus}
+            isMinimized={isChatMinimized}
+            onMinimize={() => setIsChatMinimized(true)}
+            onExpand={() => setIsChatMinimized(false)}
+            onClose={() => setShowChatPanel(false)}
+            hasNodes={hasNodes}
           />
         )}
       </ReactFlowProvider>

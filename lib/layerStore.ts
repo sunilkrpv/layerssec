@@ -95,6 +95,19 @@ export function updateLayer(
   return { ...layers, [layerId]: { ...layers[layerId], ...updates } };
 }
 
+/** Create a standalone top-level layer (not tied to a specific node). */
+export function createStandaloneLayer(name: string): Layer {
+  return {
+    id: `layer_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+    name,
+    parentLayerId: ROOT_LAYER_ID,
+    parentNodeId: null,
+    nodes: [],
+    edges: [],
+    createdAt: Date.now(),
+  };
+}
+
 /** Find a direct child layer for a given node, if one exists */
 export function findChildLayer(
   layers: LayerMap,

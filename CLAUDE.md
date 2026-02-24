@@ -100,6 +100,25 @@ When all 21 node files need the same structural change, use a **Python script vi
 - **`RotateHandle` component** (`components/nodes/RotateHandle.tsx`): uses `useNodeId`, `useReactFlow`, `useStore` (nodeInternals + viewport transform) to compute center in screen coords and derive angle from cursor
 - **`pushHistoryNow`**: Added to `ExtendedRFInstance`, `CanvasContext` (as `pushHistoryNow: () => void`), and `canvasContextValue` in `app/page.tsx`
 
+### PR-8 — Menu Bar, AI Chat Panel, Docked Layers
+- **MenuBar** (`components/MenuBar.tsx`): App-style menu bar at top of page with dropdowns for File, View, AI, and About
+  - **File menu**: New (clears + opens AI chat), Open/Import JSON, Export JSON, Save as Image, Import Project, Export Project
+  - **View menu**: Toggle Layers Panel (docked to right sidebar)
+  - **AI menu**: Open AI Assistant chat panel
+  - **About**: Modal showing "DRAFTER v0.1 Alpha" with branding
+- **Toolbar simplified**: Removed logo, import/export, layers button — now only zoom in/out/fit + clear canvas (`components/Toolbar.tsx`)
+- **AIChatPanel** (`components/AIChatPanel.tsx`): Floating AI chat window fixed to bottom-right
+  - Opens automatically on page load and after File > New
+  - Conversation-style UI with user/assistant message bubbles
+  - Example prompts shown with welcome message
+  - If canvas has existing nodes: asks whether to generate on current layer or new layer
+  - Minimize to bottom tab (shows "AI Assistant ▲"); close to hide
+  - `onGenerateNewLayer(prompt, layerName)` creates a standalone layer, navigates to it, then generates
+- **LayersPanel docked mode**: Added `docked?: boolean` prop — when true, renders as a `w-64` right sidebar (no modal backdrop); when false, keeps existing modal behavior
+- **`createStandaloneLayer`** added to `lib/layerStore.ts` — creates a top-level layer with `parentLayerId=ROOT_LAYER_ID, parentNodeId=null`
+- **Layout order**: MenuBar (h-9) → Toolbar (h-10) → LayerBar → main content row
+- **Right sidebar**: When `showLayersPanel` is true, LayersPanel docks to right; PropertiesPanel/EdgePropertiesPanel overlay it (`absolute inset-0 z-10`) when a node/edge is selected
+
 ### PR-4 — Z-order, Grouping, Transparent Fill, Edge Properties, Root Bug Fix
 - **Send to Front/Back**: right-click → "Bring to Front" / "Send to Back" — adjusts `zIndex` on node
 - **Group/Ungroup**: select 2+ nodes → right-click → "Group N nodes" — true React Flow parent-child containment; right-click group → "Ungroup"
@@ -124,9 +143,11 @@ When all 21 node files need the same structural change, use a **Python script vi
 | `components/PropertiesPanel.tsx` | Right sidebar for selected node properties + colors (incl. transparent fill) |
 | `components/EdgePropertiesPanel.tsx` | Right sidebar for selected edge (label, arrow direction, color) |
 | `components/NodePalette.tsx` | Left sidebar, collapsible, click/drag to add |
-| `components/LayersPanel.tsx` | Modal for all layers — rename/describe/navigate |
+| `components/MenuBar.tsx` | App-style menu bar — File/View/AI/About dropdowns |
+| `components/AIChatPanel.tsx` | Floating AI chat panel (bottom-right); minimizable |
+| `components/LayersPanel.tsx` | Modal OR docked right sidebar for all layers (`docked` prop) |
 | `components/LayerBar.tsx` | Breadcrumb navigation bar |
-| `components/Toolbar.tsx` | Top bar with zoom, export, import, layers |
+| `components/Toolbar.tsx` | Zoom controls + clear (simplified) |
 | `components/nodes/EditableLabel.tsx` | Inline label editor (context-driven) |
 | `components/nodes/ChildLayerBadge.tsx` | Badge shown on nodes with child layers |
 | `components/nodes/RotateHandle.tsx` | Drag-to-rotate handle rendered inside all nodes |
