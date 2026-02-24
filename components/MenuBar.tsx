@@ -5,6 +5,9 @@ import { Share2, Minus, Sparkles } from 'lucide-react';
 
 interface MenuBarProps {
   onNew: () => void;
+  onOpenFile: () => void;
+  onSaveFile: () => void;
+  hasFileHandle: boolean;
   onImportJson: (file: File) => void;
   onExportJson: () => void;
   onExportPng: () => void;
@@ -95,6 +98,9 @@ function Dropdown({
 
 export default function MenuBar({
   onNew,
+  onOpenFile,
+  onSaveFile,
+  hasFileHandle,
   onImportJson,
   onExportJson,
   onExportPng,
@@ -124,10 +130,15 @@ export default function MenuBar({
               New
             </MenuItem>
             <MenuSeparator />
-            <MenuItem onClick={() => jsonInputRef.current?.click()}>Open / Import JSON</MenuItem>
-            <MenuItem onClick={onExportJson} shortcut="⌘E">
-              Export JSON
+            <MenuItem onClick={onOpenFile} shortcut="⌘O">
+              Open File…
             </MenuItem>
+            <MenuItem onClick={onSaveFile} disabled={!hasFileHandle} shortcut="⌘S">
+              Save File
+            </MenuItem>
+            <MenuSeparator />
+            <MenuItem onClick={() => jsonInputRef.current?.click()}>Import Layer JSON</MenuItem>
+            <MenuItem onClick={onExportJson}>Export Layer JSON</MenuItem>
             <MenuItem onClick={onExportPng} shortcut="⌘⇧E">
               Save as Image
             </MenuItem>

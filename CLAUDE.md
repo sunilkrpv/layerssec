@@ -100,6 +100,40 @@ When all 21 node files need the same structural change, use a **Python script vi
 - **`RotateHandle` component** (`components/nodes/RotateHandle.tsx`): uses `useNodeId`, `useReactFlow`, `useStore` (nodeInternals + viewport transform) to compute center in screen coords and derive angle from cursor
 - **`pushHistoryNow`**: Added to `ExtendedRFInstance`, `CanvasContext` (as `pushHistoryNow: () => void`), and `canvasContextValue` in `app/page.tsx`
 
+### PR-10 — File-Based Storage + Auto-Save
+- **`lib/fileStore.ts`** (new): File System Access API utilities (Chrome/Edge 86+)
+  - `canUseFileSystemAPI()` — feature detection
+  - `pickAndReadFile()` — opens file picker, reads + parses project JSON; normalises bare `LayerMap` or `{ layers, navStack }`
+  - `writeToHandle(handle, data)` — writes project data to existing `FileSystemFileHandle`
+  - `pickSaveAndWrite(data)` — opens Save-As picker and writes; returns handle
+  - `downloadProjectFile(data)` — fallback browser download for non-supported browsers
+- **`components/FileLoadPrompt.tsx`** (new): Modal shown when URL references a layer not in localStorage
+  - Prompts user to open project file; shows info warning for Safari/browsers without File API
+  - On success: reads file, validates layer exists, navigates + populates breadcrumbs
+  - On wrong file: shows error "Layer not found — you may have opened the wrong project"
+- **`components/DiagramPage.tsx`** — new file management:
+  - `fileHandle` state, `autoSave` state (default ON), `lastSaved` date state
+  - Refs (`layersRef`, `navStackRef`, `fileHandleRef`) prevent stale closures in `setInterval`
+  - `handleOpenFile` — opens picker, loads layers + navStack
+  - `handleSaveFile` — writes to handle; falls back to Save-As or browser download
+  - `handleOpenFileForURL(targetLayerId)` — URL-sharing flow: open file → validate → navigate
+  - `buildProjectSnapshot()` — flushes canvas then builds `{ layers, navStack }` payload
+  - Auto-save interval: `setInterval(60_000)`, only fires when `autoSave && fileHandle`; updates `lastSaved`
+  - `showFileLoadPrompt` — initialised from URL param if `currLayer` not in localStorage
+- **`components/Toolbar.tsx`** — added: Save button, Auto Save toggle (green/amber/gray), last-saved time indicator
+- **`components/MenuBar.tsx`** — File menu additions: Open File… (⌘O), Save File (⌘S)
+
+### PR-9 — URL Sync / Deep Linking
+- **URL format**: `localhost:3000/projects/:projectId?currLayer=:layerId`
+- **Route**: New `app/projects/[projectId]/page.tsx` (Server Component) renders `<DiagramPage projectId={...} />`
+- **`app/page.tsx`** now redirects to `/projects/local` (default project)
+- **`components/DiagramPage.tsx`**: Extracted client component (was `app/page.tsx`) with two additions:
+  1. **Init navStack from URL** — `useState` lazy init reads `window.location.search` for `currLayer` param; calls `getLayerPath(layers, currLayerId)` to reconstruct full breadcrumb nav stack from any deep layer
+  2. **Sync URL on navigate** — `useEffect([currentLayerId])` calls `window.history.replaceState` so URL always reflects active layer without triggering a page re-render
+- **`getLayerPath`** already in `lib/layerStore.ts` — walks parent chain from root to any layerId, returns `Layer[]`; used to rebuild navStack on URL load
+- **Breadcrumbs auto-populated**: navStack rebuilt from `getLayerPath` → `LayerBar` breadcrumbs correct on deep-link load
+- **Same project file assumption**: `projectId` in URL is structural; all data loads from the single `drafter_layers` localStorage key
+
 ### PR-8 — Menu Bar, AI Chat Panel, Docked Layers
 - **MenuBar** (`components/MenuBar.tsx`): App-style menu bar at top of page with dropdowns for File, View, AI, and About
   - **File menu**: New (clears + opens AI chat), Open/Import JSON, Export JSON, Save as Image, Import Project, Export Project
@@ -133,7 +167,9 @@ When all 21 node files need the same structural change, use a **Python script vi
 ## Key File Map
 | File | Purpose |
 |------|---------|
-| `app/page.tsx` | Root component — all state, handlers, context wiring |
+| `app/page.tsx` | Redirects to `/projects/local` |
+| `app/projects/[projectId]/page.tsx` | Server Component route wrapper — passes `projectId` to `DiagramPage` |
+| `components/DiagramPage.tsx` | Main client component — all state, handlers, URL sync, context wiring |
 | `lib/types.ts` | `NodeType`, `NodeData`, `DiagramEdge`, `GenerateResponse` |
 | `lib/layerStore.ts` | Layer CRUD + localStorage persistence |
 | `lib/canvasContext.ts` | React context shared with all node components |
@@ -143,8 +179,10 @@ When all 21 node files need the same structural change, use a **Python script vi
 | `components/PropertiesPanel.tsx` | Right sidebar for selected node properties + colors (incl. transparent fill) |
 | `components/EdgePropertiesPanel.tsx` | Right sidebar for selected edge (label, arrow direction, color) |
 | `components/NodePalette.tsx` | Left sidebar, collapsible, click/drag to add |
-| `components/MenuBar.tsx` | App-style menu bar — File/View/AI/About dropdowns |
+| `components/MenuBar.tsx` | App-style menu bar — File/View/AI/About dropdowns (incl. Open File, Save File) |
 | `components/AIChatPanel.tsx` | Floating AI chat panel (bottom-right); minimizable |
+| `components/FileLoadPrompt.tsx` | Modal shown when URL layer not found locally — prompts file open |
+| `lib/fileStore.ts` | File System Access API utilities: open, write, save-as, download fallback |
 | `components/LayersPanel.tsx` | Modal OR docked right sidebar for all layers (`docked` prop) |
 | `components/LayerBar.tsx` | Breadcrumb navigation bar |
 | `components/Toolbar.tsx` | Zoom controls + clear (simplified) |
