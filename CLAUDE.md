@@ -100,6 +100,28 @@ When all 21 node files need the same structural change, use a **Python script vi
 - **`RotateHandle` component** (`components/nodes/RotateHandle.tsx`): uses `useNodeId`, `useReactFlow`, `useStore` (nodeInternals + viewport transform) to compute center in screen coords and derive angle from cursor
 - **`pushHistoryNow`**: Added to `ExtendedRFInstance`, `CanvasContext` (as `pushHistoryNow: () => void`), and `canvasContextValue` in `app/page.tsx`
 
+### PR-11 — Visual Project Diff
+- **`lib/diffEngine.ts`** (new): Pure diff computation between two `LayerMap` objects
+  - `DiffStatus`: `'added' | 'removed' | 'modified' | 'unchanged'`
+  - `diffProjects(leftLayers, rightLayers): ProjectDiff` — compares every layer and every node/edge by ID; nodes compared by type, position, data, style; edges by source/target/label/markers; layers sorted root-first
+  - Layer-level status derived from node/edge change counts + name change
+  - `counts` at both layer and project level: `{ added, removed, modified, total }`
+- **`components/DiffCanvas.tsx`** (new): Read-only React Flow canvas for diff view
+  - Single `diffNode` custom type (module-level to avoid re-registration)
+  - Renders node icon + label from `PALETTE_ITEMS` lookup; diff status shown as colored ring + badge (+ green / − red / ~ amber)
+  - `side='left'` renders base-project nodes; `side='right'` renders modified-project nodes
+  - `nodesDraggable=false`, `nodesConnectable=false`, `elementsSelectable=false`; `fitView` on load
+- **`components/DiffLayersPanel.tsx`** (new): Left panel listing all layers across both projects
+  - Color-coded rows by diff status; shows `+N −N ~N` change counts per layer
+  - Summary badges at top; legend at bottom; click row to switch active layer in both canvases
+- **`components/DiffPage.tsx`** (new): Split-view diff page at `/diff`
+  - File upload phase: two DropZones (drag-and-drop or click to browse) for base + modified `.json` files
+  - Once both loaded: `diffProjects` runs, active layer state drives both canvases in sync
+  - Top bar with back link and project-level summary counts
+- **`app/diff/page.tsx`** (new): Server Component route at `/diff` → renders `<DiffPage />`
+- **`components/MenuBar.tsx`** — added `onOpenDiff` prop + "Diff…" item at bottom of File menu (after a separator)
+- **`components/DiagramPage.tsx`** — added `useRouter`, passes `onOpenDiff={() => router.push('/diff')}` to MenuBar
+
 ### PR-10 — File-Based Storage + Auto-Save
 - **`lib/fileStore.ts`** (new): File System Access API utilities (Chrome/Edge 86+)
   - `canUseFileSystemAPI()` — feature detection
@@ -191,6 +213,11 @@ When all 21 node files need the same structural change, use a **Python script vi
 | `components/nodes/RotateHandle.tsx` | Drag-to-rotate handle rendered inside all nodes |
 | `components/nodes/LineEndpointHandle.tsx` | Draggable endpoint dot for line/arrowline/dottedline nodes |
 | `components/nodes/*.tsx` | 21 node types (12 cloud + 9 shape) |
+| `lib/diffEngine.ts` | Pure diff computation: `diffProjects(left, right): ProjectDiff`; `DiffStatus`, `NodeDiff`, `LayerDiff` |
+| `components/DiffPage.tsx` | Split-view diff UI at `/diff`; file loading (DropZone), diff state |
+| `components/DiffCanvas.tsx` | Read-only React Flow canvas with `diffNode` renderer; diff status overlays |
+| `components/DiffLayersPanel.tsx` | Layer list with diff status badges, change counts, legend |
+| `app/diff/page.tsx` | Server Component route → `<DiffPage />` |
 
 ## Verification Commands
 ```bash

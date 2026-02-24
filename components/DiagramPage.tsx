@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from 'react';
+import { useRouter } from 'next/navigation';
 import { ReactFlowProvider, type Node, type Edge, type ReactFlowInstance } from 'reactflow';
 import { toPng } from 'html-to-image';
 
@@ -72,6 +73,7 @@ interface DiagramPageProps {
 }
 
 export default function DiagramPage({ projectId }: DiagramPageProps) {
+  const router = useRouter();
   const rfInstanceRef = useRef<ExtendedRFInstance | null>(null);
   const canvasRef = useRef<HTMLDivElement | null>(null);
 
@@ -700,6 +702,7 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
             onExportPng={handleExportPng}
             onImportProject={handleImportProject}
             onExportProject={handleExportProject}
+            onOpenDiff={() => router.push('/diff')}
             layersVisible={showLayersPanel}
             onToggleLayers={() => setShowLayersPanel((v) => !v)}
             onShowAI={() => {

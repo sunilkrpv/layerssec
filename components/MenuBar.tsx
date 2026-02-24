@@ -13,6 +13,7 @@ interface MenuBarProps {
   onExportPng: () => void;
   onImportProject: (file: File) => void;
   onExportProject: () => void;
+  onOpenDiff: () => void;
   layersVisible: boolean;
   onToggleLayers: () => void;
   onShowAI: () => void;
@@ -106,6 +107,7 @@ export default function MenuBar({
   onExportPng,
   onImportProject,
   onExportProject,
+  onOpenDiff,
   layersVisible,
   onToggleLayers,
   onShowAI,
@@ -145,6 +147,8 @@ export default function MenuBar({
             <MenuSeparator />
             <MenuItem onClick={() => projectInputRef.current?.click()}>Import Project</MenuItem>
             <MenuItem onClick={onExportProject}>Export Project</MenuItem>
+            <MenuSeparator />
+            <MenuItem onClick={onOpenDiff}>Diff…</MenuItem>
           </Dropdown>
 
           <Dropdown label="View">
