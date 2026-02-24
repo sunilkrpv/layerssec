@@ -1,0 +1,84 @@
+'use client';
+
+import { FolderOpen, FilePlus, Loader2 } from 'lucide-react';
+
+interface StartupModalProps {
+  onOpen: () => Promise<void>;
+  onNew: () => Promise<void>;
+  onContinue: () => void;
+  /** True while a file-picker operation is pending */
+  isLoading?: boolean;
+  /** Non-null when user has existing diagram data in this session */
+  existingLayerCount?: number;
+}
+
+export default function StartupModal({
+  onOpen,
+  onNew,
+  onContinue,
+  isLoading = false,
+  existingLayerCount,
+}: StartupModalProps) {
+  const hasExisting = (existingLayerCount ?? 0) > 0;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm">
+      <div className="w-full max-w-sm rounded-2xl bg-white p-8 shadow-2xl">
+        {/* Brand */}
+        <div className="mb-6 text-center">
+          <div className="mb-2 text-3xl font-black tracking-tight text-slate-900">Drafter</div>
+          <p className="text-sm text-slate-500">Architecture diagramming tool</p>
+        </div>
+
+        <div className="flex flex-col gap-3">
+          {/* Open existing project */}
+          <button
+            onClick={onOpen}
+            disabled={isLoading}
+            className="flex items-center gap-3 rounded-xl border-2 border-slate-200 bg-white px-4 py-3.5 text-left transition-colors hover:border-blue-300 hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {isLoading ? (
+              <Loader2 size={20} className="flex-shrink-0 animate-spin text-blue-500" />
+            ) : (
+              <FolderOpen size={20} className="flex-shrink-0 text-blue-500" />
+            )}
+            <div>
+              <div className="text-sm font-semibold text-slate-800">Open project</div>
+              <div className="text-xs text-slate-500">Load a .json project file from disk</div>
+            </div>
+          </button>
+
+          {/* Create new project */}
+          <button
+            onClick={onNew}
+            disabled={isLoading}
+            className="flex items-center gap-3 rounded-xl border-2 border-slate-200 bg-white px-4 py-3.5 text-left transition-colors hover:border-emerald-300 hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {isLoading ? (
+              <Loader2 size={20} className="flex-shrink-0 animate-spin text-emerald-500" />
+            ) : (
+              <FilePlus size={20} className="flex-shrink-0 text-emerald-500" />
+            )}
+            <div>
+              <div className="text-sm font-semibold text-slate-800">New project</div>
+              <div className="text-xs text-slate-500">Choose a save location and start fresh</div>
+            </div>
+          </button>
+        </div>
+
+        {/* Continue / dismiss */}
+        <div className="mt-5 text-center">
+          <button
+            onClick={onContinue}
+            disabled={isLoading}
+            className="text-xs text-slate-400 underline-offset-2 hover:text-slate-600 hover:underline disabled:cursor-not-allowed"
+          >
+            {hasExisting
+              ? `Continue with existing data (${existingLayerCount} layer${existingLayerCount !== 1 ? 's' : ''})`
+              : 'Continue without saving'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

@@ -100,6 +100,27 @@ When all 21 node files need the same structural change, use a **Python script vi
 - **`RotateHandle` component** (`components/nodes/RotateHandle.tsx`): uses `useNodeId`, `useReactFlow`, `useStore` (nodeInternals + viewport transform) to compute center in screen coords and derive angle from cursor
 - **`pushHistoryNow`**: Added to `ExtendedRFInstance`, `CanvasContext` (as `pushHistoryNow: () => void`), and `canvasContextValue` in `app/page.tsx`
 
+### PR-12 — Startup Prompt, Diagram Evaluation
+- **`components/StartupModal.tsx`** (new): Modal shown on every fresh load (blank localStorage) with three options:
+  - "Open project" → calls `pickAndReadFile`, loads layers + navStack, sets file handle, dismisses
+  - "New project" → calls `pickSaveAndWrite` with empty project (Chrome/Edge), or starts fresh (Safari); opens AI chat
+  - "Continue without saving" — dismisses modal, opens AI chat; label shows existing layer count if returning
+  - `isLoading` prop shows spinner on both buttons while file picker is open; modal stays open if user cancels picker
+- **`app/api/evaluate/route.ts`** (new): Streaming Claude evaluation endpoint
+  - Request body: `{ nodes, edges, layerName }` — strips position/style before sending, only semantic data
+  - System prompt: expert architect analysis covering correctness, LLD flaws, HLD gaps, recommendations; "no idea" is valid
+  - Streams `text/plain` chunks directly from Claude to client (real-time)
+- **`components/AIChatPanel.tsx`** — two additions:
+  - `onEvaluate?: (onChunk: (chunk: string) => void) => Promise<void>` prop — streaming callback
+  - "Evaluate this diagram" amber button shown above the input when `hasNodes && onEvaluate`; clicking adds a user message, streams assistant response chunk-by-chunk into the chat bubble
+  - Assistant message bubbles now use `whitespace-pre-wrap` so multi-line evaluation text renders correctly
+- **`components/DiagramPage.tsx`** — wiring:
+  - `showStartupModal` state: `true` when localStorage is blank AND no URL `currLayer` param
+  - `showChatPanel` initial value: `!showStartupModal` (so chat doesn't auto-open when startup modal shows)
+  - `handleStartupOpen` / `handleStartupNew` / `handleStartupContinue` callbacks passed to `<StartupModal>`
+  - `handleEvaluate` — reads nodes/edges from `rfInstanceRef`, fetches `/api/evaluate`, pipes streaming response to `onChunk`
+  - `onEvaluate={handleEvaluate}` passed to `<AIChatPanel>`
+
 ### PR-11 — Visual Project Diff
 - **`lib/diffEngine.ts`** (new): Pure diff computation between two `LayerMap` objects
   - `DiffStatus`: `'added' | 'removed' | 'modified' | 'unchanged'`
@@ -213,6 +234,8 @@ When all 21 node files need the same structural change, use a **Python script vi
 | `components/nodes/RotateHandle.tsx` | Drag-to-rotate handle rendered inside all nodes |
 | `components/nodes/LineEndpointHandle.tsx` | Draggable endpoint dot for line/arrowline/dottedline nodes |
 | `components/nodes/*.tsx` | 21 node types (12 cloud + 9 shape) |
+| `components/StartupModal.tsx` | Modal on fresh load — Open project / New project / Continue without saving |
+| `app/api/evaluate/route.ts` | Streaming Claude endpoint for diagram evaluation (architecture correctness, LLD/HLD insights) |
 | `lib/diffEngine.ts` | Pure diff computation: `diffProjects(left, right): ProjectDiff`; `DiffStatus`, `NodeDiff`, `LayerDiff` |
 | `components/DiffPage.tsx` | Split-view diff UI at `/diff`; file loading (DropZone), diff state |
 | `components/DiffCanvas.tsx` | Read-only React Flow canvas with `diffNode` renderer; diff status overlays |

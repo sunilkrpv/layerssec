@@ -107,6 +107,7 @@ export async function POST(req: NextRequest) {
             .trim();
 
           const diagram = JSON.parse(raw);
+          console.log('Generated diagram:', diagram);
 
           if (!Array.isArray(diagram.nodes) || !Array.isArray(diagram.edges)) {
             throw new Error('Invalid diagram structure from Claude');

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Sparkles, Send, Loader2, X, Minus, ChevronUp } from 'lucide-react';
+import { Sparkles, Send, Loader2, X, Minus, ChevronUp, ScanSearch } from 'lucide-react';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -12,6 +12,8 @@ interface Message {
 interface AIChatPanelProps {
   onGenerate: (prompt: string) => Promise<void>;
   onGenerateNewLayer: (prompt: string, layerName: string) => Promise<void>;
+  /** Called when user asks to evaluate the diagram; streams text chunks via onChunk callback */
+  onEvaluate?: (onChunk: (chunk: string) => void) => Promise<void>;
   isLoading: boolean;
   status?: string;
   isMinimized: boolean;
@@ -37,6 +39,7 @@ const EXAMPLES = [
 export default function AIChatPanel({
   onGenerate,
   onGenerateNewLayer,
+  onEvaluate,
   isLoading,
   status,
   isMinimized,
@@ -49,6 +52,8 @@ export default function AIChatPanel({
   const [input, setInput] = useState('');
   // pending prompt awaiting layer decision
   const [layerPrompt, setLayerPrompt] = useState<string | null>(null);
+  const [isEvaluating, setIsEvaluating] = useState(false);
+  const streamingContentRef = useRef('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -113,6 +118,39 @@ export default function AIChatPanel({
 
     pushMsg({ role: 'user', content: trimmed });
     await runGenerate(trimmed);
+  };
+
+  const handleEvaluate = async () => {
+    if (!onEvaluate || isEvaluating || isLoading) return;
+    setIsEvaluating(true);
+    streamingContentRef.current = '';
+    setMessages((prev) => [
+      ...prev,
+      { role: 'user', content: 'Evaluate this diagram' },
+      { role: 'assistant', content: '', isLoading: true },
+    ]);
+    try {
+      await onEvaluate((chunk: string) => {
+        streamingContentRef.current += chunk;
+        const accumulated = streamingContentRef.current;
+        setMessages((prev) => {
+          const updated = [...prev];
+          updated[updated.length - 1] = { role: 'assistant', content: accumulated };
+          return updated;
+        });
+      });
+    } catch {
+      setMessages((prev) => {
+        const updated = [...prev];
+        updated[updated.length - 1] = {
+          role: 'assistant',
+          content: 'Sorry, evaluation failed. Please try again.',
+        };
+        return updated;
+      });
+    } finally {
+      setIsEvaluating(false);
+    }
   };
 
   const handleCurrentLayer = async () => {
@@ -181,7 +219,7 @@ export default function AIChatPanel({
                 className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
                   msg.role === 'user'
                     ? 'bg-blue-600 text-white'
-                    : 'bg-slate-100 text-slate-800'
+                    : 'whitespace-pre-wrap bg-slate-100 text-slate-800'
                 }`}
               >
                 {msg.isLoading ? (
@@ -233,6 +271,19 @@ export default function AIChatPanel({
           <div ref={messagesEndRef} />
         </div>
       </div>
+
+      {/* Evaluate quick-action */}
+      {hasNodes && onEvaluate && !isEvaluating && !isLoading && (
+        <div className="flex-shrink-0 border-t border-slate-100 px-3 pt-2">
+          <button
+            onClick={handleEvaluate}
+            className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-700 transition-colors hover:bg-amber-100"
+          >
+            <ScanSearch size={12} />
+            Evaluate this diagram
+          </button>
+        </div>
+      )}
 
       {/* Input */}
       <div className="flex-shrink-0 border-t border-slate-100 p-3">

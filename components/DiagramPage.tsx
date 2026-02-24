@@ -17,11 +17,13 @@ import NodeContextMenu from '@/components/NodeContextMenu';
 import DrillDownModal from '@/components/DrillDownModal';
 import AIChatPanel from '@/components/AIChatPanel';
 import FileLoadPrompt from '@/components/FileLoadPrompt';
+import StartupModal from '@/components/StartupModal';
 
 import type { NodeData, NodeType, GenerateResponse } from '@/lib/types';
 import {
   loadAllLayers,
   saveAllLayers,
+  makeInitialLayers,
   createChildLayer,
   createStandaloneLayer,
   findChildLayer,
@@ -121,8 +123,20 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
   const [error, setError] = useState<string | null>(null);
   const [showLayersPanel, setShowLayersPanel] = useState(false);
 
-  // AI chat panel — open on initial load
-  const [showChatPanel, setShowChatPanel] = useState(true);
+  // Startup modal — shown on fresh load when there's no existing work
+  const [showStartupModal, setShowStartupModal] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    if (readCurrLayerParam()) return false; // URL-sharing flow takes priority
+    const allLayers = loadAllLayers();
+    const isBlank =
+      Object.keys(allLayers).length <= 1 &&
+      (allLayers[ROOT_LAYER_ID]?.nodes?.length ?? 0) === 0;
+    return isBlank;
+  });
+  const [startupLoading, setStartupLoading] = useState(false);
+
+  // AI chat panel — open on initial load only when startup modal is not shown
+  const [showChatPanel, setShowChatPanel] = useState(!showStartupModal);
   const [isChatMinimized, setIsChatMinimized] = useState(false);
 
   // Right-click context menu
@@ -172,9 +186,11 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
 
   // ── Persist helpers ───────────────────────────────────────────────────────
 
+  // snapshot must be captured BEFORE calling setLayers — never inside the updater,
+  // because React may run updaters after the old DiagramCanvas has begun unmounting
+  // (React Flow's Zustand store tears down, toObject() returns empty).
   const flushCurrentLayer = useCallback(
-    (prev: LayerMap, layerId: string): LayerMap => {
-      const snapshot = captureCanvas(rfInstanceRef);
+    (prev: LayerMap, layerId: string, snapshot: { nodes: Node[]; edges: Edge[] } | null): LayerMap => {
       if (!snapshot) return prev;
       return {
         ...prev,
@@ -308,12 +324,106 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
     }
   }, [fileHandle, buildProjectSnapshot]);
 
+  // ── Startup modal handlers ────────────────────────────────────────────────
+
+  const handleStartupOpen = useCallback(async () => {
+    if (!canUseFileSystemAPI()) {
+      setError('File opening requires Chrome or Edge. Use File → Import Project instead.');
+      setShowStartupModal(false);
+      return;
+    }
+    setStartupLoading(true);
+    try {
+      const result = await pickAndReadFile();
+      if (!result) return; // user cancelled — keep modal open
+      const { handle, data } = result;
+      setFileHandle(handle);
+      setLayers(data.layers);
+      saveAllLayers(data.layers);
+      setNavStack(data.navStack?.length ? data.navStack : [ROOT_LAYER_ID]);
+      setSelectedNode(null);
+      setSelectedEdge(null);
+      setLastSaved(null);
+      setShowStartupModal(false);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to open file.');
+    } finally {
+      setStartupLoading(false);
+    }
+  }, []);
+
+  const handleStartupNew = useCallback(async () => {
+    const emptyProject: ProjectFile = { layers: makeInitialLayers(), navStack: [ROOT_LAYER_ID] };
+    if (!canUseFileSystemAPI()) {
+      // No File API (Safari): start fresh without a save location
+      setLayers(emptyProject.layers);
+      saveAllLayers(emptyProject.layers);
+      setNavStack(emptyProject.navStack);
+      setShowStartupModal(false);
+      setShowChatPanel(true);
+      setIsChatMinimized(false);
+      return;
+    }
+    setStartupLoading(true);
+    try {
+      const handle = await pickSaveAndWrite(emptyProject, 'untitled-project.json');
+      if (!handle) return; // user cancelled — keep modal open
+      setFileHandle(handle);
+      setLayers(emptyProject.layers);
+      saveAllLayers(emptyProject.layers);
+      setNavStack(emptyProject.navStack);
+      setLastSaved(new Date());
+      setShowStartupModal(false);
+      setShowChatPanel(true);
+      setIsChatMinimized(false);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to create project.');
+    } finally {
+      setStartupLoading(false);
+    }
+  }, []);
+
+  const handleStartupContinue = useCallback(() => {
+    setShowStartupModal(false);
+    setShowChatPanel(true);
+    setIsChatMinimized(false);
+  }, []);
+
+  // ── Diagram evaluation (streaming) ────────────────────────────────────────
+
+  const handleEvaluate = useCallback(
+    async (onChunk: (chunk: string) => void) => {
+      const nodes = (rfInstanceRef.current as ReactFlowInstance | null)?.getNodes() ?? [];
+      const edges = (rfInstanceRef.current as ReactFlowInstance | null)?.getEdges() ?? [];
+      const layerName = layers[currentLayerId]?.name ?? 'Diagram';
+      const response = await fetch('/api/evaluate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nodes, edges, layerName }),
+      });
+      if (!response.ok) {
+        const errBody = await response.json().catch(() => ({ error: 'Request failed' })) as { error?: string };
+        throw new Error(errBody.error ?? 'Evaluation failed');
+      }
+      const reader = response.body?.getReader();
+      if (!reader) throw new Error('No response stream');
+      const decoder = new TextDecoder();
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        onChunk(decoder.decode(value, { stream: true }));
+      }
+    },
+    [currentLayerId, layers],
+  );
+
   // ── Layer navigation ──────────────────────────────────────────────────────
 
   const navigateTo = useCallback(
     (targetLayerId: string) => {
+      const snapshot = captureCanvas(rfInstanceRef);
       setLayers((prev) => {
-        const updated = flushCurrentLayer(prev, currentLayerId);
+        const updated = flushCurrentLayer(prev, currentLayerId, snapshot);
         saveAllLayers(updated);
         return updated;
       });
@@ -331,8 +441,9 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
 
   const handleBack = useCallback(() => {
     if (navStack.length <= 1) return;
+    const snapshot = captureCanvas(rfInstanceRef);
     setLayers((prev) => {
-      const updated = flushCurrentLayer(prev, currentLayerId);
+      const updated = flushCurrentLayer(prev, currentLayerId, snapshot);
       saveAllLayers(updated);
       return updated;
     });
@@ -382,8 +493,9 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
   const handleDrillDownConfirm = useCallback(
     (layerName: string) => {
       if (!drillTarget) return;
+      const snapshot = captureCanvas(rfInstanceRef);
       setLayers((prev) => {
-        const withCurrentSaved = flushCurrentLayer(prev, currentLayerId);
+        const withCurrentSaved = flushCurrentLayer(prev, currentLayerId, snapshot);
         const newLayer = createChildLayer(currentLayerId, drillTarget.id, layerName);
         const parentLayer = withCurrentSaved[currentLayerId];
         const updatedNodes = parentLayer.nodes.map((n) =>
@@ -499,8 +611,9 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
     async (prompt: string, layerName: string) => {
       const newLayer = createStandaloneLayer(layerName);
 
+      const snapshot = captureCanvas(rfInstanceRef);
       setLayers((prev) => {
-        const flushed = flushCurrentLayer(prev, currentLayerId);
+        const flushed = flushCurrentLayer(prev, currentLayerId, snapshot);
         const updated = { ...flushed, [newLayer.id]: newLayer };
         saveAllLayers(updated);
         return updated;
@@ -572,8 +685,9 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
   // ── Project export / import (all layers) ──────────────────────────────────
 
   const handleExportProject = useCallback(() => {
+    const snapshot = captureCanvas(rfInstanceRef);
     setLayers((prev) => {
-      const updated = flushCurrentLayer(prev, currentLayerId);
+      const updated = flushCurrentLayer(prev, currentLayerId, snapshot);
       saveAllLayers(updated);
       downloadJson({ layers: updated, navStack }, 'drafter-project.json');
       return updated;
@@ -837,11 +951,23 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
           />
         )}
 
+        {/* ── Startup modal ────────────────────────────────────────────────── */}
+        {showStartupModal && !showFileLoadPrompt && (
+          <StartupModal
+            onOpen={handleStartupOpen}
+            onNew={handleStartupNew}
+            onContinue={handleStartupContinue}
+            isLoading={startupLoading}
+            existingLayerCount={Object.keys(layers).length - 1}
+          />
+        )}
+
         {/* ── AI chat panel ───────────────────────────────────────────────── */}
         {showChatPanel && (
           <AIChatPanel
             onGenerate={handleGenerate}
             onGenerateNewLayer={handleGenerateNewLayer}
+            onEvaluate={handleEvaluate}
             isLoading={isGenerating}
             status={generatingStatus}
             isMinimized={isChatMinimized}
