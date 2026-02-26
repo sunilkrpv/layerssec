@@ -1,0 +1,84 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id             String          @id @default(uuid()) @db.Uuid
+  email          String          @unique
+  name           String?
+  passwordHash   String?         @map("password_hash")
+  avatarUrl      String?         @map("avatar_url")
+  projects       Project[]
+  aiInteractions AiInteraction[]
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt @map("updated_at")
+
+  @@map("users")
+}
+
+model Project {
+  id          String    @id @default(uuid()) @db.Uuid
+  name        String
+  description String?
+  owner       User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  ownerId     String    @map("owner_id") @db.Uuid
+  diagrams    Diagram[]
+  isPublic    Boolean   @default(false) @map("is_public")
+  tags        String[]  @default([])
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  @@index([ownerId])
+  @@map("projects")
+}
+
+model Diagram {
+  id         String      @id @default(uuid()) @db.Uuid
+  name       String
+  type       DiagramType @default(GENERAL)
+  canvasData Json        @default("{}") @map("canvas_data")
+  thumbnail  String?
+  project    Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId  String      @map("project_id") @db.Uuid
+  version    Int         @default(1)
+  createdAt  DateTime    @default(now()) @map("created_at")
+  updatedAt  DateTime    @updatedAt @map("updated_at")
+
+  @@index([projectId])
+  @@map("diagrams")
+}
+
+model AiInteraction {
+  id         String   @id @default(uuid()) @db.Uuid
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId     String   @map("user_id") @db.Uuid
+  diagramId  String?  @map("diagram_id") @db.Uuid
+  prompt     String
+  response   Json
+  tokensUsed Int      @map("tokens_used")
+  model      String
+  durationMs Int?     @map("duration_ms")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@map("ai_interactions")
+}
+
+enum DiagramType {
+  GENERAL
+  PATENT
+  C4_CONTEXT
+  C4_CONTAINER
+  C4_COMPONENT
+  C4_CODE
+  AWS_ARCHITECTURE
+  CLOUD_INFRASTRUCTURE
+  FLOWCHART
+  SEQUENCE
+}
