@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Share2, Minus, Sparkles } from 'lucide-react';
+import { Share2, Minus, Sparkles, LogIn, LogOut, FolderOpen, User } from 'lucide-react';
 
 interface MenuBarProps {
   onNew: () => void;
@@ -17,6 +17,13 @@ interface MenuBarProps {
   layersVisible: boolean;
   onToggleLayers: () => void;
   onShowAI: () => void;
+  /** Logged-in user email; null/undefined = not logged in */
+  userEmail?: string | null;
+  onSignIn?: () => void;
+  onMyProjects?: () => void;
+  onSignOut?: () => void;
+  /** Name of the currently open cloud project */
+  projectName?: string | null;
 }
 
 function useDropdown() {
@@ -111,6 +118,11 @@ export default function MenuBar({
   layersVisible,
   onToggleLayers,
   onShowAI,
+  userEmail,
+  onSignIn,
+  onMyProjects,
+  onSignOut,
+  projectName,
 }: MenuBarProps) {
   const [showAbout, setShowAbout] = useState(false);
   const jsonInputRef = useRef<HTMLInputElement>(null);
@@ -124,6 +136,19 @@ export default function MenuBar({
           <Share2 size={14} className="text-blue-600" />
           <span className="text-sm font-bold text-slate-800">Drafter</span>
         </div>
+
+        {/* Project name */}
+        {projectName && (
+          <>
+            <div className="mr-3 h-4 w-px bg-slate-300" />
+            <span
+              className="mr-3 max-w-[200px] truncate text-sm font-medium text-slate-700"
+              title={projectName}
+            >
+              {projectName}
+            </span>
+          </>
+        )}
 
         {/* Menu items */}
         <div className="flex items-center gap-0.5">
@@ -182,6 +207,40 @@ export default function MenuBar({
           >
             About
           </button>
+        </div>
+
+        {/* Right side — user account */}
+        <div className="ml-auto flex items-center gap-1">
+          {userEmail ? (
+            <>
+              <button
+                onClick={onMyProjects}
+                className="flex items-center gap-1.5 rounded px-2.5 py-1 text-sm text-slate-700 hover:bg-slate-200 hover:text-slate-900"
+                title="My Projects"
+              >
+                <FolderOpen size={13} className="text-blue-600" />
+                <span>My Projects</span>
+              </button>
+              <div className="h-4 w-px bg-slate-200" />
+              <button
+                onClick={onSignOut}
+                className="flex items-center gap-1.5 rounded px-2.5 py-1 text-sm text-slate-700 hover:bg-slate-200 hover:text-slate-900"
+                title={`Signed in as ${userEmail}`}
+              >
+                <User size={13} className="text-slate-500" />
+                <span className="max-w-[140px] truncate text-xs text-slate-500">{userEmail}</span>
+                <LogOut size={12} className="text-slate-400" />
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={onSignIn}
+              className="flex items-center gap-1.5 rounded px-2.5 py-1 text-sm text-slate-700 hover:bg-slate-200 hover:text-slate-900"
+            >
+              <LogIn size={13} className="text-blue-600" />
+              <span>Sign in</span>
+            </button>
+          )}
         </div>
 
         {/* Hidden file inputs */}

@@ -100,6 +100,20 @@ When all 21 node files need the same structural change, use a **Python script vi
 - **`RotateHandle` component** (`components/nodes/RotateHandle.tsx`): uses `useNodeId`, `useReactFlow`, `useStore` (nodeInternals + viewport transform) to compute center in screen coords and derive angle from cursor
 - **`pushHistoryNow`**: Added to `ExtendedRFInstance`, `CanvasContext` (as `pushHistoryNow: () => void`), and `canvasContextValue` in `app/page.tsx`
 
+### PR-14 — Cloud Persistence + Session Handling
+- **`lib/api.ts`** — added `ApiUnauthorizedError` class + 401 handling in `apiFetch`:
+  - On `HTTP 401`: dispatches `drafter:unauthorized` custom window event, then throws `ApiUnauthorizedError`
+  - All other non-OK responses throw a generic `Error`
+- **`components/ProjectsModal.tsx`** — "no diagrams" case: when an opened project has no diagrams, `apiCreateDiagram` is called immediately to create a blank "main" diagram, ensuring `diagramId` is always a valid UUID passed back to DiagramPage
+- **`components/DiagramPage.tsx`**:
+  - `currentProjectName: string | null` state — set when opening/creating a cloud project; cleared on sign-out
+  - `backendSaveTimerRef` — debounced backend save: on every `handleLayerSave`, schedules `apiUpdateDiagram` 2 s after the last change; clears and reschedules if another save fires first; calls `setLastSaved` on success
+  - `drafter:unauthorized` event listener (global) — on 401 from any API call: `clearTokens()`, sets `user`/`backendDiagramId`/`currentProjectName` to null, shows AuthModal
+  - `handleOpenCloudProject` + `handleCreateCloudProject` — both now set `currentProjectName = project.name`
+  - `handleSignOut` — also clears `currentProjectName`
+  - Passes `projectName={currentProjectName}` to `<MenuBar>`
+- **`components/MenuBar.tsx`** — added `projectName?: string | null` prop; shown between logo and menu items as a truncated document-title label (max 200px, with tooltip on hover)
+
 ### PR-12 — Startup Prompt, Diagram Evaluation
 - **`components/StartupModal.tsx`** (new): Modal shown on every fresh load (blank localStorage) with three options:
   - "Open project" → calls `pickAndReadFile`, loads layers + navStack, sets file handle, dismisses
@@ -120,6 +134,46 @@ When all 21 node files need the same structural change, use a **Python script vi
   - `handleStartupOpen` / `handleStartupNew` / `handleStartupContinue` callbacks passed to `<StartupModal>`
   - `handleEvaluate` — reads nodes/edges from `rfInstanceRef`, fetches `/api/evaluate`, pipes streaming response to `onChunk`
   - `onEvaluate={handleEvaluate}` passed to `<AIChatPanel>`
+
+### PR-13 — Login + Cloud Projects (drafter-rest backend)
+- **`lib/api.ts`** (new): Typed API client for drafter-rest backend
+  - Base URL from `NEXT_PUBLIC_API_URL` (defaults to `http://localhost:4000`)
+  - `apiFetch<T>` — reads `drafter_access_token` from localStorage, injects `Authorization: Bearer` header
+  - Auth: `apiLogin`, `apiRegister`, `apiGetMe` — returns `AuthResponse` (`accessToken`, `refreshToken`) or `UserProfile`
+  - Projects: `apiListProjects`, `apiCreateProject`, `apiGetProject` — CRUD for `Project` records
+  - Diagrams: `apiCreateDiagram`, `apiUpdateDiagram`, `apiGetDiagram` — CRUD for `Diagram` records
+  - Each Drafter project = one NestJS `Project` + one NestJS `Diagram` (`canvasData` = `ProjectFile`)
+- **`lib/authStore.ts`** (new): localStorage token/user management
+  - `saveTokens(access, refresh)`, `clearTokens()`, `getAccessToken()`, `isLoggedIn()`
+  - `saveUser(user)`, `getStoredUser()` — cache `UserProfile` for instant init without a round-trip
+- **`components/AuthModal.tsx`** (new): Login / Register modal
+  - Tab switcher: Sign in | Register (email + optional name + password)
+  - On success: `saveTokens` + `apiGetMe` + `saveUser` → calls `onSuccess(user)` → parent shows ProjectsModal
+  - Error display inline in form
+- **`components/ProjectsModal.tsx`** (new): Cloud project browser
+  - Loads project list via `apiListProjects()` on mount; shows diagram count + last updated
+  - Click project → `apiGetProject` (diagram metadata) → `apiGetDiagram` (full canvasData) → `onOpen(project, canvasData, diagramId)`
+  - Footer: "New project" form → `apiCreateProject` → `onCreate(project)`
+- **`components/StartupModal.tsx`** — updated: added cloud option at top
+  - If logged in: "My Projects" button (cloud icon, shows user email)
+  - If not logged in: "Sign in" button (LogIn icon)
+  - Local options (Open project, New project) below an `—or—` divider unchanged
+- **`components/MenuBar.tsx`** — updated: right side user area
+  - If logged in: "My Projects" button + user email + LogOut icon
+  - If not logged in: "Sign in" button with LogIn icon
+  - Props: `userEmail`, `onSignIn`, `onMyProjects`, `onSignOut`
+- **`components/DiagramPage.tsx`** — auth + cloud wiring:
+  - `user: UserProfile | null` state (init from `getStoredUser()`)
+  - `backendDiagramId: string | null` state — set when a cloud project is opened; enables backend auto-save
+  - `backendDiagramIdRef` — stable ref for auto-save interval closure
+  - Auto-save interval now also `apiUpdateDiagram(backendDiagramId, projectData)` when a cloud diagram is open
+  - `showAuthModal` / `showProjectsModal` state
+  - `handleAuthSuccess(user)` — sets user, closes AuthModal, opens ProjectsModal
+  - `handleSignOut()` — `clearTokens()`, sets user/backendDiagramId to null
+  - `handleOpenCloudProject(project, canvasData, diagramId)` — loads canvasData into layers, sets `backendDiagramId`
+  - `handleCreateCloudProject(project)` — creates blank diagram in backend via `apiCreateDiagram`, loads it, sets `backendDiagramId`
+  - Renders `<AuthModal>` and `<ProjectsModal>` when their show states are true
+- **`.env.local`** — added `NEXT_PUBLIC_API_URL=http://localhost:4000`
 
 ### PR-11 — Visual Project Diff
 - **`lib/diffEngine.ts`** (new): Pure diff computation between two `LayerMap` objects
@@ -218,6 +272,10 @@ When all 21 node files need the same structural change, use a **Python script vi
 | `lib/canvasContext.ts` | React context shared with all node components |
 | `lib/nodeConfig.ts` | `PALETTE_ITEMS`, `LINE_NODE_TYPES` |
 | `lib/diagramUtils.ts` | `generateId`, `toReactFlowNodes/Edges`, `EDGE_MARKER`, `EDGE_MARKER_START` |
+| `lib/api.ts` | Typed API client for drafter-rest backend (auth, projects, diagrams) |
+| `lib/authStore.ts` | localStorage token/user management (`saveTokens`, `clearTokens`, `getStoredUser`) |
+| `components/AuthModal.tsx` | Login / Register modal (email + password, tab switcher) |
+| `components/ProjectsModal.tsx` | Cloud project browser — lists projects, click to open or create new |
 | `components/DiagramCanvas.tsx` | React Flow wrapper, copy/paste, type-to-edit, addNodeAtCenter, z-order, group/ungroup, edge CRUD |
 | `components/PropertiesPanel.tsx` | Right sidebar for selected node properties + colors (incl. transparent fill) |
 | `components/EdgePropertiesPanel.tsx` | Right sidebar for selected edge (label, arrow direction, color) |

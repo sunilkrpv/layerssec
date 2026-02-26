@@ -9,7 +9,7 @@ const geistSans = localFont({
 });
 
 export const metadata: Metadata = {
-  title: 'DiagramAI — Architecture Diagramming',
+  title: 'Drafter - Architecture Diagramming',
   description: 'AI-powered 2D architecture diagramming tool',
 };
 

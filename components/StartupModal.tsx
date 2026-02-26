@@ -1,6 +1,6 @@
 'use client';
 
-import { FolderOpen, FilePlus, Loader2 } from 'lucide-react';
+import { FolderOpen, FilePlus, Loader2, LogIn, Cloud } from 'lucide-react';
 
 interface StartupModalProps {
   onOpen: () => Promise<void>;
@@ -10,6 +10,12 @@ interface StartupModalProps {
   isLoading?: boolean;
   /** Non-null when user has existing diagram data in this session */
   existingLayerCount?: number;
+  /** If set, user is logged in — show "My Projects" instead of "Sign in" */
+  userEmail?: string | null;
+  /** Called when user clicks "Sign in" */
+  onSignIn?: () => void;
+  /** Called when user clicks "My Projects" */
+  onMyProjects?: () => void;
 }
 
 export default function StartupModal({
@@ -18,6 +24,9 @@ export default function StartupModal({
   onContinue,
   isLoading = false,
   existingLayerCount,
+  userEmail,
+  onSignIn,
+  onMyProjects,
 }: StartupModalProps) {
   const hasExisting = (existingLayerCount ?? 0) > 0;
 
@@ -31,6 +40,39 @@ export default function StartupModal({
         </div>
 
         <div className="flex flex-col gap-3">
+          {/* Cloud: My Projects or Sign In */}
+          {userEmail ? (
+            <button
+              onClick={onMyProjects}
+              disabled={isLoading}
+              className="flex items-center gap-3 rounded-xl border-2 border-blue-200 bg-blue-50 px-4 py-3.5 text-left transition-colors hover:border-blue-400 hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <Cloud size={20} className="flex-shrink-0 text-blue-600" />
+              <div>
+                <div className="text-sm font-semibold text-slate-800">My Projects</div>
+                <div className="text-xs text-slate-500 truncate max-w-[200px]">{userEmail}</div>
+              </div>
+            </button>
+          ) : (
+            <button
+              onClick={onSignIn}
+              disabled={isLoading}
+              className="flex items-center gap-3 rounded-xl border-2 border-blue-200 bg-blue-50 px-4 py-3.5 text-left transition-colors hover:border-blue-400 hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <LogIn size={20} className="flex-shrink-0 text-blue-600" />
+              <div>
+                <div className="text-sm font-semibold text-slate-800">Sign in</div>
+                <div className="text-xs text-slate-500">Load and sync projects from the cloud</div>
+              </div>
+            </button>
+          )}
+
+          <div className="flex items-center gap-2">
+            <div className="h-px flex-1 bg-slate-200" />
+            <span className="text-[10px] font-medium uppercase tracking-wider text-slate-400">or</span>
+            <div className="h-px flex-1 bg-slate-200" />
+          </div>
+
           {/* Open existing project */}
           <button
             onClick={onOpen}

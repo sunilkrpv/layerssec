@@ -18,8 +18,13 @@ import DrillDownModal from '@/components/DrillDownModal';
 import AIChatPanel from '@/components/AIChatPanel';
 import FileLoadPrompt from '@/components/FileLoadPrompt';
 import StartupModal from '@/components/StartupModal';
+import AuthModal from '@/components/AuthModal';
+import ProjectsModal from '@/components/ProjectsModal';
 
 import type { NodeData, NodeType, GenerateResponse } from '@/lib/types';
+import type { UserProfile, Project } from '@/lib/api';
+import { apiUpdateDiagram, apiCreateDiagram } from '@/lib/api';
+import { getStoredUser, clearTokens } from '@/lib/authStore';
 import {
   loadAllLayers,
   saveAllLayers,
@@ -115,6 +120,36 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
   });
   const [fileLoadPending, setFileLoadPending] = useState(false);
 
+  // ── Auth state ────────────────────────────────────────────────────────────
+  const [user, setUser] = useState<UserProfile | null>(() => getStoredUser());
+  /** ID of the backend Diagram currently open (enables cloud auto-save). */
+  const [backendDiagramId, setBackendDiagramId] = useState<string | null>(null);
+  const backendDiagramIdRef = useRef<string | null>(null);
+  useEffect(() => { backendDiagramIdRef.current = backendDiagramId; }, [backendDiagramId]);
+
+  /** Name of the currently open cloud project — shown in the UI. */
+  const [currentProjectName, setCurrentProjectName] = useState<string | null>(null);
+
+  /** Debounce timer for backend diagram saves triggered from handleLayerSave. */
+  const backendSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showProjectsModal, setShowProjectsModal] = useState(false);
+
+  // ── 401 handler — session expired anywhere in the app ─────────────────────
+  useEffect(() => {
+    const handle401 = () => {
+      clearTokens();
+      setUser(null);
+      setBackendDiagramId(null);
+      setCurrentProjectName(null);
+      setShowProjectsModal(false);
+      setShowAuthModal(true);
+    };
+    window.addEventListener('drafter:unauthorized', handle401);
+    return () => window.removeEventListener('drafter:unauthorized', handle401);
+  }, []);
+
   // ── UI state ──────────────────────────────────────────────────────────────
   const [selectedNode, setSelectedNode] = useState<Node<NodeData> | null>(null);
   const [selectedEdge, setSelectedEdge] = useState<Edge | null>(null);
@@ -164,21 +199,33 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
     );
   }, [currentLayerId, projectId]);
 
-  // ── Auto-save interval (every 60 s when ON + file handle is set) ─────────
+  // ── Auto-save interval (every 60 s when ON + file handle or backend diagram is set) ─────
   useEffect(() => {
     if (!autoSave) return;
     const id = setInterval(async () => {
+      // Always capture live canvas state (flushes current layer via rfInstanceRef)
+      const projectData = buildProjectSnapshotRef.current();
+
+      // Local file save
       const handle = fileHandleRef.current;
-      if (!handle) return;
-      try {
-        const projectData: ProjectFile = {
-          layers: layersRef.current,
-          navStack: navStackRef.current,
-        };
-        await writeToHandle(handle, projectData);
-        setLastSaved(new Date());
-      } catch (err) {
-        console.error('[Auto-save] Failed:', err);
+      if (handle) {
+        try {
+          await writeToHandle(handle, projectData);
+          setLastSaved(new Date());
+        } catch (err) {
+          console.error('[Auto-save local] Failed:', err);
+        }
+      }
+
+      // Cloud save
+      const diagId = backendDiagramIdRef.current;
+      if (diagId) {
+        try {
+          await apiUpdateDiagram(diagId, projectData);
+          setLastSaved(new Date());
+        } catch (err) {
+          console.error('[Auto-save cloud] Failed:', err);
+        }
       }
     }, 60_000);
     return () => clearInterval(id);
@@ -210,6 +257,33 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
         saveAllLayers(updated); // localStorage cache
         return updated;
       });
+
+      // Debounced backend save — fires 2 s after the last canvas change.
+      // Capture nodes/edges + layerId in the closure so the timer always uses
+      // the exact state that triggered this save (no dependency on ref timing).
+      const diagId = backendDiagramIdRef.current;
+      if (diagId) {
+        if (backendSaveTimerRef.current) clearTimeout(backendSaveTimerRef.current);
+        const savedNodes = nodes;
+        const savedEdges = edges;
+        const savedLayerId = currentLayerId;
+        backendSaveTimerRef.current = setTimeout(() => {
+          const projectData: ProjectFile = {
+            layers: {
+              ...layersRef.current,
+              [savedLayerId]: {
+                ...layersRef.current[savedLayerId],
+                nodes: savedNodes,
+                edges: savedEdges,
+              },
+            },
+            navStack: navStackRef.current,
+          };
+          apiUpdateDiagram(diagId, projectData)
+            .then(() => setLastSaved(new Date()))
+            .catch((err) => console.error('[Backend save] Failed:', err));
+        }, 2000);
+      }
     },
     [currentLayerId],
   );
@@ -231,6 +305,12 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
       : layersRef.current;
     return { layers: latestLayers, navStack: navStackRef.current };
   }, [currentLayerId]);
+
+  // Stable ref so intervals/closures always call the latest buildProjectSnapshot
+  const buildProjectSnapshotRef = useRef(buildProjectSnapshot);
+  useEffect(() => {
+    buildProjectSnapshotRef.current = buildProjectSnapshot;
+  }, [buildProjectSnapshot]);
 
   /** Open a project file and load it into memory. */
   const handleOpenFile = useCallback(async () => {
@@ -298,9 +378,11 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
     [],
   );
 
-  /** Save to the current file handle (or open Save-As picker if none). */
+  /** Save to the current file handle (or open Save-As picker if none), and to the backend if a cloud project is open. */
   const handleSaveFile = useCallback(async () => {
     const data = buildProjectSnapshot();
+
+    // Local file save
     if (fileHandle) {
       try {
         await writeToHandle(fileHandle, data);
@@ -322,7 +404,87 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
       // Fallback: browser download
       downloadProjectFile(data);
     }
+
+    // Cloud save — always sync to backend when a project is open
+    const diagId = backendDiagramIdRef.current;
+    if (diagId) {
+      try {
+        await apiUpdateDiagram(diagId, data);
+        setLastSaved(new Date());
+      } catch (err: unknown) {
+        console.error('[Backend save] Failed:', err);
+      }
+    }
   }, [fileHandle, buildProjectSnapshot]);
+
+  // ── Auth handlers ─────────────────────────────────────────────────────────
+
+  const handleAuthSuccess = useCallback((newUser: UserProfile) => {
+    setUser(newUser);
+    setShowAuthModal(false);
+    // After signing in, show projects immediately
+    setShowProjectsModal(true);
+    // Keep startup modal open behind the projects modal so user can dismiss it after
+  }, []);
+
+  const handleSignOut = useCallback(() => {
+    clearTokens();
+    setUser(null);
+    setBackendDiagramId(null);
+    setCurrentProjectName(null);
+    setShowAuthModal(true);
+  }, []);
+
+  /** Called when user opens a project from ProjectsModal. */
+  const handleOpenCloudProject = useCallback(
+    (project: Project, canvasData: ProjectFile, diagramId: string) => {
+      const importedLayers: LayerMap =
+        canvasData.layers && typeof canvasData.layers === 'object' && Object.keys(canvasData.layers).length > 0
+          ? canvasData.layers
+          : makeInitialLayers();
+      saveAllLayers(importedLayers);
+      setLayers(importedLayers);
+      setNavStack(canvasData.navStack?.length ? canvasData.navStack : [ROOT_LAYER_ID]);
+      setSelectedNode(null);
+      setSelectedEdge(null);
+      setLastSaved(null);
+      setFileHandle(null);
+      setBackendDiagramId(diagramId || null);
+      setCurrentProjectName(project.name);
+      setShowProjectsModal(false);
+      setShowStartupModal(false);
+    },
+    [],
+  );
+
+  /**
+   * Called when user creates a new cloud project.
+   * Creates a blank diagram in the backend and loads it.
+   */
+  const handleCreateCloudProject = useCallback(
+    async (project: Project) => {
+      try {
+        const emptyCanvas: ProjectFile = { layers: makeInitialLayers(), navStack: [ROOT_LAYER_ID] };
+        const diagram = await apiCreateDiagram(project.id, 'main', emptyCanvas);
+        saveAllLayers(emptyCanvas.layers);
+        setLayers(emptyCanvas.layers);
+        setNavStack(emptyCanvas.navStack);
+        setSelectedNode(null);
+        setSelectedEdge(null);
+        setLastSaved(null);
+        setFileHandle(null);
+        setBackendDiagramId(diagram.id);
+        setCurrentProjectName(project.name);
+        setShowProjectsModal(false);
+        setShowStartupModal(false);
+        setShowChatPanel(true);
+        setIsChatMinimized(false);
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : 'Failed to create cloud project');
+      }
+    },
+    [],
+  );
 
   // ── Startup modal handlers ────────────────────────────────────────────────
 
@@ -823,6 +985,11 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
               setShowChatPanel(true);
               setIsChatMinimized(false);
             }}
+            userEmail={user?.email ?? null}
+            onSignIn={() => setShowAuthModal(true)}
+            onMyProjects={() => setShowProjectsModal(true)}
+            onSignOut={handleSignOut}
+            projectName={currentProjectName}
           />
 
           {/* ── Toolbar ─────────────────────────────────────────────────── */}
@@ -959,6 +1126,26 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
             onContinue={handleStartupContinue}
             isLoading={startupLoading}
             existingLayerCount={Object.keys(layers).length - 1}
+            userEmail={user?.email ?? null}
+            onSignIn={() => setShowAuthModal(true)}
+            onMyProjects={() => setShowProjectsModal(true)}
+          />
+        )}
+
+        {/* ── Auth modal ───────────────────────────────────────────────────── */}
+        {showAuthModal && (
+          <AuthModal
+            onSuccess={handleAuthSuccess}
+            onClose={() => setShowAuthModal(false)}
+          />
+        )}
+
+        {/* ── Projects modal ───────────────────────────────────────────────── */}
+        {showProjectsModal && (
+          <ProjectsModal
+            onOpen={handleOpenCloudProject}
+            onCreate={handleCreateCloudProject}
+            onClose={() => setShowProjectsModal(false)}
           />
         )}
 
