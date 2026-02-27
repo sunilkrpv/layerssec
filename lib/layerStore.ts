@@ -14,7 +14,7 @@ export interface Layer {
 export type LayerMap = Record<string, Layer>;
 
 export const ROOT_LAYER_ID = 'root';
-const STORAGE_KEY = 'drafter_layers';
+const STORAGE_KEY = 'layers';
 
 export function loadAllLayers(): LayerMap {
   if (typeof window === 'undefined') return makeInitialLayers();

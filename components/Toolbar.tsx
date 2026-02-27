@@ -5,12 +5,14 @@ import { ZoomIn, ZoomOut, Maximize2, Trash2, Save, Clock } from 'lucide-react';
 
 interface ToolbarProps {
   onClear: () => void;
-  /** Whether a file is currently open (handle exists) */
+  /** Whether a local file is currently open (handle exists) */
   hasFileHandle: boolean;
+  /** Whether a cloud project is currently open */
+  hasCloudProject: boolean;
   /** Whether auto-save is enabled */
   autoSave: boolean;
   onToggleAutoSave: () => void;
-  /** Manually trigger a save-to-file */
+  /** Manually trigger a save */
   onSaveFile: () => void;
   /** ISO string of last auto-save time, or null */
   lastSaved: Date | null;
@@ -56,6 +58,7 @@ function formatLastSaved(d: Date): string {
 export default function Toolbar({
   onClear,
   hasFileHandle,
+  hasCloudProject,
   autoSave,
   onToggleAutoSave,
   onSaveFile,
@@ -87,8 +90,14 @@ export default function Toolbar({
         {/* Manual save */}
         <button
           onClick={onSaveFile}
-          disabled={!hasFileHandle}
-          title={hasFileHandle ? 'Save to file now' : 'Open a project file first (File menu)'}
+          disabled={!hasFileHandle && !hasCloudProject}
+          title={
+            hasCloudProject
+              ? 'Save to cloud now'
+              : hasFileHandle
+                ? 'Save to file now'
+                : 'Open a project file or cloud project first'
+          }
           className="flex h-8 items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2.5 text-xs font-medium text-slate-600 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
         >
           <Save size={13} />
@@ -124,7 +133,7 @@ export default function Toolbar({
         </button>
 
         {/* Last saved indicator */}
-        {lastSaved && hasFileHandle && (
+        {lastSaved && (hasFileHandle || hasCloudProject) && (
           <span
             className="flex items-center gap-1 text-xs text-slate-400"
             title={`Last saved: ${lastSaved.toLocaleTimeString()}`}

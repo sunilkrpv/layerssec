@@ -23,7 +23,7 @@ import ProjectsModal from '@/components/ProjectsModal';
 
 import type { NodeData, NodeType, GenerateResponse } from '@/lib/types';
 import type { UserProfile, Project } from '@/lib/api';
-import { apiUpdateDiagram, apiCreateDiagram } from '@/lib/api';
+import { apiUpdateDiagram, apiCreateDiagram, apiGenerateDiagram } from '@/lib/api';
 import { getStoredUser, clearTokens } from '@/lib/authStore';
 import {
   loadAllLayers,
@@ -259,31 +259,30 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
       });
 
       // Debounced backend save — fires 2 s after the last canvas change.
-      // Capture nodes/edges + layerId in the closure so the timer always uses
-      // the exact state that triggered this save (no dependency on ref timing).
-      const diagId = backendDiagramIdRef.current;
-      if (diagId) {
-        if (backendSaveTimerRef.current) clearTimeout(backendSaveTimerRef.current);
-        const savedNodes = nodes;
-        const savedEdges = edges;
-        const savedLayerId = currentLayerId;
-        backendSaveTimerRef.current = setTimeout(() => {
-          const projectData: ProjectFile = {
-            layers: {
-              ...layersRef.current,
-              [savedLayerId]: {
-                ...layersRef.current[savedLayerId],
-                nodes: savedNodes,
-                edges: savedEdges,
-              },
+      // diagId is read INSIDE the timer so it always captures the latest ref value
+      // (avoids a race where backendDiagramId is set after handleLayerSave fires).
+      if (backendSaveTimerRef.current) clearTimeout(backendSaveTimerRef.current);
+      const savedNodes = nodes;
+      const savedEdges = edges;
+      const savedLayerId = currentLayerId;
+      backendSaveTimerRef.current = setTimeout(() => {
+        const diagId = backendDiagramIdRef.current;
+        if (!diagId) return;
+        const projectData: ProjectFile = {
+          layers: {
+            ...layersRef.current,
+            [savedLayerId]: {
+              ...layersRef.current[savedLayerId],
+              nodes: savedNodes,
+              edges: savedEdges,
             },
-            navStack: navStackRef.current,
-          };
-          apiUpdateDiagram(diagId, projectData)
-            .then(() => setLastSaved(new Date()))
-            .catch((err) => console.error('[Backend save] Failed:', err));
-        }, 2000);
-      }
+          },
+          navStack: navStackRef.current,
+        };
+        apiUpdateDiagram(diagId, projectData)
+          .then(() => setLastSaved(new Date()))
+          .catch((err) => console.error('[Backend save] Failed:', err));
+      }, 2000);
     },
     [currentLayerId],
   );
@@ -429,11 +428,15 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
 
   const handleSignOut = useCallback(() => {
     clearTokens();
+    const fresh = makeInitialLayers();
+    saveAllLayers(fresh);
+    setLayers(fresh);
+    setNavStack([ROOT_LAYER_ID]);
     setUser(null);
     setBackendDiagramId(null);
     setCurrentProjectName(null);
-    setShowAuthModal(true);
-  }, []);
+    router.push('/login');
+  }, [router]);
 
   /** Called when user opens a project from ProjectsModal. */
   const handleOpenCloudProject = useCallback(
@@ -731,29 +734,13 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
     setError(null);
     setGeneratingStatus('Thinking...');
     try {
-      const res = await fetch('/api/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt }),
-      });
-      if (!res.ok) {
-        const errData = await res.json();
-        throw new Error(errData.error ?? `HTTP ${res.status}`);
-      }
+      // Route through the backend — persists to ai_interactions and uses auth
+      const result = await apiGenerateDiagram(
+        prompt,
+        backendDiagramIdRef.current ?? undefined,
+      );
       setGeneratingStatus('Rendering diagram...');
-      const reader = res.body?.getReader();
-      const decoder = new TextDecoder();
-      let accumulated = '';
-      if (reader) {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          accumulated += decoder.decode(value, { stream: true });
-        }
-      } else {
-        accumulated = await res.text();
-      }
-      const diagram: GenerateResponse = JSON.parse(accumulated);
+      const diagram = result.data as GenerateResponse;
       rfInstanceRef.current?.loadDiagram(diagram);
       setTimeout(() => {
         (rfInstanceRef.current as ReactFlowInstance | null)?.fitView({ padding: 0.15 });
@@ -996,6 +983,7 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
           <Toolbar
             onClear={handleClear}
             hasFileHandle={!!fileHandle}
+            hasCloudProject={!!backendDiagramId}
             autoSave={autoSave}
             onToggleAutoSave={() => setAutoSave((v) => !v)}
             onSaveFile={handleSaveFile}
@@ -1043,7 +1031,7 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
 
             {/* ── Right sidebar ─────────────────────────────────────────── */}
             {showRightSidebar && (
-              <div className="relative flex h-full flex-shrink-0 flex-col">
+              <div className="flex h-full flex-shrink-0">
                 {showLayersPanel && (
                   <LayersPanel
                     docked
@@ -1055,24 +1043,20 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
                   />
                 )}
                 {selectedNode && (
-                  <div className={showLayersPanel ? 'absolute inset-0 z-10' : 'relative'}>
-                    <PropertiesPanel
-                      node={selectedNode}
-                      onClose={() => setSelectedNode(null)}
-                      onUpdate={handleNodeUpdate}
-                      onDelete={handleNodeDelete}
-                    />
-                  </div>
+                  <PropertiesPanel
+                    node={selectedNode}
+                    onClose={() => setSelectedNode(null)}
+                    onUpdate={handleNodeUpdate}
+                    onDelete={handleNodeDelete}
+                  />
                 )}
                 {selectedEdge && !selectedNode && (
-                  <div className={showLayersPanel ? 'absolute inset-0 z-10' : 'relative'}>
-                    <EdgePropertiesPanel
-                      edge={selectedEdge}
-                      onClose={() => setSelectedEdge(null)}
-                      onUpdate={handleEdgeUpdate}
-                      onDelete={handleEdgeDelete}
-                    />
-                  </div>
+                  <EdgePropertiesPanel
+                    edge={selectedEdge}
+                    onClose={() => setSelectedEdge(null)}
+                    onUpdate={handleEdgeUpdate}
+                    onDelete={handleEdgeDelete}
+                  />
                 )}
               </div>
             )}
@@ -1149,8 +1133,8 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
           />
         )}
 
-        {/* ── AI chat panel ───────────────────────────────────────────────── */}
-        {showChatPanel && (
+        {/* ── AI chat panel — only shown when user is signed in ───────────── */}
+        {showChatPanel && !!user && (
           <AIChatPanel
             onGenerate={handleGenerate}
             onGenerateNewLayer={handleGenerateNewLayer}

@@ -9,7 +9,7 @@ const BASE_URL =
 
 function getAccessToken(): string | null {
   if (typeof window === 'undefined') return null;
-  return localStorage.getItem('drafter_access_token');
+  return localStorage.getItem('access_token');
 }
 
 /** Thrown when the backend returns 401. DiagramPage listens for `drafter:unauthorized` event. */
@@ -145,4 +145,22 @@ export function apiUpdateDiagram(diagramId: string, canvasData: unknown): Promis
 
 export function apiGetDiagram(diagramId: string): Promise<DiagramFull> {
   return apiFetch<DiagramFull>(`/api/diagrams/${diagramId}`);
+}
+
+// ─── AI ───────────────────────────────────────────────────────────────────────
+
+export interface AiGenerateResponse {
+  /** Parsed diagram in React Flow format: { nodes, edges } */
+  data: { nodes: unknown[]; edges: unknown[] };
+  usage: { tokensUsed: number; durationMs: number; model: string };
+}
+
+export function apiGenerateDiagram(
+  prompt: string,
+  diagramId?: string,
+): Promise<AiGenerateResponse> {
+  return apiFetch<AiGenerateResponse>('/api/ai/generate', {
+    method: 'POST',
+    body: JSON.stringify({ prompt, diagramId }),
+  });
 }

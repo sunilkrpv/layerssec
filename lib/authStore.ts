@@ -5,9 +5,9 @@
 
 import type { UserProfile } from './api';
 
-const ACCESS_KEY = 'drafter_access_token';
-const REFRESH_KEY = 'drafter_refresh_token';
-const USER_KEY = 'drafter_user';
+const ACCESS_KEY = 'access_token';
+const REFRESH_KEY = 'refresh_token';
+const USER_KEY = 'user';
 
 export function saveTokens(accessToken: string, refreshToken: string): void {
   if (typeof window === 'undefined') return;
