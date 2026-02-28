@@ -11,6 +11,8 @@ interface CanvasContextValue {
   stopEditing: () => void;
   /** Push the current diagram state onto the undo stack (call before a rotation drag begins) */
   pushHistoryNow: () => void;
+  /** Whether line-node animations (flowing dashes etc.) are enabled */
+  animateLines: boolean;
 }
 
 export const CanvasContext = createContext<CanvasContextValue>({
@@ -21,6 +23,7 @@ export const CanvasContext = createContext<CanvasContextValue>({
   startEditing: () => {},
   stopEditing: () => {},
   pushHistoryNow: () => {},
+  animateLines: false,
 });
 
 export function useCanvasContext(): CanvasContextValue {

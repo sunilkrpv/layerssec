@@ -25,7 +25,8 @@ export type NodeType =
   | 'systemcontext'
   | 'container'
   | 'component'
-  | 'code';
+  | 'code'
+  | 'text';
 
 export interface NodeData {
   label: string;
@@ -45,6 +46,15 @@ export interface NodeData {
   attachedSource?: string;
   /** Node ID whose left edge the line's right end is attached to */
   attachedTarget?: string;
+  // ── Text-node formatting fields ──────────────────────────────────────────
+  fontWeight?: 'bold';
+  fontStyle?: 'italic';
+  /** Space-separated list: e.g. 'underline', 'line-through', 'underline line-through' */
+  textDecoration?: string;
+  /** Font size in pixels (default 14) */
+  fontSize?: number;
+  /** Font family group: sans | serif | mono */
+  fontFamily?: 'sans' | 'serif' | 'mono';
 }
 
 export interface DiagramNode {

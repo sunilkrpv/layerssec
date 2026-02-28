@@ -24,6 +24,7 @@ import {
   Code,
   RectangleCircle,
   PackageOpen,
+  Type,
 } from 'lucide-react';
 import type { NodeType } from './types';
 
@@ -294,5 +295,17 @@ export const PALETTE_ITEMS: PaletteItem[] = [
     bgColor: 'bg-red-50',
     borderColor: 'border-red-300',
     group: 'c4',
+  },
+
+  // ── Text ─────────────────────────────────────────────────────────────────
+  {
+    type: 'text',
+    label: 'Text',
+    description: 'Free text annotation with formatting',
+    icon: Type,
+    color: 'text-slate-700',
+    bgColor: 'bg-white',
+    borderColor: 'border-slate-300',
+    group: 'shape',
   },
 ];

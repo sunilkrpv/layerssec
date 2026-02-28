@@ -48,6 +48,7 @@ import SystemContextNode from './nodes/SystemContextNode';
 import ContainerNode from './nodes/ContainerNode';
 import ComponentNode from './nodes/ComponentNode';
 import CodeNode from './nodes/CodeNode';
+import TextNode from './nodes/TextNode';
 
 // ── Helper: recompute a line node's position/width to maintain endpoint attachments ──────────────
 function computeUpdatedLinePosition(
@@ -120,6 +121,7 @@ const NODE_TYPES = {
   container: ContainerNode,
   component: ComponentNode,
   code: CodeNode,
+  text: TextNode,
 };
 
 export type ExtendedRFInstance = ReactFlowInstance & {
@@ -152,6 +154,8 @@ interface DiagramCanvasProps {
   onNodeContextMenu: (event: React.MouseEvent, node: Node<NodeData>) => void;
   /** Called when a node should enter label-edit mode (click-to-add or keypress-to-edit) */
   onRequestEdit?: (nodeId: string, initialChar?: string) => void;
+  /** Whether edge/line animations are enabled */
+  animateEdges?: boolean;
 }
 
 export default function DiagramCanvas({
@@ -164,11 +168,22 @@ export default function DiagramCanvas({
   onLayerSave,
   onNodeContextMenu,
   onRequestEdit,
+  animateEdges = false,
 }: DiagramCanvasProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState<NodeData>(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>(initialEdges);
   const { screenToFlowPosition, getNodes, getEdges } = useReactFlow();
   const { x: vpX, y: vpY, zoom } = useViewport();
+
+  // ── Animate edges ref (stable for use inside memoised callbacks) ──────────
+  const animateEdgesRef = useRef(animateEdges);
+  useEffect(() => { animateEdgesRef.current = animateEdges; }, [animateEdges]);
+
+  // When animation toggle changes, update all existing edges
+  useEffect(() => {
+    setEdges((eds) => eds.map((e) => ({ ...e, animated: animateEdges })));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [animateEdges]);
 
   // ── Alignment guides state ────────────────────────────────────────────────
   const [guideLines, setGuideLines] = useState<{ type: 'v' | 'h'; pos: number }[]>([]);
@@ -266,6 +281,13 @@ export default function DiagramCanvas({
         return;
       }
 
+      // Select All (Cmd+A / Ctrl+A)
+      if ((e.ctrlKey || e.metaKey) && e.key === 'a' && !isTyping) {
+        e.preventDefault();
+        setNodes((nds) => nds.map((n) => ({ ...n, selected: true })));
+        return;
+      }
+
       // Copy/Paste
       if ((e.ctrlKey || e.metaKey) && !isTyping) {
         if (e.key === 'c') {
@@ -337,7 +359,7 @@ export default function DiagramCanvas({
           {
             ...connection,
             type: 'smoothstep',
-            animated: false,
+            animated: animateEdgesRef.current,
             style: { strokeWidth: 2, stroke: '#64748b' },
             markerEnd: EDGE_MARKER,
           },

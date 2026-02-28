@@ -24,7 +24,7 @@ import ProjectsModal from '@/components/ProjectsModal';
 import type { NodeData, NodeType, GenerateResponse } from '@/lib/types';
 import type { UserProfile, Project } from '@/lib/api';
 import { apiUpdateDiagram, apiCreateDiagram, apiGenerateDiagram } from '@/lib/api';
-import { getStoredUser, clearTokens } from '@/lib/authStore';
+import { getStoredUser, clearTokens, isLoggedIn, isLocalMode, clearLocalMode } from '@/lib/authStore';
 import {
   loadAllLayers,
   saveAllLayers,
@@ -136,19 +136,27 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showProjectsModal, setShowProjectsModal] = useState(false);
 
+  // ── Auth guard — redirect to /login if no session and not in local mode ────
+  useEffect(() => {
+    if (!isLoggedIn() && !isLocalMode()) {
+      router.replace('/login');
+    }
+  }, [router]);
+
   // ── 401 handler — session expired anywhere in the app ─────────────────────
   useEffect(() => {
     const handle401 = () => {
       clearTokens();
+      clearLocalMode();
       setUser(null);
       setBackendDiagramId(null);
       setCurrentProjectName(null);
       setShowProjectsModal(false);
-      setShowAuthModal(true);
+      router.replace('/login');
     };
     window.addEventListener('drafter:unauthorized', handle401);
     return () => window.removeEventListener('drafter:unauthorized', handle401);
-  }, []);
+  }, [router]);
 
   // ── UI state ──────────────────────────────────────────────────────────────
   const [selectedNode, setSelectedNode] = useState<Node<NodeData> | null>(null);
@@ -157,6 +165,7 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
   const [generatingStatus, setGeneratingStatus] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [showLayersPanel, setShowLayersPanel] = useState(false);
+  const [animateEdges, setAnimateEdges] = useState(false);
 
   // Startup modal — shown on fresh load when there's no existing work
   const [showStartupModal, setShowStartupModal] = useState(() => {
@@ -428,6 +437,7 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
 
   const handleSignOut = useCallback(() => {
     clearTokens();
+    clearLocalMode();
     const fresh = makeInitialLayers();
     saveAllLayers(fresh);
     setLayers(fresh);
@@ -941,8 +951,9 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
       startEditing,
       stopEditing,
       pushHistoryNow: () => rfInstanceRef.current?.pushHistoryNow(),
+      animateLines: animateEdges,
     }),
-    [navigateTo, editingNodeId, editInitialChar, startEditing, stopEditing],
+    [navigateTo, editingNodeId, editInitialChar, startEditing, stopEditing, animateEdges],
   );
 
   // ── Right sidebar visibility ──────────────────────────────────────────────
@@ -988,6 +999,8 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
             onToggleAutoSave={() => setAutoSave((v) => !v)}
             onSaveFile={handleSaveFile}
             lastSaved={lastSaved}
+            animateEdges={animateEdges}
+            onToggleAnimateEdges={() => setAnimateEdges((v) => !v)}
           />
 
           {/* ── Layer breadcrumb bar ─────────────────────────────────────── */}
@@ -1027,6 +1040,7 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
               rfInstanceRef={rfInstanceRef}
               canvasRef={canvasRef}
               onRequestEdit={startEditing}
+              animateEdges={animateEdges}
             />
 
             {/* ── Right sidebar ─────────────────────────────────────────── */}

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import type { Node } from 'reactflow';
-import { X, Info, Trash2, RotateCw } from 'lucide-react';
+import { X, Info, Trash2, RotateCw, Bold, Italic, Underline, Strikethrough } from 'lucide-react';
 import type { NodeData, NodeType } from '@/lib/types';
 import { PALETTE_ITEMS, LINE_NODE_TYPES } from '@/lib/nodeConfig';
 
@@ -81,10 +81,26 @@ interface PropertiesPanelProps {
   onDelete: (nodeId: string) => void;
 }
 
+const FONT_SIZE_PRESETS = [
+  { label: 'XS', value: 11 },
+  { label: 'S', value: 13 },
+  { label: 'M', value: 15 },
+  { label: 'L', value: 20 },
+  { label: 'XL', value: 28 },
+  { label: '2XL', value: 40 },
+];
+
+const FONT_FAMILIES = [
+  { label: 'Sans', value: 'sans' as const },
+  { label: 'Serif', value: 'serif' as const },
+  { label: 'Mono', value: 'mono' as const },
+];
+
 export default function PropertiesPanel({ node, onClose, onUpdate, onDelete }: PropertiesPanelProps) {
   const palette = PALETTE_ITEMS.find((item) => item.type === (node.type as NodeType));
   const Icon = palette?.icon;
   const isLine = LINE_NODE_TYPES.has(node.type as string);
+  const isText = node.type === 'text';
   const [rotateByInput, setRotateByInput] = useState('');
 
   return (
@@ -178,6 +194,106 @@ export default function PropertiesPanel({ node, onClose, onUpdate, onDelete }: P
             </>
           )}
         </div>
+
+        {/* Text Formatting (text nodes only) */}
+        {isText && (
+          <div className="space-y-3 rounded-lg border border-slate-100 bg-slate-50 p-3">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Text Formatting</p>
+
+            {/* Style toggles: B I U S */}
+            <div>
+              <p className="mb-1.5 text-xs font-medium text-slate-600">Style</p>
+              <div className="flex gap-1.5">
+                {[
+                  { icon: Bold, field: 'fontWeight' as const, onVal: 'bold' as const, title: 'Bold' },
+                  { icon: Italic, field: 'fontStyle' as const, onVal: 'italic' as const, title: 'Italic' },
+                ].map(({ icon: Icon, field, onVal, title }) => {
+                  const active = node.data[field] === onVal;
+                  return (
+                    <button
+                      key={title}
+                      title={title}
+                      onClick={() => onUpdate(node.id, { [field]: active ? undefined : onVal })}
+                      className={`flex h-7 w-7 items-center justify-center rounded border text-xs font-bold transition-colors ${
+                        active
+                          ? 'border-blue-400 bg-blue-50 text-blue-700'
+                          : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-100'
+                      }`}
+                    >
+                      <Icon size={13} />
+                    </button>
+                  );
+                })}
+                {[
+                  { icon: Underline, deco: 'underline', title: 'Underline' },
+                  { icon: Strikethrough, deco: 'line-through', title: 'Strikethrough' },
+                ].map(({ icon: Icon, deco, title }) => {
+                  const current = node.data.textDecoration ?? '';
+                  const active = current.includes(deco);
+                  const toggle = () => {
+                    const parts = current.split(' ').filter(Boolean);
+                    const next = active ? parts.filter((p) => p !== deco) : [...parts, deco];
+                    onUpdate(node.id, { textDecoration: next.join(' ') || undefined });
+                  };
+                  return (
+                    <button
+                      key={title}
+                      title={title}
+                      onClick={toggle}
+                      className={`flex h-7 w-7 items-center justify-center rounded border text-xs transition-colors ${
+                        active
+                          ? 'border-blue-400 bg-blue-50 text-blue-700'
+                          : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-100'
+                      }`}
+                    >
+                      <Icon size={13} />
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Font size */}
+            <div>
+              <p className="mb-1.5 text-xs font-medium text-slate-600">Size</p>
+              <div className="flex flex-wrap gap-1">
+                {FONT_SIZE_PRESETS.map(({ label, value }) => (
+                  <button
+                    key={label}
+                    onClick={() => onUpdate(node.id, { fontSize: value })}
+                    className={`rounded border px-1.5 py-0.5 text-[11px] font-medium transition-colors ${
+                      (node.data.fontSize ?? 15) === value
+                        ? 'border-blue-400 bg-blue-50 text-blue-700'
+                        : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-100'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Font family */}
+            <div>
+              <p className="mb-1.5 text-xs font-medium text-slate-600">Font</p>
+              <div className="flex gap-1.5">
+                {FONT_FAMILIES.map(({ label, value }) => (
+                  <button
+                    key={value}
+                    onClick={() => onUpdate(node.id, { fontFamily: value })}
+                    className={`flex-1 rounded border py-1 text-xs font-medium transition-colors ${
+                      (node.data.fontFamily ?? 'sans') === value
+                        ? 'border-blue-400 bg-blue-50 text-blue-700'
+                        : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-100'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Rotation */}
         {!isLine && (

@@ -46,3 +46,13 @@ body,
   border: none;
   border-bottom: 1px solid #e2e8f0;
 }
+
+/* ── Dotted-line node animation ─────────────────────────────────────────── */
+@keyframes moveDash {
+  from { background-position: 0 0; }
+  to   { background-position: 24px 0; }
+}
+
+.animate-dash {
+  animation: moveDash 0.55s linear infinite;
+}

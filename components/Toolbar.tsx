@@ -1,7 +1,7 @@
 'use client';
 
 import { useReactFlow } from 'reactflow';
-import { ZoomIn, ZoomOut, Maximize2, Trash2, Save, Clock } from 'lucide-react';
+import { ZoomIn, ZoomOut, Maximize2, Trash2, Save, Clock, Zap } from 'lucide-react';
 
 interface ToolbarProps {
   onClear: () => void;
@@ -16,6 +16,9 @@ interface ToolbarProps {
   onSaveFile: () => void;
   /** ISO string of last auto-save time, or null */
   lastSaved: Date | null;
+  /** Whether edge/line animations are enabled */
+  animateEdges: boolean;
+  onToggleAnimateEdges: () => void;
 }
 
 function ToolBtn({
@@ -63,6 +66,8 @@ export default function Toolbar({
   onToggleAutoSave,
   onSaveFile,
   lastSaved,
+  animateEdges,
+  onToggleAnimateEdges,
 }: ToolbarProps) {
   const { zoomIn, zoomOut, fitView } = useReactFlow();
 
@@ -142,6 +147,22 @@ export default function Toolbar({
             {formatLastSaved(lastSaved)}
           </span>
         )}
+      </div>
+
+      {/* Animation toggle */}
+      <div className="ml-auto">
+        <button
+          onClick={onToggleAnimateEdges}
+          title={animateEdges ? 'Animations ON — click to disable' : 'Animations OFF — click to enable'}
+          className={`flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-medium transition-colors ${
+            animateEdges
+              ? 'border-violet-200 bg-violet-50 text-violet-700 hover:bg-violet-100'
+              : 'border-slate-200 bg-slate-50 text-slate-500 hover:bg-slate-100'
+          }`}
+        >
+          <Zap size={12} className={animateEdges ? 'text-violet-500' : 'text-slate-400'} />
+          Animate {animateEdges ? 'ON' : 'OFF'}
+        </button>
       </div>
     </div>
   );
