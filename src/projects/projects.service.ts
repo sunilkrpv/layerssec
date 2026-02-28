@@ -8,10 +8,31 @@ export class ProjectsService {
   constructor(private prisma: PrismaService) {}
 
   async findAllByUser(userId: string) {
-    return this.prisma.project.findMany({
+    const projects = await this.prisma.project.findMany({
       where: { ownerId: userId },
-      include: { _count: { select: { diagrams: true } } },
+      include: {
+        _count: {
+          select: {
+            diagrams: { where: { status: 'published' } },
+          },
+        },
+        diagrams: {
+          where: { status: 'draft' },
+          select: { id: true },
+          take: 1,
+        },
+      },
       orderBy: { updatedAt: 'desc' },
+    });
+
+    return projects.map((p) => {
+      const { diagrams, _count, ...rest } = p;
+      return {
+        ...rest,
+        hasDraft: diagrams.length > 0,
+        draftId: diagrams[0]?.id ?? null,
+        publishedCount: _count.diagrams,
+      };
     });
   }
 
