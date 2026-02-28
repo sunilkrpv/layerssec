@@ -83,6 +83,8 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
   const router = useRouter();
   const rfInstanceRef = useRef<ExtendedRFInstance | null>(null);
   const canvasRef = useRef<HTMLDivElement | null>(null);
+  // Clipboard lifted here so it persists when DiagramCanvas remounts on layer switch
+  const clipboardRef = useRef<{ nodes: Node<NodeData>[]; edges: Edge[] }>({ nodes: [], edges: [] });
 
   // ── Layer state — init navStack from URL currLayer param ─────────────────
   const [layers, setLayers] = useState<LayerMap>(() => loadAllLayers());
@@ -101,6 +103,9 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
   const [fileHandle, setFileHandle] = useState<FileSystemFileHandle | null>(null);
   const [autoSave, setAutoSave] = useState(true);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
+
+  // Guard ref — set to false on sign-out / 401 so debounced saves don't overwrite clean state
+  const saveEnabledRef = useRef(true);
 
   // Refs so auto-save interval can access latest state without stale closures
   const layersRef = useRef(layers);
@@ -146,6 +151,7 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
   // ── 401 handler — session expired anywhere in the app ─────────────────────
   useEffect(() => {
     const handle401 = () => {
+      saveEnabledRef.current = false;
       clearTokens();
       clearLocalMode();
       setUser(null);
@@ -157,6 +163,25 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
     window.addEventListener('drafter:unauthorized', handle401);
     return () => window.removeEventListener('drafter:unauthorized', handle401);
   }, [router]);
+
+  // ── Global keyboard shortcuts (Cmd+L: layers panel, Cmd+P: projects modal) ─
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey)) return;
+      const isTyping =
+        e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement;
+      if (isTyping) return;
+      if (e.key === 'l') {
+        e.preventDefault();
+        setShowLayersPanel((v) => !v);
+      } else if (e.key === 'p') {
+        e.preventDefault();
+        setShowProjectsModal(true);
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   // ── UI state ──────────────────────────────────────────────────────────────
   const [selectedNode, setSelectedNode] = useState<Node<NodeData> | null>(null);
@@ -258,6 +283,7 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
 
   const handleLayerSave = useCallback(
     (nodes: Node<NodeData>[], edges: Edge[]) => {
+      if (!saveEnabledRef.current) return;
       setLayers((prev) => {
         const updated = {
           ...prev,
@@ -436,6 +462,7 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
   }, []);
 
   const handleSignOut = useCallback(() => {
+    saveEnabledRef.current = false;
     clearTokens();
     clearLocalMode();
     const fresh = makeInitialLayers();
@@ -669,12 +696,14 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
     (layerName: string) => {
       if (!drillTarget) return;
       const snapshot = captureCanvas(rfInstanceRef);
+      // Create the new layer BEFORE setLayers so updater is pure (no side-effects inside)
+      const newLayer = createChildLayer(currentLayerId, drillTarget.id, layerName);
+      const drillTargetId = drillTarget.id;
       setLayers((prev) => {
         const withCurrentSaved = flushCurrentLayer(prev, currentLayerId, snapshot);
-        const newLayer = createChildLayer(currentLayerId, drillTarget.id, layerName);
         const parentLayer = withCurrentSaved[currentLayerId];
         const updatedNodes = parentLayer.nodes.map((n) =>
-          n.id === drillTarget.id
+          n.id === drillTargetId
             ? { ...n, data: { ...(n.data as NodeData), _childLayerId: newLayer.id } }
             : n,
         );
@@ -684,11 +713,12 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
           [newLayer.id]: newLayer,
         };
         saveAllLayers(updated);
-        setNavStack((stack) => [...stack, newLayer.id]);
-        setDrillTarget(null);
-        setSelectedNode(null);
         return updated;
       });
+      // All other state mutations outside the updater to avoid double-invocation in Strict Mode
+      setNavStack((stack) => [...stack, newLayer.id]);
+      setDrillTarget(null);
+      setSelectedNode(null);
     },
     [drillTarget, currentLayerId, flushCurrentLayer],
   );
@@ -1039,6 +1069,7 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
               onEdgeSelect={handleEdgeSelect}
               rfInstanceRef={rfInstanceRef}
               canvasRef={canvasRef}
+              clipboardRef={clipboardRef}
               onRequestEdit={startEditing}
               animateEdges={animateEdges}
             />

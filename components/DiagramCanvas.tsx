@@ -144,6 +144,8 @@ interface DiagramCanvasProps {
   onEdgeSelect: (edge: Edge | null) => void;
   rfInstanceRef: MutableRefObject<ExtendedRFInstance | null>;
   canvasRef: MutableRefObject<HTMLDivElement | null>;
+  /** Clipboard ref lifted to parent so clipboard persists across layer switches */
+  clipboardRef: MutableRefObject<{ nodes: Node<NodeData>[]; edges: Edge[] }>;
   /** Nodes pre-loaded from the current layer */
   initialNodes: Node<NodeData>[];
   /** Edges pre-loaded from the current layer */
@@ -163,6 +165,7 @@ export default function DiagramCanvas({
   onEdgeSelect,
   rfInstanceRef,
   canvasRef,
+  clipboardRef,
   initialNodes,
   initialEdges,
   onLayerSave,
@@ -234,12 +237,6 @@ export default function DiagramCanvas({
 
   // Track currently selected nodes for keypress-to-edit
   const selectedNodesRef = useRef<Node<NodeData>[]>([]);
-
-  // Clipboard for copy/paste
-  const clipboardRef = useRef<{ nodes: Node<NodeData>[]; edges: Edge[] }>({
-    nodes: [],
-    edges: [],
-  });
 
   // Debounced save to parent on every nodes/edges change
   useEffect(() => {
