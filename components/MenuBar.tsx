@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Share2, Minus, Sparkles, LogIn, LogOut, FolderOpen, User, Sun, Moon, Monitor } from 'lucide-react';
+import { Share2, Minus, Sparkles, LogIn, LogOut, FolderOpen, User, Sun, Moon, Monitor, Lock } from 'lucide-react';
 import { useTheme } from '@/lib/themeContext';
 import type { Theme } from '@/lib/themeStore';
 
@@ -26,6 +26,12 @@ interface MenuBarProps {
   onSignOut?: () => void;
   /** Name of the currently open cloud project */
   projectName?: string | null;
+  /** Whether a cloud project (not local) is currently open */
+  isCloudProject?: boolean;
+  /** Whether the currently open diagram is read-only (published) */
+  isReadOnly?: boolean;
+  /** Called when user clicks Publish… */
+  onPublish?: () => void;
 }
 
 function useDropdown() {
@@ -137,6 +143,9 @@ export default function MenuBar({
   onMyProjects,
   onSignOut,
   projectName,
+  isCloudProject,
+  isReadOnly,
+  onPublish,
 }: MenuBarProps) {
   const [showAbout, setShowAbout] = useState(false);
   const jsonInputRef = useRef<HTMLInputElement>(null);
@@ -194,6 +203,17 @@ export default function MenuBar({
             <MenuItem onClick={onExportProject}>Export Project</MenuItem>
             <MenuSeparator />
             <MenuItem onClick={onOpenDiff}>Diff…</MenuItem>
+            {isCloudProject && !isReadOnly && onPublish && (
+              <>
+                <MenuSeparator />
+                <MenuItem onClick={onPublish}>
+                  <span className="flex items-center gap-2">
+                    <Lock size={12} className="text-green-600" />
+                    Publish…
+                  </span>
+                </MenuItem>
+              </>
+            )}
           </Dropdown>
 
           <Dropdown label="View">

@@ -158,6 +158,8 @@ interface DiagramCanvasProps {
   onRequestEdit?: (nodeId: string, initialChar?: string) => void;
   /** Whether edge/line animations are enabled */
   animateEdges?: boolean;
+  /** When true, canvas is view-only: nodes cannot be moved, connected, or edited */
+  readOnly?: boolean;
 }
 
 export default function DiagramCanvas({
@@ -172,6 +174,7 @@ export default function DiagramCanvas({
   onNodeContextMenu,
   onRequestEdit,
   animateEdges = false,
+  readOnly = false,
 }: DiagramCanvasProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState<NodeData>(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>(initialEdges);
@@ -810,8 +813,11 @@ export default function DiagramCanvas({
         nodeTypes={NODE_TYPES}
         selectionMode={SelectionMode.Partial}
         fitView
-        deleteKeyCode="Backspace"
+        deleteKeyCode={readOnly ? null : 'Backspace'}
         multiSelectionKeyCode="Shift"
+        nodesDraggable={!readOnly}
+        nodesConnectable={!readOnly}
+        elementsSelectable={!readOnly}
         className="bg-slate-50"
       >
         <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="#cbd5e1" />

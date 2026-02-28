@@ -100,6 +100,31 @@ When all 21 node files need the same structural change, use a **Python script vi
 - **`RotateHandle` component** (`components/nodes/RotateHandle.tsx`): uses `useNodeId`, `useReactFlow`, `useStore` (nodeInternals + viewport transform) to compute center in screen coords and derive angle from cursor
 - **`pushHistoryNow`**: Added to `ExtendedRFInstance`, `CanvasContext` (as `pushHistoryNow: () => void`), and `canvasContextValue` in `app/page.tsx`
 
+### PR-15 — Project Versioning (Publish / Check Out)
+- **Backend (`drafter-rest`)**:
+  - `prisma/schema.prisma` — added `status` (draft/published), `publishComment`, `publishedAt` to `Diagram` model; ran migration `add_diagram_versioning`
+  - `src/diagrams/dto/publish-diagram.dto.ts` (new) — `{ comment?: string }`
+  - `src/diagrams/dto/checkout.dto.ts` (new) — `{ fromDiagramId: string }`
+  - `src/diagrams/diagrams.service.ts` — added `publish`, `checkout`, `getDraft`, `listVersions`; guarded `update` against published diagrams
+  - `src/diagrams/diagrams.controller.ts` — added 4 new endpoints: `POST /diagrams/:id/publish`, `GET /projects/:projectId/versions`, `GET /projects/:projectId/draft`, `POST /projects/:projectId/checkout`; all ownership-verified in service via `verifyProjectAccess` + `findById`
+  - `src/projects/projects.service.ts` — `findAllByUser` now includes `hasDraft`, `draftId`, `publishedCount` using filtered `_count` + `take: 1` draft query
+- **`lib/api.ts`** — added `DiagramVersion`, `ProjectWithVersioning` interfaces; `DraftExistsError` class; `apiListProjectVersions`, `apiPublishDiagram`, `apiCheckoutVersion` (handles 409 → `DraftExistsError`), `apiGetProjectDraft`; updated `apiListProjects` return type
+- **`app/projects/page.tsx`** (new) — Server Component route → `<ProjectsListPage />`
+- **`components/ProjectsListPage.tsx`** (new) — full projects table + right side-sheet with version history; "Check Out" with draft-conflict inline confirm; "New Project" inline form
+- **`components/PublishModal.tsx`** (new) — publish with optional comment, shows upcoming version number
+- **`components/DiagramPage.tsx`**:
+  - `isReadOnly`, `diagramStatus`, `showPublishModal`, `isPublishing`, `publishedVersionCount` state
+  - `loadCanvasFromData` helper — extracts layer loading shared by auto-load and open handlers
+  - Auto-load `useEffect` — when navigating directly to `/projects/:uuid`, fetches draft or latest published; sets `isReadOnly` accordingly
+  - `handlePublish(comment)` — calls `apiPublishDiagram`, sets read-only, clears save timer
+  - `handleCheckoutFromEditor()` — calls `apiCheckoutVersion`; on `DraftExistsError` confirms and opens existing draft
+  - Backend auto-save blocked when `isReadOnlyRef.current` is true
+  - Read-only amber banner above canvas with "Check Out to Edit" button
+  - `onMyProjects` now navigates to `/projects` (not ProjectsModal)
+  - Passes `isCloudProject`, `isReadOnly`, `onPublish` to MenuBar; `readOnly` to DiagramCanvas
+- **`components/DiagramCanvas.tsx`** — `readOnly?: boolean` prop; when true sets `nodesDraggable/nodesConnectable/elementsSelectable=false`, `deleteKeyCode=null`
+- **`components/MenuBar.tsx`** — `isCloudProject`, `isReadOnly`, `onPublish` props; "Publish…" item in File menu (only when cloud + not read-only)
+
 ### PR-14 — Cloud Persistence + Session Handling
 - **`lib/api.ts`** — added `ApiUnauthorizedError` class + 401 handling in `apiFetch`:
   - On `HTTP 401`: dispatches `drafter:unauthorized` custom window event, then throws `ApiUnauthorizedError`

@@ -23,10 +23,15 @@ import FileLoadPrompt from '@/components/FileLoadPrompt';
 import StartupModal from '@/components/StartupModal';
 import AuthModal from '@/components/AuthModal';
 import ProjectsModal from '@/components/ProjectsModal';
+import PublishModal from '@/components/PublishModal';
 
 import type { NodeData, NodeType, GenerateResponse } from '@/lib/types';
 import type { UserProfile, Project } from '@/lib/api';
-import { apiUpdateDiagram, apiCreateDiagram, apiGenerateDiagram } from '@/lib/api';
+import {
+  apiUpdateDiagram, apiCreateDiagram, apiGenerateDiagram,
+  apiPublishDiagram, apiListProjectVersions, apiGetProjectDraft,
+  apiGetDiagram, apiGetProject, apiCheckoutVersion, DraftExistsError,
+} from '@/lib/api';
 import { getStoredUser, clearTokens, isLoggedIn, isLocalMode, clearLocalMode } from '@/lib/authStore';
 import {
   loadAllLayers,
@@ -143,6 +148,19 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
 
   /** Name of the currently open cloud project — shown in the UI. */
   const [currentProjectName, setCurrentProjectName] = useState<string | null>(null);
+
+  /** Whether the currently open cloud diagram is read-only (published). */
+  const [isReadOnly, setIsReadOnly] = useState(false);
+  const isReadOnlyRef = useRef(false);
+  useEffect(() => { isReadOnlyRef.current = isReadOnly; }, [isReadOnly]);
+
+  /** 'draft' | 'published' | null — tracks versioning status of open diagram. */
+  const [diagramStatus, setDiagramStatus] = useState<'draft' | 'published' | null>(null);
+
+  const [showPublishModal, setShowPublishModal] = useState(false);
+  const [isPublishing, setIsPublishing] = useState(false);
+  /** Number of published versions in the current project (used to compute next version number). */
+  const [publishedVersionCount, setPublishedVersionCount] = useState(0);
 
   /** Debounce timer for backend diagram saves triggered from handleLayerSave. */
   const backendSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -343,7 +361,7 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
       // Respects the autoSave toggle. diagId is read INSIDE the timer so it always
       // captures the latest ref value.
       if (backendSaveTimerRef.current) clearTimeout(backendSaveTimerRef.current);
-      if (autoSaveRef.current) {
+      if (autoSaveRef.current && !isReadOnlyRef.current) {
         const savedNodes = nodes;
         const savedEdges = edges;
         const savedLayerId = currentLayerId;
@@ -370,7 +388,66 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
     [currentLayerId],
   );
 
+  // ── Auto-load cloud project by URL ────────────────────────────────────────
+  // When navigating directly to /projects/:uuid, fetch draft (or latest published) from backend.
+  const autoLoadedRef = useRef(false);
+  useEffect(() => {
+    if (projectId === 'local' || !isLoggedIn() || backendDiagramId || autoLoadedRef.current) return;
+    autoLoadedRef.current = true;
+
+    (async () => {
+      try {
+        const [proj, draft, versions] = await Promise.all([
+          apiGetProject(projectId),
+          apiGetProjectDraft(projectId),
+          apiListProjectVersions(projectId),
+        ]);
+        setCurrentProjectName(proj.name);
+        const pubVersions = versions.filter((v) => v.status === 'published');
+        setPublishedVersionCount(pubVersions.length);
+
+        if (draft) {
+          const full = await apiGetDiagram(draft.id);
+          loadCanvasFromDataRef.current(full.canvasData as ProjectFile);
+          setBackendDiagramId(draft.id);
+          setDiagramStatus('draft');
+          setIsReadOnly(false);
+        } else if (pubVersions.length > 0) {
+          // No draft — load latest published as read-only
+          const latest = pubVersions[pubVersions.length - 1];
+          const full = await apiGetDiagram(latest.id);
+          loadCanvasFromDataRef.current(full.canvasData as ProjectFile);
+          setBackendDiagramId(full.id);
+          setDiagramStatus('published');
+          setIsReadOnly(true);
+        }
+      } catch {
+        // 401 handled globally via drafter:unauthorized event
+      }
+    })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectId]);
+
   // ── File operations ───────────────────────────────────────────────────────
+
+  /** Load canvas data (ProjectFile) into memory — shared by auto-load and handleOpenCloudProject. */
+  const loadCanvasFromData = useCallback((canvasData: ProjectFile) => {
+    const importedLayers: LayerMap =
+      canvasData?.layers && typeof canvasData.layers === 'object' && Object.keys(canvasData.layers).length > 0
+        ? canvasData.layers
+        : makeInitialLayers();
+    saveAllLayers(importedLayers);
+    setLayers(importedLayers);
+    setNavStack(canvasData?.navStack?.length ? canvasData.navStack : [ROOT_LAYER_ID]);
+    setSelectedNode(null);
+    setSelectedEdge(null);
+    setLastSaved(null);
+    setFileHandle(null);
+  }, []);
+
+  // Stable ref so the auto-load effect (above) can call the latest version without stale closure
+  const loadCanvasFromDataRef = useRef(loadCanvasFromData);
+  useEffect(() => { loadCanvasFromDataRef.current = loadCanvasFromData; }, [loadCanvasFromData]);
 
   /** Build the current in-memory project snapshot (flushing canvas first). */
   const buildProjectSnapshot = useCallback((): ProjectFile => {
@@ -525,23 +602,15 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
   /** Called when user opens a project from ProjectsModal. */
   const handleOpenCloudProject = useCallback(
     (project: Project, canvasData: ProjectFile, diagramId: string) => {
-      const importedLayers: LayerMap =
-        canvasData.layers && typeof canvasData.layers === 'object' && Object.keys(canvasData.layers).length > 0
-          ? canvasData.layers
-          : makeInitialLayers();
-      saveAllLayers(importedLayers);
-      setLayers(importedLayers);
-      setNavStack(canvasData.navStack?.length ? canvasData.navStack : [ROOT_LAYER_ID]);
-      setSelectedNode(null);
-      setSelectedEdge(null);
-      setLastSaved(null);
-      setFileHandle(null);
+      loadCanvasFromData(canvasData);
       setBackendDiagramId(diagramId || null);
       setCurrentProjectName(project.name);
+      setDiagramStatus('draft');
+      setIsReadOnly(false);
       setShowProjectsModal(false);
       setShowStartupModal(false);
     },
-    [],
+    [loadCanvasFromData],
   );
 
   /**
@@ -553,15 +622,11 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
       try {
         const emptyCanvas: ProjectFile = { layers: makeInitialLayers(), navStack: [ROOT_LAYER_ID] };
         const diagram = await apiCreateDiagram(project.id, 'main', emptyCanvas);
-        saveAllLayers(emptyCanvas.layers);
-        setLayers(emptyCanvas.layers);
-        setNavStack(emptyCanvas.navStack);
-        setSelectedNode(null);
-        setSelectedEdge(null);
-        setLastSaved(null);
-        setFileHandle(null);
+        loadCanvasFromData(emptyCanvas);
         setBackendDiagramId(diagram.id);
         setCurrentProjectName(project.name);
+        setDiagramStatus('draft');
+        setIsReadOnly(false);
         setShowProjectsModal(false);
         setShowStartupModal(false);
         setShowChatPanel(true);
@@ -570,8 +635,56 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
         setError(err instanceof Error ? err.message : 'Failed to create cloud project');
       }
     },
-    [],
+    [loadCanvasFromData],
   );
+
+  // ── Publish / checkout handlers ───────────────────────────────────────────
+
+  /** Freeze the current draft as a published version. */
+  const handlePublish = useCallback(async (comment: string) => {
+    if (!backendDiagramId) return;
+    setIsPublishing(true);
+    try {
+      await apiPublishDiagram(backendDiagramId, comment || undefined);
+      setDiagramStatus('published');
+      setIsReadOnly(true);
+      setShowPublishModal(false);
+      setPublishedVersionCount((n) => n + 1);
+      // Stop any pending backend saves — published diagrams are immutable
+      if (backendSaveTimerRef.current) clearTimeout(backendSaveTimerRef.current);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Publish failed');
+    } finally {
+      setIsPublishing(false);
+    }
+  }, [backendDiagramId]);
+
+  /** Create a new draft from the current published version (from within the editor). */
+  const handleCheckoutFromEditor = useCallback(async () => {
+    if (!backendDiagramId || projectId === 'local') return;
+    try {
+      const newDraft = await apiCheckoutVersion(projectId, backendDiagramId);
+      loadCanvasFromData(newDraft.canvasData as ProjectFile);
+      setBackendDiagramId(newDraft.id);
+      setDiagramStatus('draft');
+      setIsReadOnly(false);
+    } catch (e) {
+      if (e instanceof DraftExistsError) {
+        const confirmed = window.confirm('A draft already exists for this project. Open it?');
+        if (confirmed) {
+          const existing = await apiGetProjectDraft(projectId);
+          if (existing) {
+            loadCanvasFromData(existing.canvasData as ProjectFile);
+            setBackendDiagramId(existing.id);
+            setDiagramStatus('draft');
+            setIsReadOnly(false);
+          }
+        }
+      } else {
+        setError(e instanceof Error ? e.message : 'Checkout failed');
+      }
+    }
+  }, [backendDiagramId, projectId, loadCanvasFromData]);
 
   // ── Startup modal handlers ────────────────────────────────────────────────
 
@@ -1264,9 +1377,12 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
             }}
             userEmail={user?.email ?? null}
             onSignIn={() => setShowAuthModal(true)}
-            onMyProjects={() => setShowProjectsModal(true)}
+            onMyProjects={() => router.push('/projects')}
             onSignOut={handleSignOut}
             projectName={currentProjectName}
+            isCloudProject={!!backendDiagramId && projectId !== 'local'}
+            isReadOnly={isReadOnly}
+            onPublish={() => setShowPublishModal(true)}
           />
 
           {/* ── Toolbar ─────────────────────────────────────────────────── */}
@@ -1305,6 +1421,21 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
             </div>
           )}
 
+          {/* ── Read-only banner (shown when viewing a published diagram) ──── */}
+          {isReadOnly && (
+            <div className="flex flex-shrink-0 items-center gap-3 border-b border-amber-200 bg-amber-50 px-4 py-2 text-sm dark:border-amber-900 dark:bg-amber-900/20">
+              <span className="text-amber-700 dark:text-amber-400">
+                This is a published version — read only.
+              </span>
+              <button
+                onClick={handleCheckoutFromEditor}
+                className="ml-auto rounded border border-amber-300 bg-amber-100 px-3 py-1 text-xs font-medium text-amber-700 hover:bg-amber-200 dark:border-amber-800 dark:bg-amber-900/30 dark:text-amber-400 dark:hover:bg-amber-900/50"
+              >
+                Check Out to Edit
+              </button>
+            </div>
+          )}
+
           {/* ── Main content area ────────────────────────────────────────── */}
           <div className="flex flex-1 overflow-hidden">
             <NodePalette onDragStart={onPaletteDragStart} onAddNode={handleAddNode} />
@@ -1322,6 +1453,7 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
               clipboardRef={clipboardRef}
               onRequestEdit={startEditing}
               animateEdges={animateEdges}
+              readOnly={isReadOnly}
             />
 
             {/* ── Right sidebar ─────────────────────────────────────────── */}
@@ -1442,7 +1574,7 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
             existingLayerCount={Object.keys(layers).length - 1}
             userEmail={user?.email ?? null}
             onSignIn={() => setShowAuthModal(true)}
-            onMyProjects={() => setShowProjectsModal(true)}
+            onMyProjects={() => router.push('/projects')}
           />
         )}
 
@@ -1460,6 +1592,16 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
             onOpen={handleOpenCloudProject}
             onCreate={handleCreateCloudProject}
             onClose={() => setShowProjectsModal(false)}
+          />
+        )}
+
+        {/* ── Publish modal ────────────────────────────────────────────────── */}
+        {showPublishModal && (
+          <PublishModal
+            nextVersionNumber={publishedVersionCount + 1}
+            isPublishing={isPublishing}
+            onPublish={handlePublish}
+            onCancel={() => setShowPublishModal(false)}
           />
         )}
 

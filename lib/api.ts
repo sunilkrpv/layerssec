@@ -110,8 +110,8 @@ export interface ProjectWithDiagrams extends Project {
   diagrams: DiagramMeta[];
 }
 
-export function apiListProjects(): Promise<Project[]> {
-  return apiFetch<Project[]>('/api/projects');
+export function apiListProjects(): Promise<ProjectWithVersioning[]> {
+  return apiFetch<ProjectWithVersioning[]>('/api/projects');
 }
 
 export function apiCreateProject(name: string, description?: string): Promise<Project> {
@@ -145,6 +145,84 @@ export function apiUpdateDiagram(diagramId: string, canvasData: unknown): Promis
 
 export function apiGetDiagram(diagramId: string): Promise<DiagramFull> {
   return apiFetch<DiagramFull>(`/api/diagrams/${diagramId}`);
+}
+
+// ─── Versioning ───────────────────────────────────────────────────────────────
+
+export interface DiagramVersion {
+  id: string;
+  name: string;
+  status: 'draft' | 'published';
+  versionNumber?: number;
+  publishComment?: string | null;
+  publishedAt?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+
+export interface ProjectWithVersioning extends Project {
+  hasDraft: boolean;
+  draftId: string | null;
+  publishedCount: number;
+}
+
+/** Thrown when checkout returns HTTP 409 — a draft already exists. */
+export class DraftExistsError extends Error {
+  existingDraftId: string;
+  constructor(existingDraftId: string) {
+    super('DRAFT_EXISTS');
+    this.name = 'DraftExistsError';
+    this.existingDraftId = existingDraftId;
+  }
+}
+
+export function apiListProjectVersions(projectId: string): Promise<DiagramVersion[]> {
+  return apiFetch<DiagramVersion[]>(`/api/projects/${projectId}/versions`);
+}
+
+export function apiPublishDiagram(diagramId: string, comment?: string): Promise<DiagramFull> {
+  return apiFetch<DiagramFull>(`/api/diagrams/${diagramId}/publish`, {
+    method: 'POST',
+    body: JSON.stringify({ comment }),
+  });
+}
+
+export async function apiCheckoutVersion(
+  projectId: string,
+  fromDiagramId: string,
+): Promise<DiagramFull> {
+  const token = getAccessToken();
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const res = await fetch(`${BASE_URL}/api/projects/${projectId}/checkout`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ fromDiagramId }),
+  });
+
+  if (res.status === 401) {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('drafter:unauthorized'));
+    }
+    throw new ApiUnauthorizedError();
+  }
+
+  if (res.status === 409) {
+    const body = await res.json().catch(() => ({})) as { existingDraftId?: string };
+    throw new DraftExistsError(body.existingDraftId ?? '');
+  }
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({})) as { message?: string };
+    throw new Error(body?.message ?? `HTTP ${res.status}`);
+  }
+
+  return res.json() as Promise<DiagramFull>;
+}
+
+export function apiGetProjectDraft(projectId: string): Promise<DiagramFull | null> {
+  return apiFetch<DiagramFull | null>(`/api/projects/${projectId}/draft`);
 }
 
 // ─── AI ───────────────────────────────────────────────────────────────────────
