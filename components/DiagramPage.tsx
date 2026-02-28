@@ -150,6 +150,22 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showProjectsModal, setShowProjectsModal] = useState(false);
 
+  // ── On mount: prune malformed layers (no id or no name) from the store ──────
+  useEffect(() => {
+    setLayers((prev) => {
+      const cleaned: LayerMap = {};
+      let changed = false;
+      for (const [key, layer] of Object.entries(prev)) {
+        if (!layer.id || key !== layer.id) { changed = true; continue; } // skip miskeyed / no-id entries
+        cleaned[key] = layer;
+      }
+      if (!changed) return prev;
+      saveAllLayers(cleaned);
+      return cleaned;
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // run once on mount
+
   // ── Auth guard — redirect to /login if no session and not in local mode ────
   useEffect(() => {
     if (!isLoggedIn() && !isLocalMode()) {
@@ -702,6 +718,7 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
   // ── Layer delete ──────────────────────────────────────────────────────────
 
   const handleDeleteLayer = useCallback((layerId: string) => {
+    if (!layerId) return; // guard against malformed layers with empty/missing ID
     setDeleteLayerTarget(layerId);
   }, []);
 
@@ -1276,7 +1293,7 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
           />
 
           {error && (
-            <div className="flex items-center gap-2 border-b border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">
+            <div className="flex items-center gap-2 border-b border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-900/20 dark:text-red-400">
               <span className="font-medium">Error:</span>
               <span>{error}</span>
               <button
@@ -1386,9 +1403,9 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
         )}
 
         {/* ── Delete layer confirmation modal ─────────────────────────────────── */}
-        {deleteLayerTarget && layers[deleteLayerTarget] && (
+        {deleteLayerTarget != null && layers[deleteLayerTarget] != null && (
           <DeleteLayerModal
-            layerName={layers[deleteLayerTarget].name}
+            layerName={layers[deleteLayerTarget].name || 'Untitled Layer'}
             descendantCount={collectDescendantIds(layers, deleteLayerTarget).size - 1}
             onConfirm={handleDeleteLayerConfirm}
             onCancel={() => setDeleteLayerTarget(null)}

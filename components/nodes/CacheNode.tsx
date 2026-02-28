@@ -10,7 +10,7 @@ import RotateHandle from './RotateHandle';
 export default function CacheNode({ id, data, selected }: NodeProps<NodeData>) {
   return (
     <div
-      className={`relative min-w-[140px] rounded-xl border-2 bg-white shadow-sm transition-all ${
+      className={`relative min-w-[140px] rounded-xl border-2 bg-cyan-50 shadow-sm transition-all ${
         selected
           ? 'border-cyan-500 shadow-md shadow-cyan-200'
           : 'border-cyan-300 hover:border-cyan-400 hover:shadow-md'

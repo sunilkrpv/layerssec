@@ -21,11 +21,12 @@ function buildTree(layers: LayerMap): Array<{ layer: Layer; depth: number }> {
 
   function visit(layerId: string, depth: number) {
     const layer = layers[layerId];
-    if (!layer) return;
+    // Skip malformed entries (no valid id)
+    if (!layer || !layer.id) return;
     result.push({ layer, depth });
     // Find direct children, sorted by creation time
     const children = Object.values(layers)
-      .filter((l) => l.parentLayerId === layerId)
+      .filter((l) => l.id && l.parentLayerId === layerId)
       .sort((a, b) => a.createdAt - b.createdAt);
     for (const child of children) {
       visit(child.id, depth + 1);
@@ -36,6 +37,8 @@ function buildTree(layers: LayerMap): Array<{ layer: Layer; depth: number }> {
 
   // Append any orphaned layers (shouldn't normally exist, safety net)
   for (const layer of Object.values(layers)) {
+    // Skip malformed layers or ones already in the tree
+    if (!layer.id) continue;
     if (!result.find((r) => r.layer.id === layer.id)) {
       result.push({ layer, depth: 0 });
     }
@@ -53,17 +56,19 @@ interface LayerRowProps {
   onDeleteLayer?: (id: string) => void;
 }
 
+const UNTITLED = 'Untitled Layer';
+
 function LayerRow({ layer, depth, isCurrent, onNavigate, onUpdateLayer, onDeleteLayer }: LayerRowProps) {
   const isRoot = layer.id === ROOT_LAYER_ID;
   const [editingName, setEditingName] = useState(false);
-  const [nameValue, setNameValue] = useState(layer.name);
+  const [nameValue, setNameValue] = useState(layer.name || UNTITLED);
   const [descOpen, setDescOpen] = useState(false);
   const [descValue, setDescValue] = useState(layer.description ?? '');
   const nameInputRef = useRef<HTMLInputElement>(null);
 
   // Sync when layer prop changes externally
   useEffect(() => {
-    setNameValue(layer.name);
+    setNameValue(layer.name || UNTITLED);
   }, [layer.name]);
 
   useEffect(() => {
@@ -71,7 +76,7 @@ function LayerRow({ layer, depth, isCurrent, onNavigate, onUpdateLayer, onDelete
   }, [layer.description]);
 
   const commitName = () => {
-    const trimmed = nameValue.trim() || layer.name;
+    const trimmed = nameValue.trim() || layer.name || UNTITLED;
     setNameValue(trimmed);
     setEditingName(false);
     if (trimmed !== layer.name) {
@@ -86,11 +91,11 @@ function LayerRow({ layer, depth, isCurrent, onNavigate, onUpdateLayer, onDelete
 
   return (
     <div
-      className={`rounded-lg transition-colors ${isCurrent ? 'bg-blue-50' : 'hover:bg-slate-50'}`}
+      className={`rounded-lg transition-colors ${isCurrent ? 'bg-blue-50 dark:bg-blue-900/20' : 'hover:bg-slate-50 dark:hover:bg-slate-700/50'}`}
       style={{ marginLeft: depth * 16 }}
     >
       <div className="flex items-center gap-2 px-3 py-2">
-        <Layers size={13} className={isCurrent ? 'text-blue-500' : 'text-slate-400'} />
+        <Layers size={13} className={isCurrent ? 'text-blue-500' : 'text-slate-400 dark:text-slate-500'} />
 
         {/* Editable name — root layer is locked */}
         {editingName && !isRoot ? (
@@ -108,25 +113,25 @@ function LayerRow({ layer, depth, isCurrent, onNavigate, onUpdateLayer, onDelete
               }
               e.stopPropagation();
             }}
-            className="min-w-0 flex-1 rounded border border-blue-300 bg-white px-2 py-0.5 text-sm font-medium text-slate-800 outline-none focus:ring-1 focus:ring-blue-400"
+            className="min-w-0 flex-1 rounded border border-blue-300 bg-white px-2 py-0.5 text-sm font-medium text-slate-800 outline-none focus:ring-1 focus:ring-blue-400 dark:border-blue-600 dark:bg-slate-700 dark:text-slate-100"
           />
         ) : isRoot ? (
           <span
             className={`min-w-0 flex-1 truncate text-sm font-medium ${
-              isCurrent ? 'text-blue-700' : 'text-slate-700'
+              isCurrent ? 'text-blue-700 dark:text-blue-400' : 'text-slate-700 dark:text-slate-200'
             }`}
           >
-            {layer.name}
+            {layer.name || UNTITLED}
           </span>
         ) : (
           <button
             onClick={() => setEditingName(true)}
             title="Click to rename"
             className={`min-w-0 flex-1 truncate text-left text-sm font-medium hover:underline ${
-              isCurrent ? 'text-blue-700' : 'text-slate-700'
-            }`}
+              isCurrent ? 'text-blue-700 dark:text-blue-400' : 'text-slate-700 dark:text-slate-200'
+            } ${!layer.name ? 'italic text-slate-400 dark:text-slate-500' : ''}`}
           >
-            {layer.name}
+            {layer.name || UNTITLED}
           </button>
         )}
 
@@ -134,7 +139,7 @@ function LayerRow({ layer, depth, isCurrent, onNavigate, onUpdateLayer, onDelete
         <button
           onClick={() => setDescOpen((o) => !o)}
           title={descOpen ? 'Hide description' : 'Show/edit description'}
-          className="flex-shrink-0 text-slate-400 hover:text-slate-600"
+          className="flex-shrink-0 text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300"
         >
           {descOpen ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
         </button>
@@ -144,13 +149,13 @@ function LayerRow({ layer, depth, isCurrent, onNavigate, onUpdateLayer, onDelete
           <button
             onClick={() => onNavigate(layer.id)}
             title="Navigate to this layer"
-            className="flex-shrink-0 rounded p-0.5 text-slate-400 hover:bg-blue-50 hover:text-blue-600"
+            className="flex-shrink-0 rounded p-0.5 text-slate-400 hover:bg-blue-50 hover:text-blue-600 dark:text-slate-500 dark:hover:bg-blue-900/20 dark:hover:text-blue-400"
           >
             <ArrowRight size={13} />
           </button>
         )}
         {isCurrent && (
-          <span className="flex-shrink-0 rounded-full bg-blue-100 px-1.5 py-0.5 text-[9px] font-semibold uppercase text-blue-600">
+          <span className="flex-shrink-0 rounded-full bg-blue-100 px-1.5 py-0.5 text-[9px] font-semibold uppercase text-blue-600 dark:bg-blue-900/30 dark:text-blue-400">
             current
           </span>
         )}
@@ -160,7 +165,7 @@ function LayerRow({ layer, depth, isCurrent, onNavigate, onUpdateLayer, onDelete
           <button
             onClick={(e) => { e.stopPropagation(); onDeleteLayer(layer.id); }}
             title="Delete this layer"
-            className="flex-shrink-0 rounded p-0.5 text-slate-300 transition-colors hover:bg-red-50 hover:text-red-500"
+            className="flex-shrink-0 rounded p-0.5 text-slate-300 transition-colors hover:bg-red-50 hover:text-red-500 dark:text-slate-600 dark:hover:bg-red-900/20 dark:hover:text-red-400"
           >
             <Trash2 size={12} />
           </button>
@@ -176,7 +181,7 @@ function LayerRow({ layer, depth, isCurrent, onNavigate, onUpdateLayer, onDelete
             rows={2}
             onChange={(e) => setDescValue(e.target.value)}
             onBlur={(e) => commitDesc(e.target.value)}
-            className="w-full resize-none rounded border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-700 placeholder-slate-300 outline-none focus:border-blue-300 focus:ring-1 focus:ring-blue-200"
+            className="w-full resize-none rounded border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-700 placeholder-slate-300 outline-none focus:border-blue-300 focus:ring-1 focus:ring-blue-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 dark:placeholder-slate-500"
           />
         </div>
       )}
@@ -215,17 +220,17 @@ export default function LayersPanel({
   const panelContent = (
     <>
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
+      <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 dark:border-slate-700">
         <div className="flex items-center gap-2">
           <Layers size={15} className="text-blue-500" />
-          <h2 className="text-sm font-semibold text-slate-800">Layers</h2>
-          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500">
+          <h2 className="text-sm font-semibold text-slate-800 dark:text-slate-100">Layers</h2>
+          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500 dark:bg-slate-700 dark:text-slate-400">
             {Object.keys(layers).length}
           </span>
         </div>
         <button
           onClick={onClose}
-          className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+          className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:text-slate-500 dark:hover:bg-slate-700 dark:hover:text-slate-300"
         >
           <X size={14} />
         </button>
@@ -234,7 +239,7 @@ export default function LayersPanel({
       {/* Layer list */}
       <div className={`overflow-y-auto p-3 ${docked ? 'flex-1' : 'max-h-[60vh]'}`}>
         {tree.length === 0 ? (
-          <p className="py-6 text-center text-sm text-slate-400">No layers yet</p>
+          <p className="py-6 text-center text-sm text-slate-400 dark:text-slate-500">No layers yet</p>
         ) : (
           <div className="space-y-0.5">
             {tree.map(({ layer, depth }) => (
@@ -252,8 +257,8 @@ export default function LayersPanel({
         )}
       </div>
 
-      <div className="border-t border-slate-100 px-4 py-2.5">
-        <p className="text-xs text-slate-400">
+      <div className="border-t border-slate-100 px-4 py-2.5 dark:border-slate-700">
+        <p className="text-xs text-slate-400 dark:text-slate-500">
           Click a name to rename. Arrow to navigate. Root is fixed.
         </p>
       </div>
@@ -263,7 +268,7 @@ export default function LayersPanel({
   // ── Docked: render as a sidebar panel (no modal backdrop) ────────────────
   if (docked) {
     return (
-      <div className="flex h-full w-64 flex-shrink-0 flex-col border-l border-slate-200 bg-white shadow-sm">
+      <div className="flex h-full w-64 flex-shrink-0 flex-col border-l border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800">
         {panelContent}
       </div>
     );
@@ -278,7 +283,7 @@ export default function LayersPanel({
       }}
       className="fixed inset-0 z-50 flex items-start justify-center bg-black/30 pt-20 backdrop-blur-sm"
     >
-      <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white shadow-2xl">
+      <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-800">
         {panelContent}
       </div>
     </div>

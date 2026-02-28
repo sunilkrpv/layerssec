@@ -10,7 +10,7 @@ import RotateHandle from './RotateHandle';
 export default function GatewayNode({ id, data, selected }: NodeProps<NodeData>) {
   return (
     <div
-      className={`relative min-w-[140px] rounded-xl border-2 bg-white shadow-sm transition-all ${
+      className={`relative min-w-[140px] rounded-xl border-2 bg-orange-50 shadow-sm transition-all ${
         selected
           ? 'border-orange-500 shadow-md shadow-orange-200'
           : 'border-orange-300 hover:border-orange-400 hover:shadow-md'

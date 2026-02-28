@@ -9,7 +9,7 @@ import RotateHandle from './RotateHandle';
 export default function EllipseNode({ id, data, selected }: NodeProps<NodeData>) {
   return (
     <div
-      className={`relative h-full w-full min-h-[60px] min-w-[100px] border-2 bg-white transition-all`}
+      className={`relative h-full w-full min-h-[60px] min-w-[100px] border-2 bg-slate-50 transition-all`}
       style={{
         borderRadius: '50%',
         borderColor: data.borderColor ?? (selected ? '#475569' : '#94a3b8'),

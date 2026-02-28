@@ -10,7 +10,7 @@ import RotateHandle from './RotateHandle';
 export default function QueueNode({ id, data, selected }: NodeProps<NodeData>) {
   return (
     <div
-      className={`relative min-w-[140px] rounded-xl border-2 bg-white shadow-sm transition-all ${
+      className={`relative min-w-[140px] rounded-xl border-2 bg-yellow-50 shadow-sm transition-all ${
         selected
           ? 'border-yellow-500 shadow-md shadow-yellow-200'
           : 'border-yellow-300 hover:border-yellow-400 hover:shadow-md'

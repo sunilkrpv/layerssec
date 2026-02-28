@@ -43,8 +43,8 @@ function ToolBtn({
       disabled={disabled}
       className={`flex h-8 w-8 items-center justify-center rounded-lg transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
         danger
-          ? 'text-red-500 hover:bg-red-50 hover:text-red-600'
-          : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'
+          ? 'text-red-500 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20'
+          : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200'
       }`}
     >
       {children}
@@ -75,9 +75,9 @@ export default function Toolbar({
   const { zoomIn, zoomOut, fitView } = useReactFlow();
 
   return (
-    <div className="flex h-10 flex-shrink-0 items-center gap-3 border-b border-slate-200 bg-white px-4">
+    <div className="flex h-10 flex-shrink-0 items-center gap-3 border-b border-slate-200 bg-white px-4 dark:border-slate-700 dark:bg-slate-900">
       {/* Zoom controls */}
-      <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 px-1 py-0.5">
+      <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 px-1 py-0.5 dark:border-slate-700 dark:bg-slate-800">
         <ToolBtn onClick={() => zoomIn()} title="Zoom In">
           <ZoomIn size={16} />
         </ToolBtn>
@@ -87,7 +87,7 @@ export default function Toolbar({
         <ToolBtn onClick={() => fitView({ padding: 0.15 })} title="Fit View">
           <Maximize2 size={16} />
         </ToolBtn>
-        <div className="mx-1 h-5 w-px bg-slate-200" />
+        <div className="mx-1 h-5 w-px bg-slate-200 dark:bg-slate-600" />
         <ToolBtn onClick={onClear} title="Clear canvas" danger>
           <Trash2 size={16} />
         </ToolBtn>
@@ -108,7 +108,7 @@ export default function Toolbar({
                   ? 'Save to file now (⌘S)'
                   : 'Open a project file or cloud project first'
           }
-          className="flex h-8 items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2.5 text-xs font-medium text-slate-600 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
+          className="flex h-8 items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2.5 text-xs font-medium text-slate-600 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
         >
           {isSaving
             ? <Loader2 size={13} className="animate-spin" />
@@ -126,10 +126,10 @@ export default function Toolbar({
           }
           className={`flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-medium transition-colors ${
             autoSave && (hasFileHandle || hasCloudProject)
-              ? 'border-green-200 bg-green-50 text-green-700 hover:bg-green-100'
+              ? 'border-green-200 bg-green-50 text-green-700 hover:bg-green-100 dark:border-green-800 dark:bg-green-900/20 dark:text-green-400'
               : autoSave
-                ? 'border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100'
-                : 'border-slate-200 bg-slate-50 text-slate-500 hover:bg-slate-100'
+                ? 'border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-400'
+                : 'border-slate-200 bg-slate-50 text-slate-500 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700'
           }`}
         >
           <span
@@ -147,7 +147,7 @@ export default function Toolbar({
         {/* Last saved indicator */}
         {lastSaved && (hasFileHandle || hasCloudProject) && (
           <span
-            className="flex items-center gap-1 text-xs text-slate-400"
+            className="flex items-center gap-1 text-xs text-slate-400 dark:text-slate-500"
             title={`Last saved: ${lastSaved.toLocaleTimeString()}`}
           >
             <Clock size={11} />
@@ -163,8 +163,8 @@ export default function Toolbar({
           title={animateEdges ? 'Animations ON — click to disable' : 'Animations OFF — click to enable'}
           className={`flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-medium transition-colors ${
             animateEdges
-              ? 'border-violet-200 bg-violet-50 text-violet-700 hover:bg-violet-100'
-              : 'border-slate-200 bg-slate-50 text-slate-500 hover:bg-slate-100'
+              ? 'border-violet-200 bg-violet-50 text-violet-700 hover:bg-violet-100 dark:border-violet-800 dark:bg-violet-900/20 dark:text-violet-400'
+              : 'border-slate-200 bg-slate-50 text-slate-500 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700'
           }`}
         >
           <Zap size={12} className={animateEdges ? 'text-violet-500' : 'text-slate-400'} />

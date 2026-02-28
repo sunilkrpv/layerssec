@@ -29,12 +29,12 @@ function ColorRow({ label, value, onChange, showTransparent }: ColorRowProps) {
   return (
     <div>
       <div className="mb-1.5 flex items-center justify-between">
-        <span className="text-xs font-medium text-slate-600">{label}</span>
+        <span className="text-xs font-medium text-slate-600 dark:text-slate-400">{label}</span>
         {value && (
           <button
             onClick={() => onChange(undefined)}
             title="Reset to default"
-            className="text-[10px] text-slate-400 hover:text-slate-600"
+            className="text-[10px] text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
           >
             ✕ reset
           </button>
@@ -104,15 +104,15 @@ export default function PropertiesPanel({ node, onClose, onUpdate, onDelete }: P
   const [rotateByInput, setRotateByInput] = useState('');
 
   return (
-    <aside className="flex h-full w-64 flex-col border-l border-slate-200 bg-white shadow-sm">
-      <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
+    <aside className="flex h-full w-64 flex-col border-l border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800">
+      <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 dark:border-slate-700">
         <div className="flex items-center gap-2">
           {Icon && <Icon size={16} className={palette?.color ?? 'text-slate-500'} />}
-          <h2 className="text-sm font-semibold text-slate-700">Properties</h2>
+          <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-200">Properties</h2>
         </div>
         <button
           onClick={onClose}
-          className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+          className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:text-slate-500 dark:hover:bg-slate-700 dark:hover:text-slate-300"
         >
           <X size={14} />
         </button>
@@ -120,7 +120,7 @@ export default function PropertiesPanel({ node, onClose, onUpdate, onDelete }: P
 
       <div className="flex-1 space-y-4 overflow-y-auto p-4">
         <div>
-          <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">
+          <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
             Type
           </label>
           <span
@@ -131,20 +131,20 @@ export default function PropertiesPanel({ node, onClose, onUpdate, onDelete }: P
         </div>
 
         <div>
-          <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">
+          <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
             Label
           </label>
           <input
             type="text"
             value={node.data.label ?? ''}
             onChange={(e) => onUpdate(node.id, { label: e.target.value })}
-            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
+            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 dark:focus:ring-blue-900/30"
           />
         </div>
 
         {!isLine && (
           <div>
-            <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">
+            <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
               Technology
             </label>
             <input
@@ -152,13 +152,13 @@ export default function PropertiesPanel({ node, onClose, onUpdate, onDelete }: P
               value={node.data.technology ?? ''}
               placeholder="e.g. Node.js, PostgreSQL"
               onChange={(e) => onUpdate(node.id, { technology: e.target.value })}
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 placeholder-slate-300 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
+              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 placeholder-slate-300 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 dark:placeholder-slate-500 dark:focus:ring-blue-900/30"
             />
           </div>
         )}
 
         <div>
-          <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">
+          <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
             Description
           </label>
           <textarea
@@ -166,12 +166,12 @@ export default function PropertiesPanel({ node, onClose, onUpdate, onDelete }: P
             placeholder="What does this component do?"
             rows={3}
             onChange={(e) => onUpdate(node.id, { description: e.target.value })}
-            className="w-full resize-none rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 placeholder-slate-300 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
+            className="w-full resize-none rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 placeholder-slate-300 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 dark:placeholder-slate-500 dark:focus:ring-blue-900/30"
           />
         </div>
 
         {/* Colors */}
-        <div className="space-y-3 rounded-lg border border-slate-100 bg-slate-50 p-3">
+        <div className="space-y-3 rounded-lg border border-slate-100 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900/40">
           <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Colors</p>
           <ColorRow
             label="Border"
@@ -197,12 +197,12 @@ export default function PropertiesPanel({ node, onClose, onUpdate, onDelete }: P
 
         {/* Text Formatting (text nodes only) */}
         {isText && (
-          <div className="space-y-3 rounded-lg border border-slate-100 bg-slate-50 p-3">
+          <div className="space-y-3 rounded-lg border border-slate-100 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900/40">
             <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Text Formatting</p>
 
             {/* Style toggles: B I U S */}
             <div>
-              <p className="mb-1.5 text-xs font-medium text-slate-600">Style</p>
+              <p className="mb-1.5 text-xs font-medium text-slate-600 dark:text-slate-400">Style</p>
               <div className="flex gap-1.5">
                 {[
                   { icon: Bold, field: 'fontWeight' as const, onVal: 'bold' as const, title: 'Bold' },
@@ -216,8 +216,8 @@ export default function PropertiesPanel({ node, onClose, onUpdate, onDelete }: P
                       onClick={() => onUpdate(node.id, { [field]: active ? undefined : onVal })}
                       className={`flex h-7 w-7 items-center justify-center rounded border text-xs font-bold transition-colors ${
                         active
-                          ? 'border-blue-400 bg-blue-50 text-blue-700'
-                          : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-100'
+                          ? 'border-blue-400 bg-blue-50 text-blue-700 dark:border-blue-600 dark:bg-blue-900/20 dark:text-blue-400'
+                          : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-300 dark:hover:border-slate-500 dark:hover:bg-slate-600'
                       }`}
                     >
                       <Icon size={13} />
@@ -242,8 +242,8 @@ export default function PropertiesPanel({ node, onClose, onUpdate, onDelete }: P
                       onClick={toggle}
                       className={`flex h-7 w-7 items-center justify-center rounded border text-xs transition-colors ${
                         active
-                          ? 'border-blue-400 bg-blue-50 text-blue-700'
-                          : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-100'
+                          ? 'border-blue-400 bg-blue-50 text-blue-700 dark:border-blue-600 dark:bg-blue-900/20 dark:text-blue-400'
+                          : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-300 dark:hover:border-slate-500 dark:hover:bg-slate-600'
                       }`}
                     >
                       <Icon size={13} />
@@ -255,7 +255,7 @@ export default function PropertiesPanel({ node, onClose, onUpdate, onDelete }: P
 
             {/* Font size */}
             <div>
-              <p className="mb-1.5 text-xs font-medium text-slate-600">Size</p>
+              <p className="mb-1.5 text-xs font-medium text-slate-600 dark:text-slate-400">Size</p>
               <div className="flex flex-wrap gap-1">
                 {FONT_SIZE_PRESETS.map(({ label, value }) => (
                   <button
@@ -263,8 +263,8 @@ export default function PropertiesPanel({ node, onClose, onUpdate, onDelete }: P
                     onClick={() => onUpdate(node.id, { fontSize: value })}
                     className={`rounded border px-1.5 py-0.5 text-[11px] font-medium transition-colors ${
                       (node.data.fontSize ?? 15) === value
-                        ? 'border-blue-400 bg-blue-50 text-blue-700'
-                        : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-100'
+                        ? 'border-blue-400 bg-blue-50 text-blue-700 dark:border-blue-600 dark:bg-blue-900/20 dark:text-blue-400'
+                        : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-300 dark:hover:border-slate-500 dark:hover:bg-slate-600'
                     }`}
                   >
                     {label}
@@ -275,7 +275,7 @@ export default function PropertiesPanel({ node, onClose, onUpdate, onDelete }: P
 
             {/* Font family */}
             <div>
-              <p className="mb-1.5 text-xs font-medium text-slate-600">Font</p>
+              <p className="mb-1.5 text-xs font-medium text-slate-600 dark:text-slate-400">Font</p>
               <div className="flex gap-1.5">
                 {FONT_FAMILIES.map(({ label, value }) => (
                   <button
@@ -283,8 +283,8 @@ export default function PropertiesPanel({ node, onClose, onUpdate, onDelete }: P
                     onClick={() => onUpdate(node.id, { fontFamily: value })}
                     className={`flex-1 rounded border py-1 text-xs font-medium transition-colors ${
                       (node.data.fontFamily ?? 'sans') === value
-                        ? 'border-blue-400 bg-blue-50 text-blue-700'
-                        : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-100'
+                        ? 'border-blue-400 bg-blue-50 text-blue-700 dark:border-blue-600 dark:bg-blue-900/20 dark:text-blue-400'
+                        : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-300 dark:hover:border-slate-500 dark:hover:bg-slate-600'
                     }`}
                   >
                     {label}
@@ -297,10 +297,10 @@ export default function PropertiesPanel({ node, onClose, onUpdate, onDelete }: P
 
         {/* Rotation */}
         {!isLine && (
-          <div className="space-y-2 rounded-lg border border-slate-100 bg-slate-50 p-3">
+          <div className="space-y-2 rounded-lg border border-slate-100 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900/40">
             <div className="flex items-center justify-between">
               <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Rotation</p>
-              <span className="font-mono text-xs text-slate-500">
+              <span className="font-mono text-xs text-slate-500 dark:text-slate-400">
                 {Math.round(node.data.rotation ?? 0)}°
               </span>
             </div>
@@ -320,7 +320,7 @@ export default function PropertiesPanel({ node, onClose, onUpdate, onDelete }: P
                   }
                 }}
                 placeholder="e.g. 45"
-                className="w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm text-slate-800 placeholder-slate-300 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                className="w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm text-slate-800 placeholder-slate-300 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 dark:placeholder-slate-500 dark:focus:ring-blue-900/30"
               />
               <button
                 onClick={() => {
@@ -332,7 +332,7 @@ export default function PropertiesPanel({ node, onClose, onUpdate, onDelete }: P
                   }
                 }}
                 title="Apply clockwise rotation"
-                className="flex flex-shrink-0 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-600"
+                className="flex flex-shrink-0 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-600 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-300 dark:hover:border-blue-600 dark:hover:bg-blue-900/20 dark:hover:text-blue-400"
               >
                 <RotateCw size={12} />
                 CW
@@ -341,7 +341,7 @@ export default function PropertiesPanel({ node, onClose, onUpdate, onDelete }: P
             {(node.data.rotation ?? 0) !== 0 && (
               <button
                 onClick={() => onUpdate(node.id, { rotation: 0 })}
-                className="w-full rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs text-slate-500 hover:bg-slate-100"
+                className="w-full rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs text-slate-500 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-400 dark:hover:bg-slate-600"
               >
                 Reset rotation
               </button>
@@ -350,28 +350,28 @@ export default function PropertiesPanel({ node, onClose, onUpdate, onDelete }: P
         )}
 
         <div>
-          <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">
+          <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
             Node ID
           </label>
-          <p className="rounded-lg bg-slate-50 px-3 py-2 font-mono text-xs text-slate-500">
+          <p className="rounded-lg bg-slate-50 px-3 py-2 font-mono text-xs text-slate-500 dark:bg-slate-900/50 dark:text-slate-400">
             {node.id}
           </p>
         </div>
 
         <div>
-          <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">
+          <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
             Position
           </label>
-          <p className="rounded-lg bg-slate-50 px-3 py-2 font-mono text-xs text-slate-500">
+          <p className="rounded-lg bg-slate-50 px-3 py-2 font-mono text-xs text-slate-500 dark:bg-slate-900/50 dark:text-slate-400">
             x: {Math.round(node.position.x)}, y: {Math.round(node.position.y)}
           </p>
         </div>
       </div>
 
-      <div className="space-y-3 border-t border-slate-100 px-4 py-3">
+      <div className="space-y-3 border-t border-slate-100 px-4 py-3 dark:border-slate-700">
         <button
           onClick={() => { onDelete(node.id); onClose(); }}
-          className="flex w-full items-center justify-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-600 transition-colors hover:bg-red-100"
+          className="flex w-full items-center justify-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-600 transition-colors hover:bg-red-100 dark:border-red-900 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/30"
         >
           <Trash2 size={14} />
           Delete node

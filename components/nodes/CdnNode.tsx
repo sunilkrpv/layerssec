@@ -10,7 +10,7 @@ import RotateHandle from './RotateHandle';
 export default function CdnNode({ id, data, selected }: NodeProps<NodeData>) {
   return (
     <div
-      className={`relative min-w-[140px] rounded-xl border-2 bg-white shadow-sm transition-all ${
+      className={`relative min-w-[140px] rounded-xl border-2 bg-teal-50 shadow-sm transition-all ${
         selected
           ? 'border-teal-500 shadow-md shadow-teal-200'
           : 'border-teal-300 hover:border-teal-400 hover:shadow-md'

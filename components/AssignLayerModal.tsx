@@ -20,29 +20,29 @@ export default function AssignLayerModal({
 }: AssignLayerModalProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm">
-      <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
+      <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-700 dark:bg-slate-800">
         {/* Header */}
         <div className="mb-1 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Link size={18} className="text-blue-600" />
-            <h2 className="text-base font-semibold text-slate-800">Assign Layer</h2>
+            <h2 className="text-base font-semibold text-slate-800 dark:text-slate-100">Assign Layer</h2>
           </div>
           <button
             onClick={onCancel}
-            className="rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+            className="rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:text-slate-500 dark:hover:bg-slate-700 dark:hover:text-slate-300"
           >
             <X size={16} />
           </button>
         </div>
 
-        <p className="mb-4 text-sm text-slate-500">
+        <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">
           Link an existing layer to{' '}
-          <span className="font-medium text-slate-700">&ldquo;{shapeLabel}&rdquo;</span>:
+          <span className="font-medium text-slate-700 dark:text-slate-200">&ldquo;{shapeLabel}&rdquo;</span>:
         </p>
 
         {/* Layer list */}
         {orphanedLayers.length === 0 ? (
-          <p className="rounded-lg bg-slate-50 py-6 text-center text-sm text-slate-400">
+          <p className="rounded-lg bg-slate-50 py-6 text-center text-sm text-slate-400 dark:bg-slate-700 dark:text-slate-500">
             No unattached layers available.
           </p>
         ) : (
@@ -51,14 +51,14 @@ export default function AssignLayerModal({
               <button
                 key={layer.id}
                 onClick={() => onConfirm(layer.id)}
-                className="flex w-full items-start gap-3 rounded-lg border border-slate-200 px-3 py-2.5 text-left transition-colors hover:border-blue-300 hover:bg-blue-50"
+                className="flex w-full items-start gap-3 rounded-lg border border-slate-200 px-3 py-2.5 text-left transition-colors hover:border-blue-300 hover:bg-blue-50 dark:border-slate-600 dark:hover:border-blue-600 dark:hover:bg-blue-900/20"
               >
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-slate-700">{layer.name}</p>
+                  <p className="truncate text-sm font-medium text-slate-700 dark:text-slate-200">{layer.name}</p>
                   {layer.description && (
-                    <p className="truncate text-xs text-slate-400">{layer.description}</p>
+                    <p className="truncate text-xs text-slate-400 dark:text-slate-500">{layer.description}</p>
                   )}
-                  <p className="text-xs text-slate-400">
+                  <p className="text-xs text-slate-400 dark:text-slate-500">
                     {layer.nodes.length} node{layer.nodes.length !== 1 ? 's' : ''}
                   </p>
                 </div>
@@ -69,7 +69,7 @@ export default function AssignLayerModal({
 
         <button
           onClick={onCancel}
-          className="mt-4 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-600 transition-colors hover:bg-slate-50"
+          className="mt-4 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-600 transition-colors hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
         >
           Cancel
         </button>

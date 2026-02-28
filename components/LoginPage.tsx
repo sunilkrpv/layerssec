@@ -37,28 +37,28 @@ function DiagramIllustration() {
       <text x="78" y="75" textAnchor="middle" fill="rgba(219,234,254,0.9)" fontSize="10" fontFamily="sans-serif">Client</text>
 
       {/* API Gateway */}
-      <rect x="118" y="54" width="84" height="32" rx="6" fill="rgba(99,102,241,0.25)" stroke="rgba(167,139,250,0.7)" strokeWidth="1.5" />
-      <text x="160" y="75" textAnchor="middle" fill="rgba(224,231,255,0.95)" fontSize="10" fontFamily="sans-serif" fontWeight="600">API Gateway</text>
+      <rect x="130" y="54" width="84" height="32" rx="6" fill="rgba(99,102,241,0.25)" stroke="rgba(167,139,250,0.7)" strokeWidth="1.5" />
+      <text x="172" y="75" textAnchor="middle" fill="rgba(224,231,255,0.95)" fontSize="10" fontFamily="sans-serif" fontWeight="600">API Gateway</text>
 
       {/* Service A */}
       <rect x="44" y="114" width="68" height="32" rx="6" fill="rgba(96,165,250,0.15)" stroke="rgba(147,197,253,0.6)" strokeWidth="1.5" />
       <text x="78" y="135" textAnchor="middle" fill="rgba(219,234,254,0.9)" fontSize="10" fontFamily="sans-serif">Service A</text>
 
       {/* Service */}
-      <rect x="196" y="54" width="68" height="32" rx="6" fill="rgba(96,165,250,0.15)" stroke="rgba(147,197,253,0.6)" strokeWidth="1.5" />
-      <text x="230" y="75" textAnchor="middle" fill="rgba(219,234,254,0.9)" fontSize="10" fontFamily="sans-serif">Service</text>
+      <rect x="230" y="54" width="68" height="32" rx="6" fill="rgba(96,165,250,0.15)" stroke="rgba(147,197,253,0.6)" strokeWidth="1.5" />
+      <text x="264" y="75" textAnchor="middle" fill="rgba(219,234,254,0.9)" fontSize="10" fontFamily="sans-serif">Service</text>
 
       {/* Database */}
-      <rect x="196" y="114" width="68" height="32" rx="6" fill="rgba(52,211,153,0.15)" stroke="rgba(110,231,183,0.6)" strokeWidth="1.5" />
-      <text x="230" y="135" textAnchor="middle" fill="rgba(209,250,229,0.9)" fontSize="10" fontFamily="sans-serif">Database</text>
+      <rect x="230" y="114" width="68" height="32" rx="6" fill="rgba(52,211,153,0.15)" stroke="rgba(110,231,183,0.6)" strokeWidth="1.5" />
+      <text x="264" y="135" textAnchor="middle" fill="rgba(209,250,229,0.9)" fontSize="10" fontFamily="sans-serif">Database</text>
 
       {/* Cache / Queue */}
-      <rect x="118" y="174" width="84" height="32" rx="6" fill="rgba(251,191,36,0.1)" stroke="rgba(253,224,71,0.4)" strokeWidth="1.5" />
-      <text x="160" y="195" textAnchor="middle" fill="rgba(254,249,195,0.85)" fontSize="10" fontFamily="sans-serif">Message Queue</text>
+      <rect x="130" y="174" width="84" height="32" rx="6" fill="rgba(251,191,36,0.1)" stroke="rgba(253,224,71,0.4)" strokeWidth="1.5" />
+      <text x="172" y="195" textAnchor="middle" fill="rgba(254,249,195,0.85)" fontSize="10" fontFamily="sans-serif">Message Queue</text>
 
       {/* AI sparkle */}
-      <circle cx="278" cy="40" r="12" fill="rgba(99,102,241,0.3)" stroke="rgba(167,139,250,0.6)" strokeWidth="1" />
-      <text x="278" y="45" textAnchor="middle" fill="rgba(224,231,255,0.9)" fontSize="12">✦</text>
+      <circle cx="300" cy="40" r="12" fill="rgba(99,102,241,0.3)" stroke="rgba(167,139,250,0.6)" strokeWidth="1" />
+      <text x="300" y="45" textAnchor="middle" fill="rgba(224,231,255,0.9)" fontSize="12">✦</text>
     </svg>
   );
 }
@@ -148,8 +148,11 @@ export default function LoginPage() {
               Ship.
             </h1>
             <p className="max-w-xs text-base text-indigo-200/80">
-              Describe your system — Claude draws the architecture diagram. Drill down from HLD to
-              code in layers.
+              Describe your high level system.
+              <br />
+              Claude draws the architecture diagram.
+              <br />
+              Drill down from HLD to code in layers.
             </p>
           </div>
 

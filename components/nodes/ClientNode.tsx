@@ -10,7 +10,7 @@ import RotateHandle from './RotateHandle';
 export default function ClientNode({ id, data, selected }: NodeProps<NodeData>) {
   return (
     <div
-      className={`relative min-w-[140px] rounded-xl border-2 bg-white shadow-sm transition-all ${
+      className={`relative min-w-[140px] rounded-xl border-2 bg-purple-50 shadow-sm transition-all ${
         selected
           ? 'border-purple-500 shadow-md shadow-purple-200'
           : 'border-purple-300 hover:border-purple-400 hover:shadow-md'

@@ -1,7 +1,9 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Share2, Minus, Sparkles, LogIn, LogOut, FolderOpen, User } from 'lucide-react';
+import { Share2, Minus, Sparkles, LogIn, LogOut, FolderOpen, User, Sun, Moon, Monitor } from 'lucide-react';
+import { useTheme } from '@/lib/themeContext';
+import type { Theme } from '@/lib/themeStore';
 
 interface MenuBarProps {
   onNew: () => void;
@@ -59,16 +61,16 @@ function MenuItem({
     <button
       onClick={onClick}
       disabled={disabled}
-      className="flex w-full items-center gap-2 px-4 py-1.5 text-left text-sm text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:text-slate-400"
+      className="flex w-full items-center gap-2 px-4 py-1.5 text-left text-sm text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:text-slate-400 dark:text-slate-200 dark:hover:bg-slate-700 dark:disabled:text-slate-600"
     >
       <span className="flex-1">{children}</span>
-      {shortcut && <span className="ml-4 text-xs text-slate-400">{shortcut}</span>}
+      {shortcut && <span className="ml-4 text-xs text-slate-400 dark:text-slate-500">{shortcut}</span>}
     </button>
   );
 }
 
 function MenuSeparator() {
-  return <div className="my-1 h-px bg-slate-100" />;
+  return <div className="my-1 h-px bg-slate-100 dark:bg-slate-700" />;
 }
 
 function Dropdown({
@@ -87,14 +89,14 @@ function Dropdown({
         className={`rounded px-3 py-1 text-sm ${
           open
             ? 'bg-blue-600 text-white'
-            : 'text-slate-700 hover:bg-slate-200 hover:text-slate-900'
+            : 'text-slate-700 hover:bg-slate-200 hover:text-slate-900 dark:text-slate-200 dark:hover:bg-slate-700 dark:hover:text-white'
         }`}
       >
         {label}
       </button>
       {open && (
         <div
-          className="absolute left-0 top-full z-50 mt-0.5 min-w-[220px] rounded-lg border border-slate-200 bg-white py-1.5 shadow-xl"
+          className="absolute left-0 top-full z-50 mt-0.5 min-w-[220px] rounded-lg border border-slate-200 bg-white py-1.5 shadow-xl dark:border-slate-700 dark:bg-slate-800"
           onClick={() => setOpen(false)}
         >
           {children}
@@ -103,6 +105,18 @@ function Dropdown({
     </div>
   );
 }
+
+const THEME_CYCLE: Theme[] = ['light', 'dark', 'system'];
+const THEME_ICONS: Record<Theme, React.ReactNode> = {
+  light: <Sun size={14} />,
+  dark: <Moon size={14} />,
+  system: <Monitor size={14} />,
+};
+const THEME_LABELS: Record<Theme, string> = {
+  light: 'Light',
+  dark: 'Dark',
+  system: 'System',
+};
 
 export default function MenuBar({
   onNew,
@@ -127,22 +141,28 @@ export default function MenuBar({
   const [showAbout, setShowAbout] = useState(false);
   const jsonInputRef = useRef<HTMLInputElement>(null);
   const projectInputRef = useRef<HTMLInputElement>(null);
+  const { theme, setTheme } = useTheme();
+
+  const cycleTheme = () => {
+    const next = THEME_CYCLE[(THEME_CYCLE.indexOf(theme) + 1) % THEME_CYCLE.length];
+    setTheme(next);
+  };
 
   return (
     <>
-      <div className="flex h-9 flex-shrink-0 items-center border-b border-slate-200 bg-slate-50 px-3">
+      <div className="flex h-9 flex-shrink-0 items-center border-b border-slate-200 bg-slate-50 px-3 dark:border-slate-700 dark:bg-slate-900">
         {/* Logo */}
         <div className="mr-4 flex items-center gap-1.5 pl-1">
           <Share2 size={14} className="text-blue-600" />
-          <span className="text-sm font-bold text-slate-800">Drafter</span>
+          <span className="text-sm font-bold text-slate-800 dark:text-slate-100">Drafter</span>
         </div>
 
         {/* Project name */}
         {projectName && (
           <>
-            <div className="mr-3 h-4 w-px bg-slate-300" />
+            <div className="mr-3 h-4 w-px bg-slate-300 dark:bg-slate-600" />
             <span
-              className="mr-3 max-w-[200px] truncate text-sm font-medium text-slate-700"
+              className="mr-3 max-w-[200px] truncate text-sm font-medium text-slate-700 dark:text-slate-300"
               title={projectName}
             >
               {projectName}
@@ -203,39 +223,51 @@ export default function MenuBar({
 
           <button
             onClick={() => setShowAbout(true)}
-            className="rounded px-3 py-1 text-sm text-slate-700 hover:bg-slate-200 hover:text-slate-900"
+            className="rounded px-3 py-1 text-sm text-slate-700 hover:bg-slate-200 hover:text-slate-900 dark:text-slate-200 dark:hover:bg-slate-700 dark:hover:text-white"
           >
             About
           </button>
         </div>
 
-        {/* Right side — user account */}
+        {/* Right side — theme toggle + user account */}
         <div className="ml-auto flex items-center gap-1">
+          {/* Theme cycle button */}
+          <button
+            onClick={cycleTheme}
+            title={`Theme: ${THEME_LABELS[theme]} — click to cycle`}
+            className="flex items-center gap-1.5 rounded px-2 py-1 text-xs text-slate-500 hover:bg-slate-200 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200"
+          >
+            {THEME_ICONS[theme]}
+            <span className="hidden sm:inline">{THEME_LABELS[theme]}</span>
+          </button>
+
+          <div className="h-4 w-px bg-slate-200 dark:bg-slate-700" />
+
           {userEmail ? (
             <>
               <button
                 onClick={onMyProjects}
-                className="flex items-center gap-1.5 rounded px-2.5 py-1 text-sm text-slate-700 hover:bg-slate-200 hover:text-slate-900"
+                className="flex items-center gap-1.5 rounded px-2.5 py-1 text-sm text-slate-700 hover:bg-slate-200 hover:text-slate-900 dark:text-slate-200 dark:hover:bg-slate-700 dark:hover:text-white"
                 title="My Projects"
               >
                 <FolderOpen size={13} className="text-blue-600" />
                 <span>My Projects</span>
               </button>
-              <div className="h-4 w-px bg-slate-200" />
+              <div className="h-4 w-px bg-slate-200 dark:bg-slate-700" />
               <button
                 onClick={onSignOut}
-                className="flex items-center gap-1.5 rounded px-2.5 py-1 text-sm text-slate-700 hover:bg-slate-200 hover:text-slate-900"
+                className="flex items-center gap-1.5 rounded px-2.5 py-1 text-sm text-slate-700 hover:bg-slate-200 hover:text-slate-900 dark:text-slate-200 dark:hover:bg-slate-700 dark:hover:text-white"
                 title={`Signed in as ${userEmail}`}
               >
-                <User size={13} className="text-slate-500" />
-                <span className="max-w-[140px] truncate text-xs text-slate-500">{userEmail}</span>
-                <LogOut size={12} className="text-slate-400" />
+                <User size={13} className="text-slate-500 dark:text-slate-400" />
+                <span className="max-w-[140px] truncate text-xs text-slate-500 dark:text-slate-400">{userEmail}</span>
+                <LogOut size={12} className="text-slate-400 dark:text-slate-500" />
               </button>
             </>
           ) : (
             <button
               onClick={onSignIn}
-              className="flex items-center gap-1.5 rounded px-2.5 py-1 text-sm text-slate-700 hover:bg-slate-200 hover:text-slate-900"
+              className="flex items-center gap-1.5 rounded px-2.5 py-1 text-sm text-slate-700 hover:bg-slate-200 hover:text-slate-900 dark:text-slate-200 dark:hover:bg-slate-700 dark:hover:text-white"
             >
               <LogIn size={13} className="text-blue-600" />
               <span>Sign in</span>
@@ -279,19 +311,19 @@ export default function MenuBar({
           onClick={() => setShowAbout(false)}
         >
           <div
-            className="rounded-2xl border border-slate-200 bg-white p-10 text-center shadow-2xl"
+            className="rounded-2xl border border-slate-200 bg-white p-10 text-center shadow-2xl dark:border-slate-700 dark:bg-slate-800"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-600">
               <Share2 size={28} className="text-white" />
             </div>
-            <h1 className="text-2xl font-bold text-slate-900">Drafter</h1>
-            <p className="mt-1 text-base font-medium text-slate-500">v0.1 Alpha</p>
-            <p className="mx-auto mt-4 max-w-xs text-sm text-slate-600">
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Drafter</h1>
+            <p className="mt-1 text-base font-medium text-slate-500 dark:text-slate-400">v0.1 Alpha</p>
+            <p className="mx-auto mt-4 max-w-xs text-sm text-slate-600 dark:text-slate-300">
               A layered AI-powered diagramming tool. Build architecture diagrams, drill into nodes,
               and generate diagrams with AI.
             </p>
-            <div className="mt-6 flex items-center justify-center gap-1 text-xs text-slate-400">
+            <div className="mt-6 flex items-center justify-center gap-1 text-xs text-slate-400 dark:text-slate-500">
               <Minus size={10} />
               <span>Built with Next.js, React Flow &amp; Claude</span>
               <Minus size={10} />

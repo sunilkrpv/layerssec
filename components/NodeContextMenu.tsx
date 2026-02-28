@@ -73,9 +73,9 @@ export default function NodeContextMenu({
     <div
       ref={ref}
       style={{ top: y, left: x }}
-      className="fixed z-50 min-w-[180px] rounded-xl border border-slate-200 bg-white py-1 shadow-2xl"
+      className="fixed z-50 min-w-[180px] rounded-xl border border-slate-200 bg-white py-1 shadow-2xl dark:border-slate-700 dark:bg-slate-800"
     >
-      <div className="truncate border-b border-slate-100 px-3 py-1.5 text-xs font-medium text-slate-400">
+      <div className="truncate border-b border-slate-100 px-3 py-1.5 text-xs font-medium text-slate-400 dark:border-slate-700 dark:text-slate-500">
         {nodeLabel}
       </div>
 
@@ -83,7 +83,7 @@ export default function NodeContextMenu({
       {selectedCount >= 2 && (
         <button
           onClick={onGroup}
-          className="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-slate-700 transition-colors hover:bg-blue-50 hover:text-blue-700"
+          className="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-slate-700 transition-colors hover:bg-blue-50 hover:text-blue-700 dark:text-slate-200 dark:hover:bg-blue-900/20 dark:hover:text-blue-400"
         >
           <Group size={14} />
           Group {selectedCount} nodes
@@ -92,20 +92,20 @@ export default function NodeContextMenu({
       {isGroup && (
         <button
           onClick={onUngroup}
-          className="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-slate-700 transition-colors hover:bg-blue-50 hover:text-blue-700"
+          className="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-slate-700 transition-colors hover:bg-blue-50 hover:text-blue-700 dark:text-slate-200 dark:hover:bg-blue-900/20 dark:hover:text-blue-400"
         >
           <Ungroup size={14} />
           Ungroup
         </button>
       )}
-      {(selectedCount >= 2 || isGroup) && <div className="my-1 h-px bg-slate-100" />}
+      {(selectedCount >= 2 || isGroup) && <div className="my-1 h-px bg-slate-100 dark:bg-slate-700" />}
 
       {/* Drill down */}
       {!isLine && (
         <>
           <button
             onClick={onDrillDown}
-            className="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-slate-700 transition-colors hover:bg-blue-50 hover:text-blue-700"
+            className="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-slate-700 transition-colors hover:bg-blue-50 hover:text-blue-700 dark:text-slate-200 dark:hover:bg-blue-900/20 dark:hover:text-blue-400"
           >
             {hasChildLayer ? <FolderOpen size={14} /> : <GitBranch size={14} />}
             {hasChildLayer ? 'Open Layer' : 'Drill Down'}
@@ -113,7 +113,7 @@ export default function NodeContextMenu({
           {hasChildLayer && hasReassignableTargets && onReassignLayer && (
             <button
               onClick={onReassignLayer}
-              className="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-slate-700 transition-colors hover:bg-blue-50 hover:text-blue-700"
+              className="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-slate-700 transition-colors hover:bg-blue-50 hover:text-blue-700 dark:text-slate-200 dark:hover:bg-blue-900/20 dark:hover:text-blue-400"
             >
               <ArrowRightLeft size={14} />
               Reassign Layer
@@ -122,37 +122,37 @@ export default function NodeContextMenu({
           {!hasChildLayer && hasAssignableOrphans && onAssignLayer && (
             <button
               onClick={onAssignLayer}
-              className="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-slate-700 transition-colors hover:bg-blue-50 hover:text-blue-700"
+              className="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-slate-700 transition-colors hover:bg-blue-50 hover:text-blue-700 dark:text-slate-200 dark:hover:bg-blue-900/20 dark:hover:text-blue-400"
             >
               <Link size={14} />
               Assign Layer
             </button>
           )}
-          <div className="my-1 h-px bg-slate-100" />
+          <div className="my-1 h-px bg-slate-100 dark:bg-slate-700" />
         </>
       )}
 
       {/* Z-order */}
       <button
         onClick={onBringToFront}
-        className="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900"
+        className="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900 dark:text-slate-200 dark:hover:bg-slate-700 dark:hover:text-white"
       >
         <ArrowUpToLine size={14} />
         Bring to Front
       </button>
       <button
         onClick={onSendToBack}
-        className="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900"
+        className="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900 dark:text-slate-200 dark:hover:bg-slate-700 dark:hover:text-white"
       >
         <ArrowDownToLine size={14} />
         Send to Back
       </button>
 
-      <div className="my-1 h-px bg-slate-100" />
+      <div className="my-1 h-px bg-slate-100 dark:bg-slate-700" />
 
       <button
         onClick={onDelete}
-        className="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-red-600 transition-colors hover:bg-red-50"
+        className="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-red-600 transition-colors hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
       >
         <Trash2 size={14} />
         Delete Node

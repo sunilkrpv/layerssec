@@ -88,12 +88,12 @@ export default function EdgePropertiesPanel({
   ];
 
   return (
-    <aside className="flex h-full w-64 flex-col border-l border-slate-200 bg-white shadow-sm">
-      <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
-        <h2 className="text-sm font-semibold text-slate-700">Edge Properties</h2>
+    <aside className="flex h-full w-64 flex-col border-l border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800">
+      <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 dark:border-slate-700">
+        <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-200">Edge Properties</h2>
         <button
           onClick={onClose}
-          className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+          className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:text-slate-500 dark:hover:bg-slate-700 dark:hover:text-slate-300"
         >
           <X size={14} />
         </button>
@@ -102,7 +102,7 @@ export default function EdgePropertiesPanel({
       <div className="flex-1 space-y-4 overflow-y-auto p-4">
         {/* Label */}
         <div>
-          <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">
+          <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
             Label
           </label>
           <input
@@ -110,13 +110,13 @@ export default function EdgePropertiesPanel({
             value={label}
             placeholder="e.g. HTTP, TCP, Data flow"
             onChange={(e) => onUpdate(edge.id, { label: e.target.value || undefined })}
-            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 placeholder-slate-300 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
+            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 placeholder-slate-300 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 dark:placeholder-slate-500 dark:focus:ring-blue-900/30"
           />
         </div>
 
         {/* Arrow direction */}
         <div>
-          <label className="mb-2 block text-xs font-medium uppercase tracking-wide text-slate-500">
+          <label className="mb-2 block text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
             Direction
           </label>
           <div className="grid grid-cols-2 gap-1.5">
@@ -127,8 +127,8 @@ export default function EdgePropertiesPanel({
                 onClick={() => updateDir(dir)}
                 className={`rounded-lg border px-2 py-2 text-xs font-medium transition-all ${
                   currentDir === dir
-                    ? 'border-blue-400 bg-blue-50 text-blue-700 ring-1 ring-blue-300'
-                    : 'border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50'
+                    ? 'border-blue-400 bg-blue-50 text-blue-700 ring-1 ring-blue-300 dark:border-blue-600 dark:bg-blue-900/20 dark:text-blue-400 dark:ring-blue-700'
+                    : 'border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:border-slate-500 dark:hover:bg-slate-700'
                 }`}
               >
                 {btnLabel}
@@ -139,7 +139,7 @@ export default function EdgePropertiesPanel({
 
         {/* Color */}
         <div>
-          <label className="mb-2 block text-xs font-medium uppercase tracking-wide text-slate-500">
+          <label className="mb-2 block text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
             Color
           </label>
           <div className="flex flex-wrap gap-1.5">
@@ -161,19 +161,19 @@ export default function EdgePropertiesPanel({
 
         {/* Edge ID */}
         <div>
-          <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">
+          <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
             Edge ID
           </label>
-          <p className="rounded-lg bg-slate-50 px-3 py-2 font-mono text-xs text-slate-500">
+          <p className="rounded-lg bg-slate-50 px-3 py-2 font-mono text-xs text-slate-500 dark:bg-slate-900/50 dark:text-slate-400">
             {edge.id}
           </p>
         </div>
       </div>
 
-      <div className="border-t border-slate-100 px-4 py-3">
+      <div className="border-t border-slate-100 px-4 py-3 dark:border-slate-700">
         <button
           onClick={() => { onDelete(edge.id); onClose(); }}
-          className="flex w-full items-center justify-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-600 transition-colors hover:bg-red-100"
+          className="flex w-full items-center justify-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-600 transition-colors hover:bg-red-100 dark:border-red-900 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/30"
         >
           <Trash2 size={14} />
           Delete edge
