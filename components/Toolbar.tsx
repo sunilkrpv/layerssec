@@ -1,7 +1,7 @@
 'use client';
 
 import { useReactFlow } from 'reactflow';
-import { ZoomIn, ZoomOut, Maximize2, Trash2, Save, Clock, Zap } from 'lucide-react';
+import { ZoomIn, ZoomOut, Maximize2, Trash2, Save, Clock, Zap, Loader2 } from 'lucide-react';
 
 interface ToolbarProps {
   onClear: () => void;
@@ -14,6 +14,8 @@ interface ToolbarProps {
   onToggleAutoSave: () => void;
   /** Manually trigger a save */
   onSaveFile: () => void;
+  /** True while a manual save is in flight */
+  isSaving: boolean;
   /** ISO string of last auto-save time, or null */
   lastSaved: Date | null;
   /** Whether edge/line animations are enabled */
@@ -65,6 +67,7 @@ export default function Toolbar({
   autoSave,
   onToggleAutoSave,
   onSaveFile,
+  isSaving,
   lastSaved,
   animateEdges,
   onToggleAnimateEdges,
@@ -95,18 +98,22 @@ export default function Toolbar({
         {/* Manual save */}
         <button
           onClick={onSaveFile}
-          disabled={!hasFileHandle && !hasCloudProject}
+          disabled={(!hasFileHandle && !hasCloudProject) || isSaving}
           title={
-            hasCloudProject
-              ? 'Save to cloud now'
-              : hasFileHandle
-                ? 'Save to file now'
-                : 'Open a project file or cloud project first'
+            isSaving
+              ? 'Saving…'
+              : hasCloudProject
+                ? 'Save to cloud now (⌘S)'
+                : hasFileHandle
+                  ? 'Save to file now (⌘S)'
+                  : 'Open a project file or cloud project first'
           }
           className="flex h-8 items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2.5 text-xs font-medium text-slate-600 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
         >
-          <Save size={13} />
-          Save
+          {isSaving
+            ? <Loader2 size={13} className="animate-spin" />
+            : <Save size={13} />}
+          {isSaving ? 'Saving…' : 'Save'}
         </button>
 
         {/* Auto-save toggle */}
@@ -114,11 +121,11 @@ export default function Toolbar({
           onClick={onToggleAutoSave}
           title={
             autoSave
-              ? 'Auto Save is ON (every 60s) — click to disable'
+              ? 'Auto Save is ON — click to disable'
               : 'Auto Save is OFF — click to enable'
           }
           className={`flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-medium transition-colors ${
-            autoSave && hasFileHandle
+            autoSave && (hasFileHandle || hasCloudProject)
               ? 'border-green-200 bg-green-50 text-green-700 hover:bg-green-100'
               : autoSave
                 ? 'border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100'
@@ -127,7 +134,7 @@ export default function Toolbar({
         >
           <span
             className={`h-1.5 w-1.5 rounded-full ${
-              autoSave && hasFileHandle
+              autoSave && (hasFileHandle || hasCloudProject)
                 ? 'bg-green-500'
                 : autoSave
                   ? 'bg-amber-500'

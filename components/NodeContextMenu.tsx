@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { GitBranch, Trash2, FolderOpen, ArrowUpToLine, ArrowDownToLine, Group, Ungroup } from 'lucide-react';
+import { GitBranch, Trash2, FolderOpen, ArrowUpToLine, ArrowDownToLine, Group, Ungroup, ArrowRightLeft, Link } from 'lucide-react';
 
 interface NodeContextMenuProps {
   x: number;
@@ -21,6 +21,14 @@ interface NodeContextMenuProps {
   onSendToBack: () => void;
   onGroup: () => void;
   onUngroup: () => void;
+  /** Called when user wants to reassign this node's child layer to a different shape */
+  onReassignLayer?: () => void;
+  /** True when there are sibling shapes that can receive the child layer */
+  hasReassignableTargets?: boolean;
+  /** Called when user wants to assign an orphaned layer to this shape */
+  onAssignLayer?: () => void;
+  /** True when there are unattached layers available to assign */
+  hasAssignableOrphans?: boolean;
 }
 
 export default function NodeContextMenu({
@@ -38,6 +46,10 @@ export default function NodeContextMenu({
   onSendToBack,
   onGroup,
   onUngroup,
+  onReassignLayer,
+  hasReassignableTargets,
+  onAssignLayer,
+  hasAssignableOrphans,
 }: NodeContextMenuProps) {
   const ref = useRef<HTMLDivElement>(null);
 
@@ -98,6 +110,24 @@ export default function NodeContextMenu({
             {hasChildLayer ? <FolderOpen size={14} /> : <GitBranch size={14} />}
             {hasChildLayer ? 'Open Layer' : 'Drill Down'}
           </button>
+          {hasChildLayer && hasReassignableTargets && onReassignLayer && (
+            <button
+              onClick={onReassignLayer}
+              className="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-slate-700 transition-colors hover:bg-blue-50 hover:text-blue-700"
+            >
+              <ArrowRightLeft size={14} />
+              Reassign Layer
+            </button>
+          )}
+          {!hasChildLayer && hasAssignableOrphans && onAssignLayer && (
+            <button
+              onClick={onAssignLayer}
+              className="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-slate-700 transition-colors hover:bg-blue-50 hover:text-blue-700"
+            >
+              <Link size={14} />
+              Assign Layer
+            </button>
+          )}
           <div className="my-1 h-px bg-slate-100" />
         </>
       )}

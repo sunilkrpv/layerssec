@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { X, Layers, ArrowRight, ChevronDown, ChevronRight } from 'lucide-react';
+import { X, Layers, ArrowRight, ChevronDown, ChevronRight, Trash2 } from 'lucide-react';
 import { ROOT_LAYER_ID, type Layer, type LayerMap } from '@/lib/layerStore';
 
 interface LayersPanelProps {
@@ -10,6 +10,7 @@ interface LayersPanelProps {
   onClose: () => void;
   onNavigate: (layerId: string) => void;
   onUpdateLayer: (layerId: string, updates: { name?: string; description?: string }) => void;
+  onDeleteLayer?: (layerId: string) => void;
   /** When true, renders as a docked right sidebar (no modal backdrop). */
   docked?: boolean;
 }
@@ -49,9 +50,10 @@ interface LayerRowProps {
   isCurrent: boolean;
   onNavigate: (id: string) => void;
   onUpdateLayer: (id: string, updates: { name?: string; description?: string }) => void;
+  onDeleteLayer?: (id: string) => void;
 }
 
-function LayerRow({ layer, depth, isCurrent, onNavigate, onUpdateLayer }: LayerRowProps) {
+function LayerRow({ layer, depth, isCurrent, onNavigate, onUpdateLayer, onDeleteLayer }: LayerRowProps) {
   const isRoot = layer.id === ROOT_LAYER_ID;
   const [editingName, setEditingName] = useState(false);
   const [nameValue, setNameValue] = useState(layer.name);
@@ -152,6 +154,17 @@ function LayerRow({ layer, depth, isCurrent, onNavigate, onUpdateLayer }: LayerR
             current
           </span>
         )}
+
+        {/* Delete — hidden for root */}
+        {!isRoot && onDeleteLayer && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onDeleteLayer(layer.id); }}
+            title="Delete this layer"
+            className="flex-shrink-0 rounded p-0.5 text-slate-300 transition-colors hover:bg-red-50 hover:text-red-500"
+          >
+            <Trash2 size={12} />
+          </button>
+        )}
       </div>
 
       {/* Description textarea */}
@@ -177,6 +190,7 @@ export default function LayersPanel({
   onClose,
   onNavigate,
   onUpdateLayer,
+  onDeleteLayer,
   docked = false,
 }: LayersPanelProps) {
   const backdropRef = useRef<HTMLDivElement>(null);
@@ -231,6 +245,7 @@ export default function LayersPanel({
                 isCurrent={layer.id === currentLayerId}
                 onNavigate={handleNavigate}
                 onUpdateLayer={onUpdateLayer}
+                onDeleteLayer={onDeleteLayer}
               />
             ))}
           </div>

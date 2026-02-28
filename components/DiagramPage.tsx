@@ -15,6 +15,9 @@ import LayerBar from '@/components/LayerBar';
 import LayersPanel from '@/components/LayersPanel';
 import NodeContextMenu from '@/components/NodeContextMenu';
 import DrillDownModal from '@/components/DrillDownModal';
+import ReassignLayerModal from '@/components/ReassignLayerModal';
+import DeleteLayerModal from '@/components/DeleteLayerModal';
+import AssignLayerModal from '@/components/AssignLayerModal';
 import AIChatPanel from '@/components/AIChatPanel';
 import FileLoadPrompt from '@/components/FileLoadPrompt';
 import StartupModal from '@/components/StartupModal';
@@ -34,8 +37,12 @@ import {
   findChildLayer,
   getLayerPath,
   updateLayer,
+  collectDescendantIds,
+  deleteLayerCascade,
+  getOrphanedLayers,
   ROOT_LAYER_ID,
   type LayerMap,
+  type Layer,
 } from '@/lib/layerStore';
 import {
   canUseFileSystemAPI,
@@ -107,13 +114,15 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
   // Guard ref — set to false on sign-out / 401 so debounced saves don't overwrite clean state
   const saveEnabledRef = useRef(true);
 
-  // Refs so auto-save interval can access latest state without stale closures
+  // Refs so auto-save interval / debounced saves can access latest state without stale closures
   const layersRef = useRef(layers);
   const navStackRef = useRef(navStack);
   const fileHandleRef = useRef<FileSystemFileHandle | null>(null);
+  const autoSaveRef = useRef(true); // mirrors autoSave state for use inside callbacks
   useEffect(() => { layersRef.current = layers; }, [layers]);
   useEffect(() => { navStackRef.current = navStack; }, [navStack]);
   useEffect(() => { fileHandleRef.current = fileHandle; }, [fileHandle]);
+  useEffect(() => { autoSaveRef.current = autoSave; }, [autoSave]);
 
   // ── URL file-load prompt — shown when currLayer param exists but not found locally ──
   const [showFileLoadPrompt, setShowFileLoadPrompt] = useState<string | null>(() => {
@@ -191,6 +200,7 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
   const [error, setError] = useState<string | null>(null);
   const [showLayersPanel, setShowLayersPanel] = useState(false);
   const [animateEdges, setAnimateEdges] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   // Startup modal — shown on fresh load when there's no existing work
   const [showStartupModal, setShowStartupModal] = useState(() => {
@@ -214,10 +224,30 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
     y: number;
     node: Node<NodeData>;
     selectedNodes: Node<NodeData>[];
+    hasReassignableTargets: boolean;
+    hasAssignableOrphans: boolean;
   } | null>(null);
 
   // Drill-down naming modal
   const [drillTarget, setDrillTarget] = useState<Node<NodeData> | null>(null);
+
+  // Reassign layer modal
+  const [reassignTarget, setReassignTarget] = useState<{
+    sourceNodeId: string;
+    layerId: string;
+    layerName: string;
+    targetCandidates: Node<NodeData>[];
+  } | null>(null);
+
+  // Delete layer confirmation modal
+  const [deleteLayerTarget, setDeleteLayerTarget] = useState<string | null>(null);
+
+  // Assign orphaned layer modal
+  const [assignLayerTarget, setAssignLayerTarget] = useState<{
+    nodeId: string;
+    nodeLabel: string;
+    orphans: Layer[];
+  } | null>(null);
 
   // ── Derived values ────────────────────────────────────────────────────────
   const currentLayerId = navStack[navStack.length - 1];
@@ -294,30 +324,32 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
       });
 
       // Debounced backend save — fires 2 s after the last canvas change.
-      // diagId is read INSIDE the timer so it always captures the latest ref value
-      // (avoids a race where backendDiagramId is set after handleLayerSave fires).
+      // Respects the autoSave toggle. diagId is read INSIDE the timer so it always
+      // captures the latest ref value.
       if (backendSaveTimerRef.current) clearTimeout(backendSaveTimerRef.current);
-      const savedNodes = nodes;
-      const savedEdges = edges;
-      const savedLayerId = currentLayerId;
-      backendSaveTimerRef.current = setTimeout(() => {
-        const diagId = backendDiagramIdRef.current;
-        if (!diagId) return;
-        const projectData: ProjectFile = {
-          layers: {
-            ...layersRef.current,
-            [savedLayerId]: {
-              ...layersRef.current[savedLayerId],
-              nodes: savedNodes,
-              edges: savedEdges,
+      if (autoSaveRef.current) {
+        const savedNodes = nodes;
+        const savedEdges = edges;
+        const savedLayerId = currentLayerId;
+        backendSaveTimerRef.current = setTimeout(() => {
+          const diagId = backendDiagramIdRef.current;
+          if (!diagId) return;
+          const projectData: ProjectFile = {
+            layers: {
+              ...layersRef.current,
+              [savedLayerId]: {
+                ...layersRef.current[savedLayerId],
+                nodes: savedNodes,
+                edges: savedEdges,
+              },
             },
-          },
-          navStack: navStackRef.current,
-        };
-        apiUpdateDiagram(diagId, projectData)
-          .then(() => setLastSaved(new Date()))
-          .catch((err) => console.error('[Backend save] Failed:', err));
-      }, 2000);
+            navStack: navStackRef.current,
+          };
+          apiUpdateDiagram(diagId, projectData)
+            .then(() => setLastSaved(new Date()))
+            .catch((err) => console.error('[Backend save] Failed:', err));
+        }, 2000);
+      }
     },
     [currentLayerId],
   );
@@ -412,42 +444,41 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
     [],
   );
 
-  /** Save to the current file handle (or open Save-As picker if none), and to the backend if a cloud project is open. */
+  /** Save now. Cloud-first: if a cloud project is open, saves to it immediately (no file picker). */
   const handleSaveFile = useCallback(async () => {
+    setIsSaving(true);
     const data = buildProjectSnapshot();
 
-    // Local file save
-    if (fileHandle) {
-      try {
+    try {
+      const diagId = backendDiagramIdRef.current;
+
+      if (diagId) {
+        // Cloud project is open — save to cloud, silently also write local file if open
+        await apiUpdateDiagram(diagId, data);
+        if (fileHandle) {
+          writeToHandle(fileHandle, data).catch(() => {/* non-fatal */});
+        }
+        setLastSaved(new Date());
+        return;
+      }
+
+      // No cloud project — local file save
+      if (fileHandle) {
         await writeToHandle(fileHandle, data);
         setLastSaved(new Date());
-      } catch (err: unknown) {
-        setError(err instanceof Error ? err.message : 'Save failed.');
-      }
-    } else if (canUseFileSystemAPI()) {
-      try {
+      } else if (canUseFileSystemAPI()) {
         const handle = await pickSaveAndWrite(data);
         if (handle) {
           setFileHandle(handle);
           setLastSaved(new Date());
         }
-      } catch (err: unknown) {
-        setError(err instanceof Error ? err.message : 'Save failed.');
+      } else {
+        downloadProjectFile(data);
       }
-    } else {
-      // Fallback: browser download
-      downloadProjectFile(data);
-    }
-
-    // Cloud save — always sync to backend when a project is open
-    const diagId = backendDiagramIdRef.current;
-    if (diagId) {
-      try {
-        await apiUpdateDiagram(diagId, data);
-        setLastSaved(new Date());
-      } catch (err: unknown) {
-        console.error('[Backend save] Failed:', err);
-      }
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Save failed.');
+    } finally {
+      setIsSaving(false);
     }
   }, [fileHandle, buildProjectSnapshot]);
 
@@ -668,6 +699,110 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
     [],
   );
 
+  // ── Layer delete ──────────────────────────────────────────────────────────
+
+  const handleDeleteLayer = useCallback((layerId: string) => {
+    setDeleteLayerTarget(layerId);
+  }, []);
+
+  const handleDeleteLayerConfirm = useCallback(() => {
+    if (!deleteLayerTarget) return;
+
+    const deletedIds = collectDescendantIds(layers, deleteLayerTarget);
+    const deletedLayer = layers[deleteLayerTarget];
+    const snapshot = captureCanvas(rfInstanceRef);
+
+    setLayers((prev) => {
+      const flushed = flushCurrentLayer(prev, currentLayerId, snapshot);
+      const updated = deleteLayerCascade(flushed, deleteLayerTarget);
+      saveAllLayers(updated);
+      return updated;
+    });
+
+    // If we are currently inside the deleted layer (or a descendant), pop navStack to safety
+    if (deletedIds.has(currentLayerId)) {
+      setNavStack((stack) => {
+        const safe = stack.filter((id) => !deletedIds.has(id));
+        return safe.length > 0 ? safe : [ROOT_LAYER_ID];
+      });
+      setSelectedNode(null);
+      setSelectedEdge(null);
+    }
+
+    // Clear badge on the parent node in the live canvas (only if parent is current layer)
+    if (deletedLayer?.parentLayerId === currentLayerId && deletedLayer.parentNodeId) {
+      rfInstanceRef.current?.updateNodeData(deletedLayer.parentNodeId, { _childLayerId: undefined });
+    }
+
+    // Persist to cloud
+    const diagId = backendDiagramIdRef.current;
+    if (diagId) {
+      setTimeout(() => {
+        const projectData = buildProjectSnapshotRef.current();
+        apiUpdateDiagram(diagId, projectData)
+          .then(() => setLastSaved(new Date()))
+          .catch((err) => console.error('[Delete layer cloud save] Failed:', err));
+      }, 200);
+    }
+
+    setDeleteLayerTarget(null);
+  }, [deleteLayerTarget, layers, currentLayerId, flushCurrentLayer]);
+
+  // ── Assign orphaned layer ─────────────────────────────────────────────────
+
+  const handleAssignLayer = useCallback(() => {
+    const node = contextMenu?.node;
+    if (!node) return;
+    const orphans = getOrphanedLayers(layers);
+    if (orphans.length === 0) return;
+    setAssignLayerTarget({ nodeId: node.id, nodeLabel: node.data.label, orphans });
+    setContextMenu(null);
+  }, [contextMenu, layers]);
+
+  const handleAssignLayerConfirm = useCallback(
+    (layerId: string) => {
+      if (!assignLayerTarget) return;
+      const { nodeId } = assignLayerTarget;
+
+      const snapshot = captureCanvas(rfInstanceRef);
+      setLayers((prev) => {
+        const flushed = flushCurrentLayer(prev, currentLayerId, snapshot);
+        const parentLayer = flushed[currentLayerId];
+        if (!parentLayer) return prev;
+        const updated: LayerMap = {
+          ...flushed,
+          [layerId]: { ...flushed[layerId], parentLayerId: currentLayerId, parentNodeId: nodeId },
+          [currentLayerId]: {
+            ...parentLayer,
+            nodes: parentLayer.nodes.map((n) =>
+              n.id === nodeId ? { ...n, data: { ...n.data, _childLayerId: layerId } } : n,
+            ),
+          },
+        };
+        saveAllLayers(updated);
+        return updated;
+      });
+
+      // Update live canvas badge immediately
+      rfInstanceRef.current?.updateNodeData(nodeId, { _childLayerId: layerId });
+
+      // Persist to cloud
+      const diagId = backendDiagramIdRef.current;
+      if (diagId) {
+        setTimeout(() => {
+          const projectData = buildProjectSnapshotRef.current();
+          apiUpdateDiagram(diagId, projectData)
+            .then(() => setLastSaved(new Date()))
+            .catch((err) => console.error('[Assign layer cloud save] Failed:', err));
+        }, 200);
+      }
+
+      setAssignLayerTarget(null);
+      setSelectedNode(null);
+    },
+    [assignLayerTarget, currentLayerId, flushCurrentLayer],
+  );
+
   // ── Context menu ──────────────────────────────────────────────────────────
 
   const handleNodeContextMenu = useCallback(
@@ -675,9 +810,36 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
       const sel = (rfInstanceRef.current?.getNodes() ?? []).filter(
         (n) => n.selected,
       ) as Node<NodeData>[];
-      setContextMenu({ x: event.clientX, y: event.clientY, node, selectedNodes: sel });
+
+      // Determine if reassign option should be offered:
+      // node must have a child layer AND there must be sibling shapes without one
+      let hasReassignableTargets = false;
+      const childLayer = findChildLayer(layers, currentLayerId, node.id);
+      if (childLayer && !LINE_NODE_TYPES.has(node.type as string)) {
+        const nodesWithLayers = new Set(
+          Object.values(layers)
+            .filter((l) => l.parentLayerId === currentLayerId && l.parentNodeId !== null)
+            .map((l) => l.parentNodeId as string),
+        );
+        const allNodes = (rfInstanceRef.current?.getNodes() ?? []) as Node<NodeData>[];
+        hasReassignableTargets = allNodes.some(
+          (n) =>
+            n.id !== node.id &&
+            !LINE_NODE_TYPES.has(n.type as string) &&
+            !nodesWithLayers.has(n.id),
+        );
+      }
+
+      // Determine if "Assign Layer" option should be offered:
+      // node must NOT have a child layer, must not be a line type, AND there are orphaned layers
+      let hasAssignableOrphans = false;
+      if (!childLayer && !LINE_NODE_TYPES.has(node.type as string)) {
+        hasAssignableOrphans = getOrphanedLayers(layers).length > 0;
+      }
+
+      setContextMenu({ x: event.clientX, y: event.clientY, node, selectedNodes: sel, hasReassignableTargets, hasAssignableOrphans });
     },
-    [],
+    [layers, currentLayerId],
   );
 
   const handleDrillDown = useCallback(() => {
@@ -721,6 +883,76 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
       setSelectedNode(null);
     },
     [drillTarget, currentLayerId, flushCurrentLayer],
+  );
+
+  const handleReassignLayer = useCallback(() => {
+    const node = contextMenu?.node;
+    if (!node) return;
+    const childLayer = findChildLayer(layers, currentLayerId, node.id);
+    if (!childLayer) return;
+
+    const nodesWithLayers = new Set(
+      Object.values(layers)
+        .filter((l) => l.parentLayerId === currentLayerId && l.parentNodeId !== null)
+        .map((l) => l.parentNodeId as string),
+    );
+    const allNodes = (rfInstanceRef.current?.getNodes() ?? []) as Node<NodeData>[];
+    const candidates = allNodes.filter(
+      (n) =>
+        n.id !== node.id &&
+        !LINE_NODE_TYPES.has(n.type as string) &&
+        !nodesWithLayers.has(n.id),
+    );
+
+    setReassignTarget({
+      sourceNodeId: node.id,
+      layerId: childLayer.id,
+      layerName: childLayer.name,
+      targetCandidates: candidates,
+    });
+    setContextMenu(null);
+  }, [contextMenu, layers, currentLayerId]);
+
+  const handleReassignLayerConfirm = useCallback(
+    (targetNodeId: string) => {
+      if (!reassignTarget) return;
+      const { sourceNodeId, layerId } = reassignTarget;
+
+      const snapshot = captureCanvas(rfInstanceRef);
+      setLayers((prev) => {
+        const flushed = flushCurrentLayer(prev, currentLayerId, snapshot);
+        const parentLayer = flushed[currentLayerId];
+        if (!parentLayer) return prev;
+
+        // Remove _childLayerId from old owner, add to new owner
+        const updatedNodes = parentLayer.nodes.map((n) => {
+          if (n.id === sourceNodeId) {
+            const { _childLayerId: _removed, ...restData } = n.data as NodeData;
+            return { ...n, data: restData };
+          }
+          if (n.id === targetNodeId) {
+            return { ...n, data: { ...n.data, _childLayerId: layerId } };
+          }
+          return n;
+        });
+
+        const updated: LayerMap = {
+          ...flushed,
+          [currentLayerId]: { ...parentLayer, nodes: updatedNodes },
+          [layerId]: { ...flushed[layerId], parentNodeId: targetNodeId },
+        };
+        saveAllLayers(updated);
+        return updated;
+      });
+
+      // Also update the live ReactFlow canvas so the badge moves immediately
+      rfInstanceRef.current?.updateNodeData(sourceNodeId, { _childLayerId: undefined });
+      rfInstanceRef.current?.updateNodeData(targetNodeId, { _childLayerId: layerId });
+
+      setReassignTarget(null);
+      setSelectedNode(null);
+    },
+    [reassignTarget, currentLayerId, flushCurrentLayer],
   );
 
   const handleContextMenuDelete = useCallback(() => {
@@ -1028,6 +1260,7 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
             autoSave={autoSave}
             onToggleAutoSave={() => setAutoSave((v) => !v)}
             onSaveFile={handleSaveFile}
+            isSaving={isSaving}
             lastSaved={lastSaved}
             animateEdges={animateEdges}
             onToggleAnimateEdges={() => setAnimateEdges((v) => !v)}
@@ -1085,6 +1318,7 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
                     onClose={() => setShowLayersPanel(false)}
                     onNavigate={navigateTo}
                     onUpdateLayer={handleUpdateLayer}
+                    onDeleteLayer={handleDeleteLayer}
                   />
                 )}
                 {selectedNode && (
@@ -1125,6 +1359,10 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
             onSendToBack={handleSendToBack}
             onGroup={handleGroup}
             onUngroup={handleUngroup}
+            hasReassignableTargets={contextMenu.hasReassignableTargets}
+            onReassignLayer={handleReassignLayer}
+            hasAssignableOrphans={contextMenu.hasAssignableOrphans}
+            onAssignLayer={handleAssignLayer}
           />
         )}
 
@@ -1134,6 +1372,36 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
             defaultName={`${drillTarget.data.label} Layer`}
             onConfirm={handleDrillDownConfirm}
             onCancel={() => setDrillTarget(null)}
+          />
+        )}
+
+        {/* ── Reassign layer modal ─────────────────────────────────────────── */}
+        {reassignTarget && (
+          <ReassignLayerModal
+            layerName={reassignTarget.layerName}
+            targetCandidates={reassignTarget.targetCandidates}
+            onConfirm={handleReassignLayerConfirm}
+            onCancel={() => setReassignTarget(null)}
+          />
+        )}
+
+        {/* ── Delete layer confirmation modal ─────────────────────────────────── */}
+        {deleteLayerTarget && layers[deleteLayerTarget] && (
+          <DeleteLayerModal
+            layerName={layers[deleteLayerTarget].name}
+            descendantCount={collectDescendantIds(layers, deleteLayerTarget).size - 1}
+            onConfirm={handleDeleteLayerConfirm}
+            onCancel={() => setDeleteLayerTarget(null)}
+          />
+        )}
+
+        {/* ── Assign orphaned layer modal ───────────────────────────────────────── */}
+        {assignLayerTarget && (
+          <AssignLayerModal
+            shapeLabel={assignLayerTarget.nodeLabel}
+            orphanedLayers={assignLayerTarget.orphans}
+            onConfirm={handleAssignLayerConfirm}
+            onCancel={() => setAssignLayerTarget(null)}
           />
         )}
 

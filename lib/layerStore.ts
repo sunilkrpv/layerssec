@@ -118,3 +118,65 @@ export function findChildLayer(
     (l) => l.parentLayerId === parentLayerId && l.parentNodeId === parentNodeId,
   );
 }
+
+/**
+ * Collect the IDs of a layer and all its descendants (recursive).
+ * Returned as a Set for O(1) membership checks.
+ */
+export function collectDescendantIds(layers: LayerMap, layerId: string): Set<string> {
+  const ids = new Set<string>();
+  function visit(id: string) {
+    if (ids.has(id)) return;
+    ids.add(id);
+    for (const layer of Object.values(layers)) {
+      if (layer.parentLayerId === id) visit(layer.id);
+    }
+  }
+  visit(layerId);
+  return ids;
+}
+
+/**
+ * Delete a layer and all its descendants from the LayerMap.
+ * Also clears `_childLayerId` from the parent node that linked to the deleted layer.
+ * Cannot delete the root layer — returns unchanged map if attempted.
+ */
+export function deleteLayerCascade(layers: LayerMap, layerId: string): LayerMap {
+  if (layerId === ROOT_LAYER_ID) return layers;
+  const layer = layers[layerId];
+  if (!layer) return layers;
+
+  const toDelete = collectDescendantIds(layers, layerId);
+
+  // Build a new LayerMap without the deleted layers
+  const result: LayerMap = {};
+  for (const [id, l] of Object.entries(layers)) {
+    if (toDelete.has(id)) continue;
+    result[id] = l;
+  }
+
+  // Clear _childLayerId on the parent node that pointed directly to the deleted layer
+  const { parentLayerId, parentNodeId } = layer;
+  if (parentLayerId && parentNodeId && result[parentLayerId]) {
+    const parentLayer = result[parentLayerId];
+    result[parentLayerId] = {
+      ...parentLayer,
+      nodes: parentLayer.nodes.map((n) => {
+        if (n.id !== parentNodeId) return n;
+        const data = n.data as Record<string, unknown>;
+        if (data._childLayerId !== layerId) return n;
+        const { _childLayerId: _removed, ...rest } = data;
+        return { ...n, data: rest };
+      }),
+    };
+  }
+
+  return result;
+}
+
+/** Return all layers that are not attached to any node (standalone / orphaned). */
+export function getOrphanedLayers(layers: LayerMap): Layer[] {
+  return Object.values(layers).filter(
+    (l) => l.id !== ROOT_LAYER_ID && l.parentNodeId === null,
+  );
+}
