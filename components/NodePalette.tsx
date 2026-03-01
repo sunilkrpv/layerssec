@@ -76,7 +76,7 @@ export default function NodePalette({ onDragStart, onAddNode }: NodePaletteProps
                         title={item.description}
                       >
                         <Icon size={14} className={item.color} />
-                        <span className={`text-xs font-medium ${item.color}`}>{item.label}</span>
+                        <span className="text-xs font-medium text-slate-800 dark:text-slate-200">{item.label}</span>
                       </div>
                     );
                   })}
@@ -138,17 +138,17 @@ export default function NodePalette({ onDragStart, onAddNode }: NodePaletteProps
                         draggable
                         onClick={() => onAddNode(item.type)}
                         onDragStart={(e) => onDragStart(e, item.type)}
-                        className={`flex cursor-pointer select-none items-center gap-2.5 rounded-lg border-2 px-2.5 py-2 transition-all hover:shadow-sm active:scale-95 ${item.bgColor} ${item.borderColor}`}
+                        className={`flex cursor-pointer select-none items-center gap-2.5 rounded-lg border-2 px-2.5 py-2 transition-all hover:shadow-sm active:scale-95 ${item.bgColor} ${item.borderColor} dark:bg-slate-700/50 dark:border-slate-600`}
                         title={`${item.description} - click to add, drag to place`}
                       >
                         <div className={`flex-shrink-0 ${item.color}`}>
                           <Icon size={15} />
                         </div>
                         <div className="min-w-0 flex-1">
-                          <p className={`text-xs font-medium leading-tight ${item.color}`}>
+                          <p className={`text-xs font-medium leading-tight ${item.color} dark:text-slate-200`}>
                             {item.label}
                           </p>
-                          <p className="truncate text-[10px] text-slate-400">{item.description}</p>
+                          <p className="truncate text-[10px] text-slate-400 dark:text-slate-500">{item.description}</p>
                         </div>
                       </div>
                     );

@@ -7,6 +7,7 @@ import type { NodeData, NodeType } from '@/lib/types';
 import { PALETTE_ITEMS, LINE_NODE_TYPES } from '@/lib/nodeConfig';
 
 const COLOR_SWATCHES = [
+  { value: '#000000', label: 'Black' },
   { value: '#ffffff', label: 'White' },
   { value: '#f1f5f9', label: 'Light gray' },
   { value: '#3b82f6', label: 'Blue' },
