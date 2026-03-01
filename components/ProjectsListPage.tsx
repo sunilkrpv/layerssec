@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import {
   ArrowLeft, Plus, FolderOpen, Loader2, X, GitBranch,
   Clock, ChevronRight, Lock, FileEdit, AlertCircle,
+  GitCompare, CheckCircle2, Circle,
 } from 'lucide-react';
 import {
   apiListProjects, apiListProjectVersions, apiCheckoutVersion,
@@ -70,11 +71,11 @@ interface SideSheetProps {
   project: ProjectWithVersioning;
   onClose: () => void;
   onNavigate: (projectId: string) => void;
-  /** Navigate to a specific version (read-only view) */
   onView: (projectId: string, diagramId: string) => void;
+  onDiff: (projectId: string, v1: DiagramVersion, v2: DiagramVersion) => void;
 }
 
-function SideSheet({ project, onClose, onNavigate, onView }: SideSheetProps) {
+function SideSheet({ project, onClose, onNavigate, onView, onDiff }: SideSheetProps) {
   const [versions, setVersions] = useState<DiagramVersion[]>([]);
   const [loading, setLoading] = useState(true);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
@@ -82,12 +83,18 @@ function SideSheet({ project, onClose, onNavigate, onView }: SideSheetProps) {
   const [draftConflictDiagramId, setDraftConflictDiagramId] = useState<string | null>(null);
   const [draftConflictFromVersion, setDraftConflictFromVersion] = useState<string | null>(null);
 
+  // Diff mode state
+  const [isDiffMode, setIsDiffMode] = useState(false);
+  const [diffSelections, setDiffSelections] = useState<string[]>([]);
+
   useEffect(() => {
     setLoading(true);
     setVersions([]);
     setCheckoutError(null);
     setDraftConflictDiagramId(null);
     setCheckingOut(null);
+    setIsDiffMode(false);
+    setDiffSelections([]);
     apiListProjectVersions(project.id)
       .then((v) => setVersions([...v].reverse()))
       .catch(() => setCheckoutError('Failed to load versions'))
@@ -119,8 +126,29 @@ function SideSheet({ project, onClose, onNavigate, onView }: SideSheetProps) {
     onNavigate(project.id);
   }, [project.id, onNavigate]);
 
+  const toggleDiffSelection = (id: string) => {
+    setDiffSelections((prev) => {
+      if (prev.includes(id)) return prev.filter((x) => x !== id);
+      if (prev.length >= 2) return prev; // already 2 selected — ignore
+      return [...prev, id];
+    });
+  };
+
+  const handleRunDiff = () => {
+    if (diffSelections.length !== 2) return;
+    const [id1, id2] = diffSelections;
+    const v1 = published.find((v) => v.id === id1);
+    const v2 = published.find((v) => v.id === id2);
+    if (!v1 || !v2) return;
+    // Sort so the lower version number is always the "base" (left side)
+    const [base, compare] =
+      (v1.versionNumber ?? 0) <= (v2.versionNumber ?? 0) ? [v1, v2] : [v2, v1];
+    onDiff(project.id, base, compare);
+  };
+
   const draft = versions.find((v) => v.status === 'draft');
   const published = versions.filter((v) => v.status === 'published');
+  const canDiff = published.length >= 2;
 
   return (
     <div className="fixed inset-y-0 right-0 z-40 flex w-96 flex-col border-l border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900">
@@ -130,16 +158,49 @@ function SideSheet({ project, onClose, onNavigate, onView }: SideSheetProps) {
           <h2 className="truncate text-base font-bold text-slate-900 dark:text-slate-100">{project.name}</h2>
           <p className="mt-0.5 text-xs text-slate-400">Created {formatDate(project.createdAt)}</p>
         </div>
-        <button
-          onClick={onClose}
-          className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-300"
-        >
-          <X size={16} />
-        </button>
+        <div className="flex items-center gap-1.5">
+          {/* Compare versions toggle — only when 2+ published versions exist */}
+          {canDiff && !isDiffMode && (
+            <button
+              onClick={() => { setIsDiffMode(true); setDiffSelections([]); }}
+              title="Compare two versions"
+              className="flex items-center gap-1 rounded-lg border border-slate-200 px-2 py-1 text-[11px] font-medium text-slate-600 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700 dark:border-slate-700 dark:text-slate-400 dark:hover:border-blue-700 dark:hover:bg-blue-900/20 dark:hover:text-blue-400"
+            >
+              <GitCompare size={12} />
+              Compare
+            </button>
+          )}
+          {isDiffMode && (
+            <button
+              onClick={() => { setIsDiffMode(false); setDiffSelections([]); }}
+              className="flex items-center gap-1 rounded-lg border border-slate-200 px-2 py-1 text-[11px] text-slate-500 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800"
+            >
+              Cancel
+            </button>
+          )}
+          <button
+            onClick={onClose}
+            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-300"
+          >
+            <X size={16} />
+          </button>
+        </div>
       </div>
 
-      {/* Open draft CTA */}
-      {project.hasDraft && (
+      {/* Diff mode instruction banner */}
+      {isDiffMode && (
+        <div className="flex-shrink-0 border-b border-blue-100 bg-blue-50 px-5 py-2.5 dark:border-blue-900 dark:bg-blue-900/10">
+          <p className="text-xs text-blue-700 dark:text-blue-400">
+            Select <strong>2 published versions</strong> to compare.
+            {diffSelections.length > 0 && (
+              <span className="ml-1 font-medium">{diffSelections.length}/2 selected</span>
+            )}
+          </p>
+        </div>
+      )}
+
+      {/* Open draft CTA — hidden in diff mode */}
+      {!isDiffMode && project.hasDraft && (
         <div className="flex-shrink-0 border-b border-slate-100 bg-amber-50 px-5 py-3 dark:border-slate-800 dark:bg-amber-900/10">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2 text-sm text-amber-700 dark:text-amber-400">
@@ -214,8 +275,8 @@ function SideSheet({ project, onClose, onNavigate, onView }: SideSheetProps) {
           </div>
         ) : (
           <ul className="divide-y divide-slate-100 dark:divide-slate-800">
-            {/* Draft entry */}
-            {draft && (
+            {/* Draft entry — hidden in diff mode (can't diff draft) */}
+            {draft && !isDiffMode && (
               <li className="px-5 py-3.5">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0 flex-1">
@@ -239,52 +300,100 @@ function SideSheet({ project, onClose, onNavigate, onView }: SideSheetProps) {
               </li>
             )}
 
-            {/* Published entries (already reversed = newest first) */}
-            {published.map((v) => (
-              <li key={v.id} className="px-5 py-3.5">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-semibold text-green-700 dark:bg-green-900/30 dark:text-green-400">
-                        <Lock size={9} />
-                        v{v.versionNumber}
-                      </span>
-                      <span className="text-xs text-slate-500 dark:text-slate-400">
-                        {v.publishedAt ? formatDate(v.publishedAt) : '—'}
-                      </span>
-                    </div>
-                    {v.publishComment && (
-                      <p className="mt-1 truncate text-xs italic text-slate-500 dark:text-slate-400">
-                        "{v.publishComment}"
-                      </p>
-                    )}
-                    <p className="mt-0.5 text-[10px] text-slate-400">Shared: N/A</p>
-                  </div>
-                  <div className="flex flex-shrink-0 flex-col gap-1.5">
-                    <button
-                      onClick={() => onView(project.id, v.id)}
-                      className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-medium text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
-                    >
-                      View
-                    </button>
-                    <button
-                      onClick={() => handleCheckout(v.id)}
-                      disabled={!!checkingOut}
-                      className="rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1 text-[11px] font-medium text-blue-700 hover:bg-blue-100 disabled:opacity-60 dark:border-blue-900 dark:bg-blue-900/20 dark:text-blue-400"
-                    >
-                      {checkingOut === v.id ? (
-                        <Loader2 size={11} className="animate-spin" />
-                      ) : (
-                        'Check Out'
+            {/* Published entries */}
+            {published.map((v) => {
+              const isSelected = diffSelections.includes(v.id);
+              const canSelect = isSelected || diffSelections.length < 2;
+
+              return (
+                <li
+                  key={v.id}
+                  className={`px-5 py-3.5 transition-colors ${
+                    isDiffMode
+                      ? isSelected
+                        ? 'bg-blue-50 dark:bg-blue-900/15'
+                        : canSelect
+                        ? 'hover:bg-slate-50 dark:hover:bg-slate-800/50'
+                        : 'opacity-40'
+                      : ''
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-semibold text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                          <Lock size={9} />
+                          v{v.versionNumber}
+                        </span>
+                        <span className="text-xs text-slate-500 dark:text-slate-400">
+                          {v.publishedAt ? formatDate(v.publishedAt) : '—'}
+                        </span>
+                      </div>
+                      {v.publishComment && (
+                        <p className="mt-1 truncate text-xs italic text-slate-500 dark:text-slate-400">
+                          &ldquo;{v.publishComment}&rdquo;
+                        </p>
                       )}
-                    </button>
+                    </div>
+
+                    {isDiffMode ? (
+                      /* Diff selection toggle */
+                      <button
+                        onClick={() => canSelect && toggleDiffSelection(v.id)}
+                        disabled={!canSelect}
+                        className="flex-shrink-0 rounded-lg p-1 transition-colors"
+                      >
+                        {isSelected ? (
+                          <CheckCircle2 size={18} className="text-blue-600 dark:text-blue-400" />
+                        ) : (
+                          <Circle size={18} className="text-slate-300 dark:text-slate-600" />
+                        )}
+                      </button>
+                    ) : (
+                      /* Normal mode — View + Check Out */
+                      <div className="flex flex-shrink-0 flex-col gap-1.5">
+                        <button
+                          onClick={() => onView(project.id, v.id)}
+                          className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-medium text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+                        >
+                          View
+                        </button>
+                        <button
+                          onClick={() => handleCheckout(v.id)}
+                          disabled={!!checkingOut}
+                          className="rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1 text-[11px] font-medium text-blue-700 hover:bg-blue-100 disabled:opacity-60 dark:border-blue-900 dark:bg-blue-900/20 dark:text-blue-400"
+                        >
+                          {checkingOut === v.id ? (
+                            <Loader2 size={11} className="animate-spin" />
+                          ) : (
+                            'Check Out'
+                          )}
+                        </button>
+                      </div>
+                    )}
                   </div>
-                </div>
-              </li>
-            ))}
+                </li>
+              );
+            })}
           </ul>
         )}
       </div>
+
+      {/* Diff mode footer — Compare button */}
+      {isDiffMode && (
+        <div className="flex-shrink-0 border-t border-slate-200 bg-white px-5 py-3.5 dark:border-slate-700 dark:bg-slate-900">
+          <button
+            disabled={diffSelections.length !== 2}
+            onClick={handleRunDiff}
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <GitCompare size={14} />
+            {diffSelections.length === 2
+              ? 'Compare Selected Versions'
+              : `Select ${2 - diffSelections.length} more version${diffSelections.length === 0 ? 's' : ''}`}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -322,7 +431,6 @@ export default function ProjectsListPage() {
     setError(null);
     try {
       await apiCreateProject(trimmed);
-      // Reload list
       const updated = await apiListProjects();
       setProjects(updated);
       setNewName('');
@@ -341,6 +449,16 @@ export default function ProjectsListPage() {
   const handleView = useCallback((projectId: string, diagramId: string) => {
     router.push(`/projects/${projectId}?view=${diagramId}`);
   }, [router]);
+
+  /** Navigate to the diff page for two specific published versions of a project. */
+  const handleDiff = useCallback(
+    (projectId: string, base: DiagramVersion, compare: DiagramVersion) => {
+      router.push(
+        `/diff?projectId=${projectId}&v1=${base.id}&vn1=${base.versionNumber ?? ''}&v2=${compare.id}&vn2=${compare.versionNumber ?? ''}`,
+      );
+    },
+    [router],
+  );
 
   return (
     <div className="flex h-screen flex-col bg-slate-50 dark:bg-slate-950">
@@ -461,7 +579,7 @@ export default function ProjectsListPage() {
                         <div>
                           <span className="font-medium text-slate-800 dark:text-slate-200">{p.name}</span>
                           {p.description && (
-                            <p className="text-xs text-slate-400 dark:text-slate-500 truncate max-w-[180px]">
+                            <p className="max-w-[180px] truncate text-xs text-slate-400 dark:text-slate-500">
                               {p.description}
                             </p>
                           )}
@@ -505,6 +623,7 @@ export default function ProjectsListPage() {
             onClose={() => setSelectedProject(null)}
             onNavigate={handleNavigate}
             onView={handleView}
+            onDiff={handleDiff}
           />
         </>
       )}

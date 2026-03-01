@@ -1,10 +1,12 @@
 'use client';
 
-import { useRef, useState } from 'react';
-import { Share2, Upload, FileJson, ArrowLeft, X } from 'lucide-react';
+import { useRef, useState, useEffect } from 'react';
+import { Share2, Upload, FileJson, ArrowLeft, X, Loader2 } from 'lucide-react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import type { ProjectFile } from '@/lib/fileStore';
 import type { LayerMap } from '@/lib/layerStore';
+import { apiGetDiagram } from '@/lib/api';
 import { diffProjects, type ProjectDiff, type NodeDiff, type EdgeDiff } from '@/lib/diffEngine';
 import DiffCanvas from './DiffCanvas';
 import DiffLayersPanel from './DiffLayersPanel';
@@ -17,6 +19,13 @@ function parseProjectFile(text: string): LayerMap {
     return (parsed as ProjectFile).layers;
   }
   return parsed as LayerMap;
+}
+
+function extractLayersFromCanvasData(canvasData: unknown): LayerMap {
+  if (canvasData && typeof canvasData === 'object' && 'layers' in canvasData) {
+    return (canvasData as { layers: LayerMap }).layers;
+  }
+  return canvasData as LayerMap;
 }
 
 // ─── File drop zone ───────────────────────────────────────────────────────────
@@ -109,12 +118,39 @@ function DropZone({ side, filename, onFile, onClear }: DropZoneProps) {
 // ─── DiffPage ─────────────────────────────────────────────────────────────────
 
 export default function DiffPage() {
+  const searchParams = useSearchParams();
   const [leftLayers, setLeftLayers] = useState<LayerMap | null>(null);
   const [rightLayers, setRightLayers] = useState<LayerMap | null>(null);
   const [leftFilename, setLeftFilename] = useState<string | null>(null);
   const [rightFilename, setRightFilename] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [activeLayerId, setActiveLayerId] = useState<string>('root');
+  const [isCloudLoading, setIsCloudLoading] = useState(false);
+
+  // Cloud mode: auto-load when URL params are present
+  const v1Id = searchParams.get('v1');
+  const v2Id = searchParams.get('v2');
+  const vn1 = searchParams.get('vn1');
+  const vn2 = searchParams.get('vn2');
+  const isCloudMode = Boolean(v1Id && v2Id);
+
+  useEffect(() => {
+    if (!v1Id || !v2Id) return;
+    setIsCloudLoading(true);
+    setError(null);
+    Promise.all([apiGetDiagram(v1Id), apiGetDiagram(v2Id)])
+      .then(([d1, d2]) => {
+        setLeftLayers(extractLayersFromCanvasData(d1.canvasData));
+        setRightLayers(extractLayersFromCanvasData(d2.canvasData));
+        setLeftFilename(vn1 ? `Version ${vn1}` : 'Base version');
+        setRightFilename(vn2 ? `Version ${vn2}` : 'Compare version');
+        setActiveLayerId('root');
+      })
+      .catch(() => setError('Failed to load diagram versions from server.'))
+      .finally(() => setIsCloudLoading(false));
+    // Only run when URL params change (component mount in practice)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [v1Id, v2Id]);
 
   const diff: ProjectDiff | null =
     leftLayers && rightLayers ? diffProjects(leftLayers, rightLayers) : null;
@@ -152,16 +188,28 @@ export default function DiffPage() {
 
   const bothLoaded = leftLayers !== null && rightLayers !== null;
 
+  // Cloud loading overlay
+  if (isCloudLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-slate-50">
+        <div className="flex flex-col items-center gap-3 text-slate-500">
+          <Loader2 size={28} className="animate-spin text-blue-500" />
+          <span className="text-sm font-medium">Loading diagram versions…</span>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-screen flex-col bg-slate-50">
       {/* Top bar */}
       <div className="flex h-9 flex-shrink-0 items-center gap-3 border-b border-slate-200 bg-white px-4">
         <Link
-          href="/projects/local"
+          href={isCloudMode ? '/projects' : '/projects/local'}
           className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-700"
         >
           <ArrowLeft size={13} />
-          Back to editor
+          {isCloudMode ? 'Back to projects' : 'Back to editor'}
         </Link>
         <div className="h-4 w-px bg-slate-200" />
         <div className="flex items-center gap-1.5">
@@ -198,8 +246,8 @@ export default function DiffPage() {
         </div>
       )}
 
-      {/* Load screen */}
-      {!bothLoaded && (
+      {/* Load screen (file mode only) */}
+      {!bothLoaded && !isCloudMode && (
         <div className="flex flex-1 flex-col items-center justify-center gap-8 px-8">
           <div className="text-center">
             <h1 className="text-xl font-bold text-slate-800">Compare two project files</h1>

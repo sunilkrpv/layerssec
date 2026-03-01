@@ -15,7 +15,11 @@
       "Bash(source ~/.nvm/nvm.sh)",
       "Bash(nvm use default)",
       "Bash(nvm use 23)",
-      "Bash(nvm use 23 --silent)"
+      "Bash(nvm use 23 --silent)",
+      "Bash(/usr/local/bin/npx tsc --noEmit)",
+      "Bash(node -e \"const {execSync} = require\\(''child_process''\\); console.log\\(execSync\\(''which npx'', {encoding:''utf8''}\\)\\)\")",
+      "Bash(export PATH=\"$HOME/.nvm/versions/node/v23.11.1/bin:$PATH\")",
+      "Bash(echo \"Exit: $?\")"
     ]
   }
 }

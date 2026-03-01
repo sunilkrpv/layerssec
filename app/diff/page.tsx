@@ -1,7 +1,14 @@
-import DiffPage from '@/components/DiffPage';
+import dynamic from 'next/dynamic';
+import { Suspense } from 'react';
 
-export const metadata = { title: 'Project Diff — Drafter' };
+// DiffPage uses useSearchParams() which requires a Suspense boundary during SSR.
+// Disabling SSR avoids the mismatch and the explicit Suspense wrapper requirement.
+const DiffPage = dynamic(() => import('@/components/DiffPage'), { ssr: false });
 
 export default function DiffRoute() {
-  return <DiffPage />;
+  return (
+    <Suspense>
+      <DiffPage />
+    </Suspense>
+  );
 }
