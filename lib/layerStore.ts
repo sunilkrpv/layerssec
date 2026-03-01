@@ -41,6 +41,16 @@ export function saveAllLayers(layers: LayerMap): void {
   }
 }
 
+/** Remove the layers key from localStorage entirely (called on sign-out / session expiry). */
+export function clearLayersStorage(): void {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.removeItem(STORAGE_KEY);
+  } catch {
+    // ignore
+  }
+}
+
 export function makeInitialLayers(): LayerMap {
   const root: Layer = {
     id: ROOT_LAYER_ID,

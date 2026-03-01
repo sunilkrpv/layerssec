@@ -14,7 +14,8 @@
       "Bash(node -e \"require\\(''child_process''\\).execSync\\(''npx tsc --noEmit'', {stdio:''inherit'', cwd:''/Users/sunil/Development/github/drafter''}\\)\")",
       "Bash(source ~/.nvm/nvm.sh)",
       "Bash(nvm use default)",
-      "Bash(nvm use 23)"
+      "Bash(nvm use 23)",
+      "Bash(nvm use 23 --silent)"
     ]
   }
 }

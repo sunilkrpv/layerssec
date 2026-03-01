@@ -37,6 +37,7 @@ import { getStoredUser, clearTokens, isLoggedIn, isLocalMode, clearLocalMode } f
 import {
   loadAllLayers,
   saveAllLayers,
+  clearLayersStorage,
   makeInitialLayers,
   createChildLayer,
   createStandaloneLayer,
@@ -205,6 +206,11 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
       saveEnabledRef.current = false;
       clearTokens();
       clearLocalMode();
+      // Clear stored diagram data so the next user doesn't see stale layers
+      clearLayersStorage();
+      const fresh = makeInitialLayers();
+      setLayers(fresh);
+      setNavStack([ROOT_LAYER_ID]);
       setUser(null);
       setBackendDiagramId(null);
       setCurrentProjectName(null);
@@ -656,9 +662,9 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
     saveEnabledRef.current = false;
     clearTokens();
     clearLocalMode();
-    const fresh = makeInitialLayers();
-    saveAllLayers(fresh);
-    setLayers(fresh);
+    // Remove diagram data entirely so the next user starts clean
+    clearLayersStorage();
+    setLayers(makeInitialLayers());
     setNavStack([ROOT_LAYER_ID]);
     setUser(null);
     setBackendDiagramId(null);
