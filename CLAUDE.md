@@ -10,7 +10,7 @@ Handles authentication, project/diagram storage, and AI interaction tracking.
 - **Auth**: JWT (access token 15 min + refresh token 7 d) via `@nestjs/jwt` + `passport-jwt`
 - **Passwords**: bcrypt (salt rounds 12)
 - **Validation**: `class-validator` + `class-transformer` + global `ValidationPipe`
-- **AI**: `@anthropic-ai/sdk`
+- **AI**: LangChain (`@langchain/core`, `@langchain/anthropic`, `@langchain/ollama`) — provider selected via `AI_PROVIDER` env var
 - **Port**: 4000; CORS allows `http://localhost:3000`
 
 ## Key Architectural Patterns
@@ -43,8 +43,33 @@ src/
   projects/     ProjectsModule — CRUD for projects
   diagrams/     DiagramsModule — CRUD for diagrams (under /api/projects/:id/diagrams and /api/diagrams/:id)
   prisma/       PrismaModule — global PrismaService (onModuleInit: $connect)
-  ai/           AiModule — AI interaction tracking
+  ai/           AiModule — LangChain LLM orchestration + diagram generation endpoints
+    llm.service.ts  — LlmService: selects Anthropic or Ollama at startup via AI_PROVIDER env var
+    ai.service.ts   — AiService: generate/suggest/refine; logs to AiInteraction table
+    ai.controller.ts — POST /api/ai/generate | /suggest | /refine
+    prompts/     — SYSTEM_PROMPT, buildGeneratePrompt, buildRefinePrompt, buildSuggestPrompt
   storage/      StorageModule — Supabase Storage (thumbnails)
+```
+
+### LLM Provider Selection (LlmService)
+`AI_PROVIDER` env var controls which provider is used at startup:
+
+| `AI_PROVIDER` | Provider | Required env vars |
+|---|---|---|
+| `anthropic` (default) | Anthropic Claude | `ANTHROPIC_API_KEY`, optionally `ANTHROPIC_MODEL` |
+| `ollama` | Ollama (local) | `OLLAMA_BASE_URL`, `OLLAMA_MODEL` |
+
+`LlmService` exposes a single `invoke(systemPrompt, userMessage): Promise<{ content, tokensUsed }>` method.
+Both providers use LangChain's unified chat model interface — `AiService` is provider-agnostic.
+
+**Ollama quick start:**
+```bash
+# Install Ollama from https://ollama.com
+ollama pull qwen2.5:7b          # or: ollama pull qwen:7b
+# Set in .env.local:
+#   AI_PROVIDER=ollama
+#   OLLAMA_MODEL=qwen2.5:7b
+npm run start:dev
 ```
 
 ### Ownership checks
@@ -99,6 +124,14 @@ npm run db:generate         # regenerate Prisma Client after schema change
 - Projects + Diagrams CRUD with ownership enforcement
 - AI interaction tracking model
 - Supabase Storage module stub
+
+### LangChain + Ollama integration
+- `LlmService` — new service in `ai/` module; reads `AI_PROVIDER` and initialises `ChatAnthropic` or `ChatOllama`
+- `AiService` — replaced direct `@anthropic-ai/sdk` calls with `LlmService.invoke()`
+- `AiModule` — added `LlmService` to providers + exports
+- `model` field in `AiInteraction` now stores `"provider/modelName"` (e.g. `"anthropic/claude-sonnet-4-6"` or `"ollama/qwen2.5:7b"`)
+- Packages added: `@langchain/core`, `@langchain/anthropic`, `@langchain/ollama`
+- `.env.example` updated with `AI_PROVIDER`, `ANTHROPIC_MODEL`, `OLLAMA_BASE_URL`, `OLLAMA_MODEL`
 
 ### Dev Environment
 - Added `dotenv-cli` as dev dependency

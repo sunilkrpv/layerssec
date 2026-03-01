@@ -1,7 +1,6 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import Anthropic from '@anthropic-ai/sdk';
 import { PrismaService } from '../prisma/prisma.service';
+import { LlmService } from './llm.service';
 import { SYSTEM_PROMPT } from './prompts/system-prompt';
 import { buildGeneratePrompt } from './prompts/generate-prompt';
 import { buildSuggestPrompt } from './prompts/suggest-prompt';
@@ -9,29 +8,22 @@ import { buildRefinePrompt } from './prompts/refine-prompt';
 
 @Injectable()
 export class AiService {
-  private anthropic: Anthropic;
-  private model = 'claude-sonnet-4-6';
-
   constructor(
-    private config: ConfigService,
-    private prisma: PrismaService,
-  ) {
-    this.anthropic = new Anthropic({
-      apiKey: this.config.get<string>('ANTHROPIC_API_KEY'),
-    });
-  }
+    private readonly llm: LlmService,
+    private readonly prisma: PrismaService,
+  ) {}
 
   async generate(
     userId: string,
     prompt: string,
-    canvasData?: Record<string, any>,
+    canvasData?: Record<string, unknown>,
     diagramId?: string,
   ) {
     const userMessage = buildGeneratePrompt(prompt, canvasData);
     return this.callAi(userId, prompt, userMessage, diagramId);
   }
 
-  async suggest(userId: string, canvasData: Record<string, any>) {
+  async suggest(userId: string, canvasData: Record<string, unknown>) {
     const userMessage = buildSuggestPrompt(canvasData);
     return this.callAi(userId, 'Auto-suggest improvements', userMessage);
   }
@@ -39,7 +31,7 @@ export class AiService {
   async refine(
     userId: string,
     prompt: string,
-    canvasData: Record<string, any>,
+    canvasData: Record<string, unknown>,
     diagramId: string,
   ) {
     const userMessage = buildRefinePrompt(prompt, canvasData);
@@ -55,31 +47,18 @@ export class AiService {
     const startTime = Date.now();
 
     try {
-      const response = await this.anthropic.messages.create({
-        model: this.model,
-        max_tokens: 4096,
-        system: SYSTEM_PROMPT,
-        messages: [{ role: 'user', content: userMessage }],
-      });
+      const { content, tokensUsed } = await this.llm.invoke(SYSTEM_PROMPT, userMessage);
 
-      const textContent = response.content.find((c) => c.type === 'text');
-      if (!textContent || textContent.type !== 'text') {
-        throw new InternalServerErrorException('No text response from AI');
-      }
-
-      // Parse the JSON response — strip markdown fences if present
-      const raw = textContent.text
+      // Strip markdown fences if the model wrapped the JSON (Ollama sometimes does)
+      const raw = content
         .replace(/```json\n?/g, '')
         .replace(/```\n?/g, '')
         .trim();
+
       const parsed = JSON.parse(raw);
-
       const durationMs = Date.now() - startTime;
-      const tokensUsed =
-        (response.usage?.input_tokens ?? 0) +
-        (response.usage?.output_tokens ?? 0);
+      const modelLabel = `${this.llm.provider}/${this.llm.modelName}`;
 
-      // Log the interaction
       await this.prisma.aiInteraction.create({
         data: {
           userId,
@@ -87,7 +66,7 @@ export class AiService {
           prompt: originalPrompt,
           response: parsed,
           tokensUsed,
-          model: this.model,
+          model: modelLabel,
           durationMs,
         },
       });
@@ -97,7 +76,7 @@ export class AiService {
         usage: {
           tokensUsed,
           durationMs,
-          model: this.model,
+          model: modelLabel,
         },
       };
     } catch (error) {
