@@ -87,6 +87,12 @@ function readCurrLayerParam(): string | null {
   return new URLSearchParams(window.location.search).get('currLayer');
 }
 
+// ─── helper: read ?view=diagramId — load a specific published version ─────────
+function readViewDiagramParam(): string | null {
+  if (typeof window === 'undefined') return null;
+  return new URLSearchParams(window.location.search).get('view');
+}
+
 interface DiagramPageProps {
   projectId: string;
 }
@@ -154,8 +160,19 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
   const isReadOnlyRef = useRef(false);
   useEffect(() => { isReadOnlyRef.current = isReadOnly; }, [isReadOnly]);
 
-  /** 'draft' | 'published' | null — tracks versioning status of open diagram. */
-  const [diagramStatus, setDiagramStatus] = useState<'draft' | 'published' | null>(null);
+  // ── Flush pending cloud saves when backendDiagramId becomes available ───────
+  // Race condition fix: if the user edits the canvas before the async auto-load
+  // finishes (backendDiagramId was null), the debounced 2 s timer fires and silently
+  // returns early. This effect detects that situation and immediately saves once the
+  // ID is known.
+  useEffect(() => {
+    if (!backendDiagramId || !pendingCloudSaveRef.current || isReadOnlyRef.current) return;
+    pendingCloudSaveRef.current = false;
+    const projectData = buildProjectSnapshotRef.current();
+    apiUpdateDiagram(backendDiagramId, projectData)
+      .then(() => setLastSaved(new Date()))
+      .catch((err) => console.error('[Flush cloud save] Failed:', err));
+  }, [backendDiagramId]);
 
   const [showPublishModal, setShowPublishModal] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
@@ -164,6 +181,12 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
 
   /** Debounce timer for backend diagram saves triggered from handleLayerSave. */
   const backendSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /**
+   * Set to true whenever handleLayerSave queues a cloud save but backendDiagramId
+   * is not yet available (race with async auto-load). Flushed as soon as
+   * backendDiagramId is set.
+   */
+  const pendingCloudSaveRef = useRef(false);
 
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showProjectsModal, setShowProjectsModal] = useState(false);
@@ -240,6 +263,8 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
   const [showStartupModal, setShowStartupModal] = useState(() => {
     if (typeof window === 'undefined') return false;
     if (readCurrLayerParam()) return false; // URL-sharing flow takes priority
+    // Cloud projects are auto-loaded from the backend — never show startup modal for them
+    if (projectId !== 'local' && isLoggedIn()) return false;
     const allLayers = loadAllLayers();
     const isBlank =
       Object.keys(allLayers).length <= 1 &&
@@ -365,9 +390,12 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
         const savedNodes = nodes;
         const savedEdges = edges;
         const savedLayerId = currentLayerId;
+        // Mark that there is a pending cloud save. If backendDiagramId is not yet
+        // set (async auto-load in progress), the flush useEffect will pick it up.
+        pendingCloudSaveRef.current = true;
         backendSaveTimerRef.current = setTimeout(() => {
           const diagId = backendDiagramIdRef.current;
-          if (!diagId) return;
+          if (!diagId) return; // still loading — pendingCloudSaveRef will flush it
           const projectData: ProjectFile = {
             layers: {
               ...layersRef.current,
@@ -380,7 +408,7 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
             navStack: navStackRef.current,
           };
           apiUpdateDiagram(diagId, projectData)
-            .then(() => setLastSaved(new Date()))
+            .then(() => { pendingCloudSaveRef.current = false; setLastSaved(new Date()); })
             .catch((err) => console.error('[Backend save] Failed:', err));
         }, 2000);
       }
@@ -390,39 +418,71 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
 
   // ── Auto-load cloud project by URL ────────────────────────────────────────
   // When navigating directly to /projects/:uuid, fetch draft (or latest published) from backend.
+  // If ?view=diagramId is in the URL, load that specific version (read-only).
   const autoLoadedRef = useRef(false);
   useEffect(() => {
     if (projectId === 'local' || !isLoggedIn() || backendDiagramId || autoLoadedRef.current) return;
     autoLoadedRef.current = true;
 
+    const viewDiagramId = readViewDiagramParam();
+
     (async () => {
       try {
-        const [proj, draft, versions] = await Promise.all([
-          apiGetProject(projectId),
-          apiGetProjectDraft(projectId),
-          apiListProjectVersions(projectId),
-        ]);
-        setCurrentProjectName(proj.name);
-        const pubVersions = versions.filter((v) => v.status === 'published');
-        setPublishedVersionCount(pubVersions.length);
+        // Load project name in background — non-blocking, failure is non-fatal
+        apiGetProject(projectId)
+          .then((proj) => setCurrentProjectName(proj.name))
+          .catch(() => {/* non-fatal */});
 
-        if (draft) {
-          const full = await apiGetDiagram(draft.id);
+        // ?view=diagramId — load a specific version as read-only
+        if (viewDiagramId) {
+          const full = await apiGetDiagram(viewDiagramId);
           loadCanvasFromDataRef.current(full.canvasData as ProjectFile);
+          setBackendDiagramId(full.id);
+          setIsReadOnly(true); // viewed versions are always read-only
+          return;
+        }
+
+        // Fast path: check for an existing draft first
+        const draft = await apiGetProjectDraft(projectId);
+        if (draft) {
+          // Use draft directly — no redundant apiGetDiagram call
+          loadCanvasFromDataRef.current(draft.canvasData as ProjectFile);
           setBackendDiagramId(draft.id);
-          setDiagramStatus('draft');
           setIsReadOnly(false);
-        } else if (pubVersions.length > 0) {
-          // No draft — load latest published as read-only
+          // Load version count in background
+          apiListProjectVersions(projectId)
+            .then((v) => setPublishedVersionCount(v.filter((d) => d.status === 'published').length))
+            .catch(() => {/* non-fatal */});
+          return;
+        }
+
+        // No draft — check for published versions (failure treated as no versions)
+        let pubVersions: Array<{ id: string; status: string; createdAt: string }> = [];
+        try {
+          const versions = await apiListProjectVersions(projectId);
+          pubVersions = versions.filter((v) => v.status === 'published');
+          setPublishedVersionCount(pubVersions.length);
+        } catch {/* non-fatal — treat as no published versions */}
+
+        if (pubVersions.length > 0) {
           const latest = pubVersions[pubVersions.length - 1];
           const full = await apiGetDiagram(latest.id);
           loadCanvasFromDataRef.current(full.canvasData as ProjectFile);
           setBackendDiagramId(full.id);
-          setDiagramStatus('published');
           setIsReadOnly(true);
+        } else {
+          // Brand new project — create a blank draft so saves work immediately
+          const emptyCanvas: ProjectFile = { layers: makeInitialLayers(), navStack: [ROOT_LAYER_ID] };
+          const newDiagram = await apiCreateDiagram(projectId, 'main', emptyCanvas);
+          loadCanvasFromDataRef.current(emptyCanvas);
+          setBackendDiagramId(newDiagram.id);
+          setIsReadOnly(false);
         }
-      } catch {
-        // 401 handled globally via drafter:unauthorized event
+      } catch (err) {
+        // 401 is dispatched as drafter:unauthorized and handled globally
+        if (err instanceof Error && err.name === 'ApiUnauthorizedError') return;
+        console.error('[Auto-load] Failed to load project:', err);
+        setError('Failed to load project — saves may not work. Please refresh the page.');
       }
     })();
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -537,25 +597,75 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
     [],
   );
 
-  /** Save now. Cloud-first: if a cloud project is open, saves to it immediately (no file picker). */
-  const handleSaveFile = useCallback(async () => {
-    setIsSaving(true);
-    const data = buildProjectSnapshot();
-
+  /**
+   * Retry cloud project setup after an auto-load failure.
+   * Gets or creates a backendDiagramId without overwriting the current canvas.
+   * Once the ID is set, the pendingCloudSave flush effect will persist the canvas.
+   */
+  const retryAutoLoad = useCallback(async () => {
+    if (projectId === 'local' || !isLoggedIn()) return;
+    setError(null);
     try {
-      const diagId = backendDiagramIdRef.current;
+      const draft = await apiGetProjectDraft(projectId);
+      if (draft) {
+        setBackendDiagramId(draft.id);
+      } else {
+        const emptyCanvas: ProjectFile = { layers: makeInitialLayers(), navStack: [ROOT_LAYER_ID] };
+        const newDiagram = await apiCreateDiagram(projectId, 'main', emptyCanvas);
+        setBackendDiagramId(newDiagram.id);
+      }
+      // Signal that the current canvas should be saved as soon as the ID is available
+      pendingCloudSaveRef.current = true;
+    } catch (err) {
+      if (err instanceof Error && err.name === 'ApiUnauthorizedError') return;
+      setError('Failed to reconnect — please check your connection and try again.');
+    }
+  }, [projectId]);
 
-      if (diagId) {
-        // Cloud project is open — save to cloud, silently also write local file if open
-        await apiUpdateDiagram(diagId, data);
-        if (fileHandle) {
-          writeToHandle(fileHandle, data).catch(() => {/* non-fatal */});
-        }
-        setLastSaved(new Date());
+  /** Save now. Cloud-first: always saves to cloud on cloud project routes. */
+  const handleSaveFile = useCallback(async () => {
+    // ── Cloud project route ────────────────────────────────────────────────
+    if (projectId !== 'local' && isLoggedIn()) {
+      if (isReadOnlyRef.current) {
+        setError('This is a published version and cannot be edited. Use "Check Out to Edit" to create a new draft.');
         return;
       }
 
-      // No cloud project — local file save
+      setIsSaving(true);
+      try {
+        let diagId = backendDiagramIdRef.current;
+
+        if (!diagId) {
+          // Auto-load may have failed — recover by getting or creating the diagram now
+          const draft = await apiGetProjectDraft(projectId);
+          if (draft) {
+            setBackendDiagramId(draft.id);
+            diagId = draft.id;
+          } else {
+            const emptyCanvas: ProjectFile = { layers: makeInitialLayers(), navStack: [ROOT_LAYER_ID] };
+            const newDiagram = await apiCreateDiagram(projectId, 'main', emptyCanvas);
+            setBackendDiagramId(newDiagram.id);
+            diagId = newDiagram.id;
+          }
+          setError(null);
+        }
+
+        const data = buildProjectSnapshot();
+        await apiUpdateDiagram(diagId, data);
+        if (fileHandle) writeToHandle(fileHandle, data).catch(() => {/* non-fatal */});
+        setLastSaved(new Date());
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : 'Save failed.');
+      } finally {
+        setIsSaving(false);
+      }
+      return;
+    }
+
+    // ── Local file save ────────────────────────────────────────────────────
+    setIsSaving(true);
+    const data = buildProjectSnapshot();
+    try {
       if (fileHandle) {
         await writeToHandle(fileHandle, data);
         setLastSaved(new Date());
@@ -573,7 +683,7 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
     } finally {
       setIsSaving(false);
     }
-  }, [fileHandle, buildProjectSnapshot]);
+  }, [projectId, fileHandle, buildProjectSnapshot]);
 
   // ── Auth handlers ─────────────────────────────────────────────────────────
 
@@ -605,7 +715,6 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
       loadCanvasFromData(canvasData);
       setBackendDiagramId(diagramId || null);
       setCurrentProjectName(project.name);
-      setDiagramStatus('draft');
       setIsReadOnly(false);
       setShowProjectsModal(false);
       setShowStartupModal(false);
@@ -625,7 +734,6 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
         loadCanvasFromData(emptyCanvas);
         setBackendDiagramId(diagram.id);
         setCurrentProjectName(project.name);
-        setDiagramStatus('draft');
         setIsReadOnly(false);
         setShowProjectsModal(false);
         setShowStartupModal(false);
@@ -646,7 +754,6 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
     setIsPublishing(true);
     try {
       await apiPublishDiagram(backendDiagramId, comment || undefined);
-      setDiagramStatus('published');
       setIsReadOnly(true);
       setShowPublishModal(false);
       setPublishedVersionCount((n) => n + 1);
@@ -666,7 +773,6 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
       const newDraft = await apiCheckoutVersion(projectId, backendDiagramId);
       loadCanvasFromData(newDraft.canvasData as ProjectFile);
       setBackendDiagramId(newDraft.id);
-      setDiagramStatus('draft');
       setIsReadOnly(false);
     } catch (e) {
       if (e instanceof DraftExistsError) {
@@ -676,7 +782,6 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
           if (existing) {
             loadCanvasFromData(existing.canvasData as ProjectFile);
             setBackendDiagramId(existing.id);
-            setDiagramStatus('draft');
             setIsReadOnly(false);
           }
         }
@@ -1389,7 +1494,7 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
           <Toolbar
             onClear={handleClear}
             hasFileHandle={!!fileHandle}
-            hasCloudProject={!!backendDiagramId}
+            hasCloudProject={!!backendDiagramId || (projectId !== 'local' && isLoggedIn())}
             autoSave={autoSave}
             onToggleAutoSave={() => setAutoSave((v) => !v)}
             onSaveFile={handleSaveFile}
@@ -1412,12 +1517,22 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
             <div className="flex items-center gap-2 border-b border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-900/20 dark:text-red-400">
               <span className="font-medium">Error:</span>
               <span>{error}</span>
-              <button
-                onClick={() => setError(null)}
-                className="ml-auto text-red-400 hover:text-red-600"
-              >
-                Dismiss
-              </button>
+              <div className="ml-auto flex items-center gap-2">
+                {projectId !== 'local' && !backendDiagramId && (
+                  <button
+                    onClick={retryAutoLoad}
+                    className="rounded border border-red-300 px-2 py-0.5 text-xs font-medium hover:bg-red-100 dark:border-red-800 dark:hover:bg-red-900/30"
+                  >
+                    Retry
+                  </button>
+                )}
+                <button
+                  onClick={() => setError(null)}
+                  className="text-red-400 hover:text-red-600"
+                >
+                  Dismiss
+                </button>
+              </div>
             </div>
           )}
 

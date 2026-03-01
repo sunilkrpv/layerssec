@@ -70,9 +70,11 @@ interface SideSheetProps {
   project: ProjectWithVersioning;
   onClose: () => void;
   onNavigate: (projectId: string) => void;
+  /** Navigate to a specific version (read-only view) */
+  onView: (projectId: string, diagramId: string) => void;
 }
 
-function SideSheet({ project, onClose, onNavigate }: SideSheetProps) {
+function SideSheet({ project, onClose, onNavigate, onView }: SideSheetProps) {
   const [versions, setVersions] = useState<DiagramVersion[]>([]);
   const [loading, setLoading] = useState(true);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
@@ -195,9 +197,20 @@ function SideSheet({ project, onClose, onNavigate }: SideSheetProps) {
             Loading versions…
           </div>
         ) : versions.length === 0 ? (
-          <div className="py-16 text-center">
-            <GitBranch size={28} className="mx-auto mb-3 text-slate-300" />
-            <p className="text-sm text-slate-400">No versions yet.</p>
+          <div className="flex flex-col items-center justify-center gap-3 px-6 py-16 text-center">
+            <GitBranch size={28} className="text-slate-300 dark:text-slate-600" />
+            <div>
+              <p className="text-sm font-medium text-slate-600 dark:text-slate-300">No content yet</p>
+              <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
+                Open the editor to start building your diagram.
+              </p>
+            </div>
+            <button
+              onClick={() => onNavigate(project.id)}
+              className="mt-1 rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+            >
+              Go to Editor
+            </button>
           </div>
         ) : (
           <ul className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -247,17 +260,25 @@ function SideSheet({ project, onClose, onNavigate }: SideSheetProps) {
                     )}
                     <p className="mt-0.5 text-[10px] text-slate-400">Shared: N/A</p>
                   </div>
-                  <button
-                    onClick={() => handleCheckout(v.id)}
-                    disabled={!!checkingOut}
-                    className="flex-shrink-0 rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1 text-[11px] font-medium text-blue-700 hover:bg-blue-100 disabled:opacity-60 dark:border-blue-900 dark:bg-blue-900/20 dark:text-blue-400"
-                  >
-                    {checkingOut === v.id ? (
-                      <Loader2 size={11} className="animate-spin" />
-                    ) : (
-                      'Check Out'
-                    )}
-                  </button>
+                  <div className="flex flex-shrink-0 flex-col gap-1.5">
+                    <button
+                      onClick={() => onView(project.id, v.id)}
+                      className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-medium text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+                    >
+                      View
+                    </button>
+                    <button
+                      onClick={() => handleCheckout(v.id)}
+                      disabled={!!checkingOut}
+                      className="rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1 text-[11px] font-medium text-blue-700 hover:bg-blue-100 disabled:opacity-60 dark:border-blue-900 dark:bg-blue-900/20 dark:text-blue-400"
+                    >
+                      {checkingOut === v.id ? (
+                        <Loader2 size={11} className="animate-spin" />
+                      ) : (
+                        'Check Out'
+                      )}
+                    </button>
+                  </div>
                 </div>
               </li>
             ))}
@@ -315,6 +336,10 @@ export default function ProjectsListPage() {
 
   const handleNavigate = useCallback((projectId: string) => {
     router.push(`/projects/${projectId}`);
+  }, [router]);
+
+  const handleView = useCallback((projectId: string, diagramId: string) => {
+    router.push(`/projects/${projectId}?view=${diagramId}`);
   }, [router]);
 
   return (
@@ -479,6 +504,7 @@ export default function ProjectsListPage() {
             project={selectedProject}
             onClose={() => setSelectedProject(null)}
             onNavigate={handleNavigate}
+            onView={handleView}
           />
         </>
       )}

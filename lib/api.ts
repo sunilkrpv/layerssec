@@ -221,8 +221,29 @@ export async function apiCheckoutVersion(
   return res.json() as Promise<DiagramFull>;
 }
 
-export function apiGetProjectDraft(projectId: string): Promise<DiagramFull | null> {
-  return apiFetch<DiagramFull | null>(`/api/projects/${projectId}/draft`);
+export async function apiGetProjectDraft(projectId: string): Promise<DiagramFull | null> {
+  const token = getAccessToken();
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const res = await fetch(`${BASE_URL}/api/projects/${projectId}/draft`, { headers });
+
+  if (res.status === 401) {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('drafter:unauthorized'));
+    }
+    throw new ApiUnauthorizedError();
+  }
+  // 404 or 204 = no draft found
+  if (res.status === 404 || res.status === 204) return null;
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({})) as { message?: string };
+    throw new Error(body?.message ?? `HTTP ${res.status}`);
+  }
+  // NestJS may return empty body or JSON null when no draft exists
+  const text = await res.text();
+  if (!text || text.trim() === 'null') return null;
+  return JSON.parse(text) as DiagramFull;
 }
 
 // ─── AI ───────────────────────────────────────────────────────────────────────
