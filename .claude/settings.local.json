@@ -13,7 +13,8 @@
       "Bash(/Users/sunil/.nvm/versions/node/v22.13.1/bin/npx tsc --noEmit)",
       "Bash(node -e \"require\\(''child_process''\\).execSync\\(''npx tsc --noEmit'', {stdio:''inherit'', cwd:''/Users/sunil/Development/github/drafter''}\\)\")",
       "Bash(source ~/.nvm/nvm.sh)",
-      "Bash(nvm use default)"
+      "Bash(nvm use default)",
+      "Bash(nvm use 23)"
     ]
   }
 }
