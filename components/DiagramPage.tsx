@@ -24,6 +24,7 @@ import StartupModal from '@/components/StartupModal';
 import AuthModal from '@/components/AuthModal';
 import ProjectsModal from '@/components/ProjectsModal';
 import PublishModal from '@/components/PublishModal';
+import type { AssignableLayer } from '@/components/AssignLayerModal';
 
 import type { NodeData, NodeType, GenerateResponse } from '@/lib/types';
 import type { UserProfile, Project } from '@/lib/api';
@@ -285,11 +286,11 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
   // Delete layer confirmation modal
   const [deleteLayerTarget, setDeleteLayerTarget] = useState<string | null>(null);
 
-  // Assign orphaned layer modal
+  // Assign layer modal — shows orphaned layers + layers owned by sibling shapes
   const [assignLayerTarget, setAssignLayerTarget] = useState<{
     nodeId: string;
     nodeLabel: string;
-    orphans: Layer[];
+    availableLayers: AssignableLayer[];
   } | null>(null);
 
   // ── Derived values ────────────────────────────────────────────────────────
@@ -942,16 +943,48 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
   const handleAssignLayer = useCallback(() => {
     const node = contextMenu?.node;
     if (!node) return;
+
+    // Orphaned layers (no parentNodeId — standalone/unattached)
     const orphans = getOrphanedLayers(layers);
-    if (orphans.length === 0) return;
-    setAssignLayerTarget({ nodeId: node.id, nodeLabel: node.data.label, orphans });
+
+    // Layers currently owned by OTHER shapes in the same parent layer (1 level deep)
+    const allCanvasNodes = (rfInstanceRef.current?.getNodes() ?? []) as Node<NodeData>[];
+    const nodeLabel = (id: string) =>
+      allCanvasNodes.find((n) => n.id === id)?.data?.label ?? '(unlabelled)';
+
+    const siblingOwned = Object.values(layers).filter(
+      (l) => l.parentLayerId === currentLayerId && l.parentNodeId !== null && l.parentNodeId !== node.id,
+    );
+
+    const availableLayers: AssignableLayer[] = [
+      ...orphans.map((l) => ({
+        id: l.id,
+        name: l.name,
+        description: l.description,
+        nodeCount: l.nodes.length,
+      })),
+      ...siblingOwned.map((l) => ({
+        id: l.id,
+        name: l.name,
+        description: l.description,
+        nodeCount: l.nodes.length,
+        currentOwnerLabel: nodeLabel(l.parentNodeId!),
+      })),
+    ];
+
+    if (availableLayers.length === 0) return;
+    setAssignLayerTarget({ nodeId: node.id, nodeLabel: node.data.label, availableLayers });
     setContextMenu(null);
-  }, [contextMenu, layers]);
+  }, [contextMenu, layers, currentLayerId]);
 
   const handleAssignLayerConfirm = useCallback(
     (layerId: string) => {
       if (!assignLayerTarget) return;
       const { nodeId } = assignLayerTarget;
+
+      // If this layer was previously owned by another shape, we need to clear that badge
+      const previousOwnerNodeId = layers[layerId]?.parentNodeId ?? null;
+      const hasPreviousOwner = previousOwnerNodeId !== null && previousOwnerNodeId !== nodeId;
 
       const snapshot = captureCanvas(rfInstanceRef);
       setLayers((prev) => {
@@ -963,17 +996,26 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
           [layerId]: { ...flushed[layerId], parentLayerId: currentLayerId, parentNodeId: nodeId },
           [currentLayerId]: {
             ...parentLayer,
-            nodes: parentLayer.nodes.map((n) =>
-              n.id === nodeId ? { ...n, data: { ...n.data, _childLayerId: layerId } } : n,
-            ),
+            nodes: parentLayer.nodes.map((n) => {
+              if (n.id === nodeId) return { ...n, data: { ...n.data, _childLayerId: layerId } };
+              // Clear the badge from the previous owner
+              if (hasPreviousOwner && n.id === previousOwnerNodeId) {
+                const { _childLayerId: _removed, ...restData } = n.data as NodeData;
+                return { ...n, data: restData };
+              }
+              return n;
+            }),
           },
         };
         saveAllLayers(updated);
         return updated;
       });
 
-      // Update live canvas badge immediately
+      // Update live canvas badges immediately
       rfInstanceRef.current?.updateNodeData(nodeId, { _childLayerId: layerId });
+      if (hasPreviousOwner && previousOwnerNodeId) {
+        rfInstanceRef.current?.updateNodeData(previousOwnerNodeId, { _childLayerId: undefined });
+      }
 
       // Persist to cloud
       const diagId = backendDiagramIdRef.current;
@@ -989,7 +1031,7 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
       setAssignLayerTarget(null);
       setSelectedNode(null);
     },
-    [assignLayerTarget, currentLayerId, flushCurrentLayer],
+    [assignLayerTarget, layers, currentLayerId, flushCurrentLayer],
   );
 
   // ── Context menu ──────────────────────────────────────────────────────────
@@ -1020,10 +1062,14 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
       }
 
       // Determine if "Assign Layer" option should be offered:
-      // node must NOT have a child layer, must not be a line type, AND there are orphaned layers
+      // node must NOT have a child layer, must not be a line type, AND there are layers to assign
+      // (either orphaned layers OR layers currently owned by a sibling shape in this parent layer).
       let hasAssignableOrphans = false;
       if (!childLayer && !LINE_NODE_TYPES.has(node.type as string)) {
-        hasAssignableOrphans = getOrphanedLayers(layers).length > 0;
+        const hasSiblingLayers = Object.values(layers).some(
+          (l) => l.parentLayerId === currentLayerId && l.parentNodeId !== null && l.parentNodeId !== node.id,
+        );
+        hasAssignableOrphans = hasSiblingLayers || getOrphanedLayers(layers).length > 0;
       }
 
       setContextMenu({ x: event.clientX, y: event.clientY, node, selectedNodes: sel, hasReassignableTargets, hasAssignableOrphans });
@@ -1137,6 +1183,17 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
       // Also update the live ReactFlow canvas so the badge moves immediately
       rfInstanceRef.current?.updateNodeData(sourceNodeId, { _childLayerId: undefined });
       rfInstanceRef.current?.updateNodeData(targetNodeId, { _childLayerId: layerId });
+
+      // Persist to cloud
+      const diagId = backendDiagramIdRef.current;
+      if (diagId) {
+        setTimeout(() => {
+          const projectData = buildProjectSnapshotRef.current();
+          apiUpdateDiagram(diagId, projectData)
+            .then(() => setLastSaved(new Date()))
+            .catch((err) => console.error('[Reassign layer cloud save] Failed:', err));
+        }, 200);
+      }
 
       setReassignTarget(null);
       setSelectedNode(null);
@@ -1613,11 +1670,11 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
           />
         )}
 
-        {/* ── Assign orphaned layer modal ───────────────────────────────────────── */}
+        {/* ── Assign layer modal ───────────────────────────────────────── */}
         {assignLayerTarget && (
           <AssignLayerModal
             shapeLabel={assignLayerTarget.nodeLabel}
-            orphanedLayers={assignLayerTarget.orphans}
+            availableLayers={assignLayerTarget.availableLayers}
             onConfirm={handleAssignLayerConfirm}
             onCancel={() => setAssignLayerTarget(null)}
           />

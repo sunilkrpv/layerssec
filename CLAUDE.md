@@ -100,6 +100,13 @@ When all 21 node files need the same structural change, use a **Python script vi
 - **`RotateHandle` component** (`components/nodes/RotateHandle.tsx`): uses `useNodeId`, `useReactFlow`, `useStore` (nodeInternals + viewport transform) to compute center in screen coords and derive angle from cursor
 - **`pushHistoryNow`**: Added to `ExtendedRFInstance`, `CanvasContext` (as `pushHistoryNow: () => void`), and `canvasContextValue` in `app/page.tsx`
 
+### PR-16 — Layer Assign / Reassign Enhancement
+- **"Assign Layer" expanded**: Right-clicking a shape with no child layer now offers "Assign Layer" for ALL assignable layers at the current level — both orphaned (standalone) layers AND layers currently owned by sibling shapes (1 level deep only, no deep nesting)
+- **Sibling-layer reassignment**: When picking a layer that belongs to another shape, the old owner's `_childLayerId` badge is cleared (in state AND live canvas) before the layer is moved to the new shape
+- **2-step confirmation**: Both `AssignLayerModal` and `ReassignLayerModal` now use select-then-confirm flow — clicking a row highlights it; a "Assign Layer" / "Reassign Layer" button is needed to commit (disabled until a selection is made). `AssignLayerModal` also shows a warning banner when the chosen layer is being moved from another shape
+- **Cloud save**: `handleReassignLayerConfirm` and `handleAssignLayerConfirm` both persist the full project to the backend immediately after the operation (200 ms defer to let React state settle)
+- **`AssignableLayer` type**: Exported from `components/AssignLayerModal.tsx` — `{ id, name, description?, nodeCount, currentOwnerLabel? }`; `assignLayerTarget` state in DiagramPage updated to use `availableLayers: AssignableLayer[]` instead of `orphans: Layer[]`
+
 ### PR-15 — Project Versioning (Publish / Check Out)
 - **Backend (`drafter-rest`)**:
   - `prisma/schema.prisma` — added `status` (draft/published), `publishComment`, `publishedAt` to `Diagram` model; ran migration `add_diagram_versioning`
