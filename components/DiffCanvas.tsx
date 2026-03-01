@@ -1,7 +1,7 @@
 'use client';
 
-import { useMemo } from 'react';
-import ReactFlow, { Background, Controls, ReactFlowProvider } from 'reactflow';
+import { useMemo, useEffect } from 'react';
+import ReactFlow, { Background, Controls, ReactFlowProvider, useReactFlow } from 'reactflow';
 import type { Node, Edge } from 'reactflow';
 import 'reactflow/dist/style.css';
 import type { NodeDiff, EdgeDiff, DiffStatus } from '@/lib/diffEngine';
@@ -16,10 +16,10 @@ interface DiffNodeData {
 }
 
 const STATUS_RING: Record<DiffStatus, string> = {
-  added: 'border-green-400 bg-green-50 ring-2 ring-green-300',
-  removed: 'border-red-400 bg-red-50 ring-2 ring-red-300',
-  modified: 'border-amber-400 bg-amber-50 ring-2 ring-amber-300',
-  unchanged: 'border-slate-200 bg-white',
+  added: 'border-green-400 bg-green-50 ring-2 ring-green-300 dark:bg-green-900/30 dark:border-green-500 dark:ring-green-700',
+  removed: 'border-red-400 bg-red-50 ring-2 ring-red-300 dark:bg-red-900/30 dark:border-red-500 dark:ring-red-700',
+  modified: 'border-amber-400 bg-amber-50 ring-2 ring-amber-300 dark:bg-amber-900/30 dark:border-amber-500 dark:ring-amber-700',
+  unchanged: 'border-slate-200 bg-white dark:border-slate-600 dark:bg-slate-800',
 };
 
 const STATUS_BADGE: Record<DiffStatus, string> = {
@@ -53,9 +53,9 @@ function DiffNode({ data }: { data: DiffNodeData }) {
       )}
       <div className="flex items-center gap-1.5">
         {Icon && <Icon size={13} className={item?.color ?? 'text-slate-500'} />}
-        <span className="truncate text-xs font-semibold text-slate-800">{data.label}</span>
+        <span className="truncate text-xs font-semibold text-slate-800 dark:text-slate-100">{data.label}</span>
       </div>
-      {item && <div className="mt-0.5 text-[9px] uppercase tracking-wide text-slate-400">{item.label}</div>}
+      {item && <div className="mt-0.5 text-[9px] uppercase tracking-wide text-slate-400 dark:text-slate-500">{item.label}</div>}
     </div>
   );
 }
@@ -63,7 +63,41 @@ function DiffNode({ data }: { data: DiffNodeData }) {
 // Module-level nodeTypes — must be stable to avoid React Flow re-registration warnings
 const diffNodeTypes = { diffNode: DiffNode };
 
+// ─── Inner canvas — handles fitView on node changes ───────────────────────────
+
+function ReactFlowInner({ nodes, edges }: { nodes: Node<DiffNodeData>[]; edges: Edge[] }) {
+  const { fitView } = useReactFlow();
+
+  // Re-fit whenever the node set changes (i.e. the active layer changes)
+  useEffect(() => {
+    const t = setTimeout(() => fitView({ padding: 0.25 }), 50);
+    return () => clearTimeout(t);
+  }, [nodes, fitView]);
+
+  return (
+    <ReactFlow
+      nodes={nodes}
+      edges={edges}
+      nodeTypes={diffNodeTypes}
+      nodesDraggable={false}
+      nodesConnectable={false}
+      elementsSelectable={false}
+      fitView
+      fitViewOptions={{ padding: 0.25 }}
+      className="bg-slate-50 dark:bg-slate-800"
+    >
+      <Background color="#94a3b8" gap={20} />
+      <Controls showInteractive={false} />
+    </ReactFlow>
+  );
+}
+
 // ─── DiffCanvas ───────────────────────────────────────────────────────────────
+
+interface VersionInfo {
+  number: string;
+  comment?: string | null;
+}
 
 interface DiffCanvasProps {
   nodeDiffs: NodeDiff[];
@@ -72,9 +106,10 @@ interface DiffCanvasProps {
   side: 'left' | 'right';
   title: string;
   filename: string;
+  versionInfo?: VersionInfo | null;
 }
 
-export default function DiffCanvas({ nodeDiffs, edgeDiffs, side, title, filename }: DiffCanvasProps) {
+export default function DiffCanvas({ nodeDiffs, edgeDiffs, side, title, filename, versionInfo }: DiffCanvasProps) {
   const { nodes, edges } = useMemo(() => {
     // Pick the relevant side of each diff entry
     const nodes: Node<DiffNodeData>[] = [];
@@ -111,45 +146,37 @@ export default function DiffCanvas({ nodeDiffs, edgeDiffs, side, title, filename
   }, [nodeDiffs, edgeDiffs, side]);
 
   return (
-    <div className="flex h-full flex-1 flex-col overflow-hidden border-slate-200">
+    <div className="flex h-full flex-1 flex-col overflow-hidden">
       {/* Header */}
-      <div
-        className={`flex h-9 flex-shrink-0 items-center gap-2 border-b px-3 text-xs font-medium ${
-          side === 'left'
-            ? 'border-slate-200 bg-slate-50 text-slate-600'
-            : 'border-slate-200 bg-slate-50 text-slate-600'
-        }`}
-      >
-        <span
-          className={`rounded px-1.5 py-0.5 font-bold ${
-            side === 'left'
-              ? 'bg-slate-200 text-slate-700'
-              : 'bg-blue-100 text-blue-700'
-          }`}
-        >
-          {side === 'left' ? 'BASE' : 'MODIFIED'}
-        </span>
-        <span className="font-semibold text-slate-700">{title}</span>
-        <span className="ml-auto truncate font-normal text-slate-400">{filename}</span>
+      <div className="flex-shrink-0 border-b border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900">
+        <div className="flex h-9 items-center gap-2 px-3 text-xs font-medium">
+          <span
+            className={`rounded px-1.5 py-0.5 font-bold ${
+              side === 'left'
+                ? 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200'
+                : 'bg-blue-100 text-blue-700 dark:bg-blue-900/60 dark:text-blue-300'
+            }`}
+          >
+            {side === 'left' ? 'BASE' : 'MODIFIED'}
+          </span>
+          <span className="truncate font-semibold text-slate-700 dark:text-slate-200">{title}</span>
+          <span className="ml-auto flex-shrink-0 font-medium text-slate-500 dark:text-slate-400">{filename}</span>
+        </div>
+
+        {/* Version comment row */}
+        {versionInfo?.comment && (
+          <div className="border-t border-slate-100 px-3 py-1 dark:border-slate-800">
+            <p className="truncate text-[10px] italic text-slate-500 dark:text-slate-400">
+              &ldquo;{versionInfo.comment}&rdquo;
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Canvas */}
       <div className="flex-1 overflow-hidden">
         <ReactFlowProvider>
-          <ReactFlow
-            nodes={nodes}
-            edges={edges}
-            nodeTypes={diffNodeTypes}
-            nodesDraggable={false}
-            nodesConnectable={false}
-            elementsSelectable={false}
-            fitView
-            fitViewOptions={{ padding: 0.25 }}
-            className="bg-slate-50"
-          >
-            <Background color="#e2e8f0" gap={20} />
-            <Controls showInteractive={false} />
-          </ReactFlow>
+          <ReactFlowInner nodes={nodes} edges={edges} />
         </ReactFlowProvider>
       </div>
     </div>

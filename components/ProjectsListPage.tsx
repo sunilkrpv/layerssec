@@ -453,8 +453,10 @@ export default function ProjectsListPage() {
   /** Navigate to the diff page for two specific published versions of a project. */
   const handleDiff = useCallback(
     (projectId: string, base: DiagramVersion, compare: DiagramVersion) => {
+      const pc1 = base.publishComment ? encodeURIComponent(base.publishComment) : '';
+      const pc2 = compare.publishComment ? encodeURIComponent(compare.publishComment) : '';
       router.push(
-        `/diff?projectId=${projectId}&v1=${base.id}&vn1=${base.versionNumber ?? ''}&v2=${compare.id}&vn2=${compare.versionNumber ?? ''}`,
+        `/diff?projectId=${projectId}&v1=${base.id}&vn1=${base.versionNumber ?? ''}&pc1=${pc1}&v2=${compare.id}&vn2=${compare.versionNumber ?? ''}&pc2=${pc2}`,
       );
     },
     [router],
