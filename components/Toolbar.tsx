@@ -1,7 +1,10 @@
 'use client';
 
 import { useReactFlow } from 'reactflow';
-import { ZoomIn, ZoomOut, Maximize2, Trash2, Save, Clock, Zap, Loader2 } from 'lucide-react';
+import {
+  ZoomIn, ZoomOut, Maximize2, Trash2, Save, Clock,
+  Zap, Loader2, FolderOpen, Copy, ClipboardPaste,
+} from 'lucide-react';
 
 interface ToolbarProps {
   onClear: () => void;
@@ -21,6 +24,12 @@ interface ToolbarProps {
   /** Whether edge/line animations are enabled */
   animateEdges: boolean;
   onToggleAnimateEdges: () => void;
+  /** Navigate to My Projects page (shown only when provided) */
+  onMyProjects?: () => void;
+  /** Copy selected canvas nodes */
+  onCopy: () => void;
+  /** Paste clipboard nodes onto canvas */
+  onPaste: () => void;
 }
 
 function ToolBtn({
@@ -52,6 +61,18 @@ function ToolBtn({
   );
 }
 
+function Divider() {
+  return <div className="mx-1 h-5 w-px bg-slate-200 dark:bg-slate-600" />;
+}
+
+function BtnGroup({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex items-center gap-0.5 rounded-lg border border-slate-200 bg-slate-50 px-1 py-0.5 dark:border-slate-700 dark:bg-slate-800">
+      {children}
+    </div>
+  );
+}
+
 function formatLastSaved(d: Date): string {
   const diff = Math.floor((Date.now() - d.getTime()) / 1000);
   if (diff < 5) return 'just now';
@@ -71,30 +92,29 @@ export default function Toolbar({
   lastSaved,
   animateEdges,
   onToggleAnimateEdges,
+  onMyProjects,
+  onCopy,
+  onPaste,
 }: ToolbarProps) {
   const { zoomIn, zoomOut, fitView } = useReactFlow();
 
   return (
-    <div className="flex h-10 flex-shrink-0 items-center gap-3 border-b border-slate-200 bg-white px-4 dark:border-slate-700 dark:bg-slate-900">
-      {/* Zoom controls */}
-      <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 px-1 py-0.5 dark:border-slate-700 dark:bg-slate-800">
-        <ToolBtn onClick={() => zoomIn()} title="Zoom In">
-          <ZoomIn size={16} />
-        </ToolBtn>
-        <ToolBtn onClick={() => zoomOut()} title="Zoom Out">
-          <ZoomOut size={16} />
-        </ToolBtn>
-        <ToolBtn onClick={() => fitView({ padding: 0.15 })} title="Fit View">
-          <Maximize2 size={16} />
-        </ToolBtn>
-        <div className="mx-1 h-5 w-px bg-slate-200 dark:bg-slate-600" />
-        <ToolBtn onClick={onClear} title="Clear canvas" danger>
-          <Trash2 size={16} />
-        </ToolBtn>
-      </div>
+    <div className="flex h-10 flex-shrink-0 items-center gap-1.5 border-b border-slate-200 bg-white px-3 dark:border-slate-700 dark:bg-slate-900">
 
-      {/* File save controls */}
-      <div className="flex items-center gap-2">
+      {/* ── My Projects ─────────────────────────────────────── */}
+      {onMyProjects && (
+        <>
+          <BtnGroup>
+            <ToolBtn onClick={onMyProjects} title="My Projects (⌘P)">
+              <FolderOpen size={16} />
+            </ToolBtn>
+          </BtnGroup>
+          <Divider />
+        </>
+      )}
+
+      {/* ── Save / Auto Save ─────────────────────────────────── */}
+      <BtnGroup>
         {/* Manual save */}
         <button
           onClick={onSaveFile}
@@ -108,13 +128,15 @@ export default function Toolbar({
                   ? 'Save to file now (⌘S)'
                   : 'Open a project file or cloud project first'
           }
-          className="flex h-8 items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2.5 text-xs font-medium text-slate-600 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+          className="flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium text-slate-600 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40 dark:text-slate-300 dark:hover:bg-slate-700"
         >
           {isSaving
             ? <Loader2 size={13} className="animate-spin" />
             : <Save size={13} />}
           {isSaving ? 'Saving…' : 'Save'}
         </button>
+
+        <div className="mx-0.5 h-5 w-px bg-slate-200 dark:bg-slate-600" />
 
         {/* Auto-save toggle */}
         <button
@@ -124,12 +146,12 @@ export default function Toolbar({
               ? 'Auto Save is ON — click to disable'
               : 'Auto Save is OFF — click to enable'
           }
-          className={`flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-medium transition-colors ${
+          className={`flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium transition-colors ${
             autoSave && (hasFileHandle || hasCloudProject)
-              ? 'border-green-200 bg-green-50 text-green-700 hover:bg-green-100 dark:border-green-800 dark:bg-green-900/20 dark:text-green-400'
+              ? 'text-green-700 hover:bg-green-50 dark:text-green-400 dark:hover:bg-green-900/20'
               : autoSave
-                ? 'border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-400'
-                : 'border-slate-200 bg-slate-50 text-slate-500 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700'
+                ? 'text-amber-700 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-900/20'
+                : 'text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700'
           }`}
         >
           <span
@@ -141,36 +163,62 @@ export default function Toolbar({
                   : 'bg-slate-400'
             }`}
           />
-          Auto Save {autoSave ? 'ON' : 'OFF'}
+          Auto {autoSave ? 'ON' : 'OFF'}
         </button>
+      </BtnGroup>
 
-        {/* Last saved indicator */}
-        {lastSaved && (hasFileHandle || hasCloudProject) && (
-          <span
-            className="flex items-center gap-1 text-xs text-slate-400 dark:text-slate-500"
-            title={`Last saved: ${lastSaved.toLocaleTimeString()}`}
-          >
-            <Clock size={11} />
-            {formatLastSaved(lastSaved)}
-          </span>
-        )}
-      </div>
+      <Divider />
 
-      {/* Animation toggle */}
-      <div className="ml-auto">
+      {/* ── Copy / Paste / Delete ─────────────────────────────── */}
+      <BtnGroup>
+        <ToolBtn onClick={onCopy} title="Copy selected nodes (⌘C)">
+          <Copy size={16} />
+        </ToolBtn>
+        <ToolBtn onClick={onPaste} title="Paste (⌘V)">
+          <ClipboardPaste size={16} />
+        </ToolBtn>
+        <ToolBtn onClick={onClear} title="Clear canvas" danger>
+          <Trash2 size={16} />
+        </ToolBtn>
+      </BtnGroup>
+
+      <Divider />
+
+      {/* ── Zoom controls + Animate ───────────────────────────── */}
+      <BtnGroup>
+        <ToolBtn onClick={() => zoomIn()} title="Zoom In">
+          <ZoomIn size={16} />
+        </ToolBtn>
+        <ToolBtn onClick={() => zoomOut()} title="Zoom Out">
+          <ZoomOut size={16} />
+        </ToolBtn>
+        <ToolBtn onClick={() => fitView({ padding: 0.15 })} title="Fit View">
+          <Maximize2 size={16} />
+        </ToolBtn>
+        <div className="mx-0.5 h-5 w-px bg-slate-200 dark:bg-slate-600" />
         <button
           onClick={onToggleAnimateEdges}
           title={animateEdges ? 'Animations ON — click to disable' : 'Animations OFF — click to enable'}
-          className={`flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-medium transition-colors ${
+          className={`flex h-8 w-8 items-center justify-center rounded-lg transition-colors ${
             animateEdges
-              ? 'border-violet-200 bg-violet-50 text-violet-700 hover:bg-violet-100 dark:border-violet-800 dark:bg-violet-900/20 dark:text-violet-400'
-              : 'border-slate-200 bg-slate-50 text-slate-500 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700'
+              ? 'bg-violet-100 text-violet-600 dark:bg-violet-900/30 dark:text-violet-400'
+              : 'text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:text-slate-500 dark:hover:bg-slate-700 dark:hover:text-slate-300'
           }`}
         >
-          <Zap size={12} className={animateEdges ? 'text-violet-500' : 'text-slate-400'} />
-          Animate {animateEdges ? 'ON' : 'OFF'}
+          <Zap size={16} />
         </button>
-      </div>
+      </BtnGroup>
+
+      {/* ── Last saved indicator (trailing) ──────────────────── */}
+      {lastSaved && (hasFileHandle || hasCloudProject) && (
+        <span
+          className="ml-auto flex items-center gap-1 text-xs text-slate-400 dark:text-slate-500"
+          title={`Last saved: ${lastSaved.toLocaleTimeString()}`}
+        >
+          <Clock size={11} />
+          {formatLastSaved(lastSaved)}
+        </span>
+      )}
     </div>
   );
 }

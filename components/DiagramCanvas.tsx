@@ -137,6 +137,8 @@ export type ExtendedRFInstance = ReactFlowInstance & {
   updateEdge: (edgeId: string, updates: Partial<Edge>) => void;
   deleteEdge: (edgeId: string) => void;
   pushHistoryNow: () => void;
+  doCopy: () => void;
+  doPaste: () => void;
 };
 
 interface DiagramCanvasProps {
@@ -745,6 +747,42 @@ export default function DiagramCanvas({
         pushHistoryRef.current();
       };
 
+      const doCopy = () => {
+        const selected = getNodes().filter((n) => n.selected);
+        if (selected.length === 0) return;
+        const selectedIds = new Set(selected.map((n) => n.id));
+        const relatedEdges = getEdges().filter(
+          (edge) => selectedIds.has(edge.source) && selectedIds.has(edge.target),
+        );
+        clipboardRef.current = { nodes: selected as Node<NodeData>[], edges: relatedEdges };
+      };
+
+      const doPaste = () => {
+        const { nodes: clipNodes, edges: clipEdges } = clipboardRef.current;
+        if (clipNodes.length === 0) return;
+        pushHistoryRef.current();
+        const OFFSET = 30;
+        const idMap = new Map<string, string>();
+        const newNodes: Node<NodeData>[] = clipNodes.map((n) => {
+          const newId = generateId();
+          idMap.set(n.id, newId);
+          return {
+            ...n,
+            id: newId,
+            position: { x: n.position.x + OFFSET, y: n.position.y + OFFSET },
+            selected: true,
+          };
+        });
+        const newEdges: Edge[] = clipEdges.map((edge) => ({
+          ...edge,
+          id: generateId(),
+          source: idMap.get(edge.source) ?? edge.source,
+          target: idMap.get(edge.target) ?? edge.target,
+        }));
+        setNodes((nds) => [...nds.map((n) => ({ ...n, selected: false })), ...newNodes]);
+        setEdges((eds) => [...eds, ...newEdges]);
+      };
+
       rfInstanceRef.current = Object.assign(instance, {
         loadDiagram,
         clearDiagram,
@@ -758,6 +796,8 @@ export default function DiagramCanvas({
         updateEdge,
         deleteEdge,
         pushHistoryNow,
+        doCopy,
+        doPaste,
       }) as ExtendedRFInstance;
     },
     // initialNodes.length is intentionally included so fitView fires on remount

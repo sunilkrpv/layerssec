@@ -266,7 +266,6 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
 
   // AI chat panel — open on initial load only when startup modal is not shown
   const [showChatPanel, setShowChatPanel] = useState(!showStartupModal);
-  const [isChatMinimized, setIsChatMinimized] = useState(false);
 
   // Right-click context menu
   const [contextMenu, setContextMenu] = useState<{
@@ -701,7 +700,6 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
         setShowProjectsModal(false);
         setShowStartupModal(false);
         setShowChatPanel(true);
-        setIsChatMinimized(false);
       } catch (err: unknown) {
         setError(err instanceof Error ? err.message : 'Failed to create cloud project');
       }
@@ -789,7 +787,6 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
       setNavStack(emptyProject.navStack);
       setShowStartupModal(false);
       setShowChatPanel(true);
-      setIsChatMinimized(false);
       return;
     }
     setStartupLoading(true);
@@ -803,7 +800,6 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
       setLastSaved(new Date());
       setShowStartupModal(false);
       setShowChatPanel(true);
-      setIsChatMinimized(false);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to create project.');
     } finally {
@@ -814,7 +810,6 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
   const handleStartupContinue = useCallback(() => {
     setShowStartupModal(false);
     setShowChatPanel(true);
-    setIsChatMinimized(false);
   }, []);
 
   // ── Diagram evaluation (streaming) ────────────────────────────────────────
@@ -1312,7 +1307,6 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
   const handleNew = useCallback(() => {
     handleClear();
     setShowChatPanel(true);
-    setIsChatMinimized(false);
   }, [handleClear]);
 
   const handleExportJson = useCallback(() => {
@@ -1493,15 +1487,10 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
             onOpenDiff={() => router.push('/diff')}
             layersVisible={showLayersPanel}
             onToggleLayers={() => setShowLayersPanel((v) => !v)}
-            onShowAI={() => {
-              setShowChatPanel(true);
-              setIsChatMinimized(false);
-            }}
+            onShowAI={() => setShowChatPanel(true)}
             userEmail={user?.email ?? null}
             onSignIn={() => setShowAuthModal(true)}
-            onMyProjects={() => router.push('/projects')}
             onSignOut={handleSignOut}
-            projectName={currentProjectName}
             isCloudProject={!!backendDiagramId && projectId !== 'local'}
             isReadOnly={isReadOnly}
             onPublish={() => setShowPublishModal(true)}
@@ -1519,6 +1508,9 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
             lastSaved={lastSaved}
             animateEdges={animateEdges}
             onToggleAnimateEdges={() => setAnimateEdges((v) => !v)}
+            onMyProjects={() => router.push('/projects')}
+            onCopy={() => rfInstanceRef.current?.doCopy()}
+            onPaste={() => rfInstanceRef.current?.doPaste()}
           />
 
           {/* ── Layer breadcrumb bar ─────────────────────────────────────── */}
@@ -1528,6 +1520,7 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
             canGoBack={navStack.length > 1}
             onBack={handleBack}
             onNavigate={navigateTo}
+            projectName={currentProjectName}
           />
 
           {error && (
@@ -1619,6 +1612,19 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
                   />
                 )}
               </div>
+            )}
+
+            {/* ── AI chat panel — docked right, only when signed in ─────────── */}
+            {showChatPanel && !!user && (
+              <AIChatPanel
+                onGenerate={handleGenerate}
+                onGenerateNewLayer={handleGenerateNewLayer}
+                onEvaluate={handleEvaluate}
+                isLoading={isGenerating}
+                status={generatingStatus}
+                onClose={() => setShowChatPanel(false)}
+                hasNodes={hasNodes}
+              />
             )}
           </div>
         </div>
@@ -1737,21 +1743,6 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
           />
         )}
 
-        {/* ── AI chat panel — only shown when user is signed in ───────────── */}
-        {showChatPanel && !!user && (
-          <AIChatPanel
-            onGenerate={handleGenerate}
-            onGenerateNewLayer={handleGenerateNewLayer}
-            onEvaluate={handleEvaluate}
-            isLoading={isGenerating}
-            status={generatingStatus}
-            isMinimized={isChatMinimized}
-            onMinimize={() => setIsChatMinimized(true)}
-            onExpand={() => setIsChatMinimized(false)}
-            onClose={() => setShowChatPanel(false)}
-            hasNodes={hasNodes}
-          />
-        )}
       </ReactFlowProvider>
     </CanvasContext.Provider>
   );

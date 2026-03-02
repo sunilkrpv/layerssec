@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Share2, Minus, Sparkles, LogIn, LogOut, FolderOpen, User, Sun, Moon, Monitor, Lock } from 'lucide-react';
+import { Share2, Minus, Sparkles, LogIn, LogOut, User, Sun, Moon, Monitor, Lock } from 'lucide-react';
 import { useTheme } from '@/lib/themeContext';
 import type { Theme } from '@/lib/themeStore';
 
@@ -22,10 +22,7 @@ interface MenuBarProps {
   /** Logged-in user email; null/undefined = not logged in */
   userEmail?: string | null;
   onSignIn?: () => void;
-  onMyProjects?: () => void;
   onSignOut?: () => void;
-  /** Name of the currently open cloud project */
-  projectName?: string | null;
   /** Whether a cloud project (not local) is currently open */
   isCloudProject?: boolean;
   /** Whether the currently open diagram is read-only (published) */
@@ -140,9 +137,7 @@ export default function MenuBar({
   onShowAI,
   userEmail,
   onSignIn,
-  onMyProjects,
   onSignOut,
-  projectName,
   isCloudProject,
   isReadOnly,
   onPublish,
@@ -165,19 +160,6 @@ export default function MenuBar({
           <Share2 size={14} className="text-blue-600" />
           <span className="text-sm font-bold text-slate-800 dark:text-slate-100">Drafter</span>
         </div>
-
-        {/* Project name */}
-        {projectName && (
-          <>
-            <div className="mr-3 h-4 w-px bg-slate-300 dark:bg-slate-600" />
-            <span
-              className="mr-3 max-w-[200px] truncate text-sm font-medium text-slate-700 dark:text-slate-300"
-              title={projectName}
-            >
-              {projectName}
-            </span>
-          </>
-        )}
 
         {/* Menu items */}
         <div className="flex items-center gap-0.5">
@@ -265,15 +247,6 @@ export default function MenuBar({
 
           {userEmail ? (
             <>
-              <button
-                onClick={onMyProjects}
-                className="flex items-center gap-1.5 rounded px-2.5 py-1 text-sm text-slate-700 hover:bg-slate-200 hover:text-slate-900 dark:text-slate-200 dark:hover:bg-slate-700 dark:hover:text-white"
-                title="My Projects"
-              >
-                <FolderOpen size={13} className="text-blue-600" />
-                <span>My Projects</span>
-              </button>
-              <div className="h-4 w-px bg-slate-200 dark:bg-slate-700" />
               <button
                 onClick={onSignOut}
                 className="flex items-center gap-1.5 rounded px-2.5 py-1 text-sm text-slate-700 hover:bg-slate-200 hover:text-slate-900 dark:text-slate-200 dark:hover:bg-slate-700 dark:hover:text-white"

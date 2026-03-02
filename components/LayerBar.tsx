@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowLeft, ChevronRight, Layers } from 'lucide-react';
+import { ArrowLeft, ChevronRight, Layers, FolderKanban } from 'lucide-react';
 import { getLayerPath, type LayerMap } from '@/lib/layerStore';
 
 interface LayerBarProps {
@@ -9,6 +9,8 @@ interface LayerBarProps {
   canGoBack: boolean;
   onBack: () => void;
   onNavigate: (layerId: string) => void;
+  /** Name of the currently open cloud project — shown in bold before the breadcrumb */
+  projectName?: string | null;
 }
 
 export default function LayerBar({
@@ -17,6 +19,7 @@ export default function LayerBar({
   canGoBack,
   onBack,
   onNavigate,
+  projectName,
 }: LayerBarProps) {
   const path = getLayerPath(layers, currentLayerId);
 
@@ -33,6 +36,19 @@ export default function LayerBar({
       </button>
 
       <div className="h-4 w-px bg-slate-300 dark:bg-slate-600" />
+
+      {/* Project name — shown before breadcrumb when a cloud project is open */}
+      {projectName && (
+        <>
+          <div className="flex flex-shrink-0 items-center gap-1.5">
+            <FolderKanban size={13} className="text-blue-500 dark:text-blue-400" />
+            <span className="text-xs font-bold text-slate-700 dark:text-slate-200 max-w-[180px] truncate" title={projectName}>
+              {projectName}
+            </span>
+          </div>
+          <ChevronRight size={12} className="flex-shrink-0 text-slate-400 dark:text-slate-500" />
+        </>
+      )}
 
       <Layers size={13} className="flex-shrink-0 text-slate-400 dark:text-slate-500" />
 
