@@ -3,7 +3,7 @@ import Anthropic from '@anthropic-ai/sdk';
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
 
-const SYSTEM_PROMPT = `You are an expert software architect and system design reviewer.
+const EVAL_SYSTEM_PROMPT = `You are an expert software architect and system design reviewer.
 
 When given an architecture diagram (as a list of nodes and edges), provide a clear, concise evaluation covering:
 
@@ -15,6 +15,12 @@ When given an architecture diagram (as a list of nodes and edges), provide a cle
 If the diagram is too sparse, too abstract, or you genuinely cannot draw conclusions, say so plainly — "No idea" is a valid answer.
 
 Keep your response focused and practical. Use bullet points where helpful. Do not pad with filler text.`;
+
+const QA_SYSTEM_PROMPT = `You are an expert software architect. You have been given an architecture diagram and the user has a specific question about it.
+
+Answer the question directly and concisely based on what the diagram shows. If the diagram doesn't contain enough information to fully answer the question, say so and provide what insights you can.
+
+Use markdown formatting where helpful (bullet points, bold for key terms, code for technology names). Keep your response focused and practical.`;
 
 interface SimplifiedNode {
   id: string;
@@ -36,9 +42,10 @@ export async function POST(req: NextRequest) {
       nodes?: Array<{ id: string; type?: string; data?: { label?: string; technology?: string; description?: string } }>;
       edges?: Array<{ id: string; source: string; target: string; label?: string }>;
       layerName?: string;
+      userQuestion?: string;
     };
 
-    const { nodes = [], edges = [], layerName = 'Diagram' } = body;
+    const { nodes = [], edges = [], layerName = 'Diagram', userQuestion } = body;
 
     if (!nodes.length) {
       return new Response(
@@ -62,7 +69,7 @@ export async function POST(req: NextRequest) {
       label: e.label as string | undefined,
     }));
 
-    const userContent = `Layer: ${layerName}
+    const diagramContext = `Layer: ${layerName}
 
 Nodes:
 ${JSON.stringify(simplifiedNodes, null, 2)}
@@ -70,10 +77,15 @@ ${JSON.stringify(simplifiedNodes, null, 2)}
 Connections:
 ${simplifiedEdges.length ? JSON.stringify(simplifiedEdges, null, 2) : '(no edges)'}`;
 
+    const isQA = !!userQuestion;
+    const userContent = isQA
+      ? `${diagramContext}\n\nQuestion: ${userQuestion}`
+      : diagramContext;
+
     const stream = await client.messages.stream({
       model: 'claude-opus-4-6',
       max_tokens: 1024,
-      system: SYSTEM_PROMPT,
+      system: isQA ? QA_SYSTEM_PROMPT : EVAL_SYSTEM_PROMPT,
       messages: [{ role: 'user', content: userContent }],
     });
 

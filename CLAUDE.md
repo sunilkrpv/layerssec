@@ -52,6 +52,35 @@ When all 21 node files need the same structural change, use a **Python script vi
 
 ## PR Log
 
+### PR-19 — Brand Colors, Read-Only Published Mode, AI Q&A
+- **AI panel brand colors**: `AIChatPanel` now uses the login page dark navy/indigo brand scheme — `linear-gradient(160deg, #1e1b4b, #1e3a8a, #0f172a)` background, three mesh blob divs, glass `bg-white/10 ring-1 ring-white/20` logo container; always dark regardless of app theme
+- **AI panel hidden by default**: `showChatPanel` initialises to `false`; **Cmd+I** keyboard shortcut toggles it (added alongside existing `Cmd+L` / `Cmd+P` in DiagramPage keydown handler)
+- **`isReadOnly` on `AIChatPanel`**: when true — lock badge in header, different welcome message + example chips (Q&A-focused only), different placeholder text, submit routes to Q&A mode via `onEvaluate(onChunk, question)` instead of diagram generation
+- **`isReadOnly` on `Toolbar`**: hides Save, Auto Save, Paste, Delete, Animate buttons; only My Projects, Copy, and Zoom controls remain
+- **NodePalette hidden**: `{!isReadOnly && <NodePalette ... />}` in DiagramPage layout
+- **Premium published banner**: replaced amber warning with a dark indigo gradient banner (`linear-gradient(90deg, #1e1b4b, #1e3a8a, #0f172a)`) — Lock icon in glass pill, "Published version" label, `v{N}` version badge, "Read only" label, glass "Check Out to Edit →" CTA button
+- **`/api/evaluate` Q&A mode**: added `userQuestion?: string` to request body; `QA_SYSTEM_PROMPT` for targeted Q&A; `isQA` flag selects prompt + appends `Question: ...` to diagram context
+- **`onEvaluate` signature extended**: `(onChunk: (chunk: string) => void, question?: string) => Promise<void>` — DiagramPage passes `userQuestion` to `/api/evaluate` fetch body
+- **`handleEvaluate` in DiagramPage**: accepts optional `userQuestion` arg, includes it in POST body to `/api/evaluate`
+- **`Lock`, `ArrowRight`** added to lucide imports in DiagramPage for the premium banner
+
+### PR-18 — AI Assistant New-Age Redesign
+- **Docked sidebar**: `AIChatPanel` converted from floating `fixed bottom-0 right-6 z-40` to a full-height `h-full w-[360px] flex-shrink-0` flex sibling alongside `DiagramCanvas` in the main content row
+- **`react-markdown` v10.1.0 + `remark-gfm`**: assistant message bubbles render full markdown — headings, bold/italic, bullet lists, inline and block code; all markdown components styled for the dark panel (white text, blue-200 inline code, `bg-black/40` code blocks)
+- **Per-message AI avatar**: small gradient square with `Sparkles` icon shown left of every assistant bubble
+- **`ThinkingDots` component**: three indigo circles with staggered `animationDelay` shown while streaming
+- **2×2 example chip grid**: replaces old single-column example list; chips have a "+" icon prefix
+- **Removed props**: `isMinimized`, `onMinimize`, `onExpand` removed — panel is always fully visible or unmounted
+- **DiagramPage cleanup**: removed `isChatMinimized` state and all four `setIsChatMinimized` call sites; `onShowAI` now just calls `setShowChatPanel(true)`; AIChatPanel rendered as flex child (not floating overlay)
+- **`runStreaming(userLabel, question?)` helper**: unified internal function for both evaluate and Q&A flows
+
+### PR-17 — Toolbar UX Reorganization
+- **Save / Auto Save group**: moved from far-right trailing position into a dedicated `BtnGroup` immediately after the My Projects group; always visible when not read-only
+- **Delete in Copy/Paste group**: `Trash2` delete button appended inside the Copy+Paste `BtnGroup` (not its own group)
+- **Animate in Zoom group**: `Zap` animate toggle moved inside the Zoom BtnGroup after Fit View, with an inner `mx-0.5 h-5 w-px` divider
+- **Last-saved indicator**: stays at `ml-auto` far right (trailing), visible only in editing mode when `lastSaved && (hasFileHandle || hasCloudProject)`
+- **`isReadOnly?: boolean` prop on `Toolbar`**: when `true`, hides Save + Auto Save group, Paste button, Delete button, and Animate button; leaves My Projects, Copy, and Zoom controls visible
+
 ### PR-1 — Foundation
 - Next.js + React Flow setup, AI generation endpoint
 - Streaming Claude response, basic node types (12 cloud nodes)
@@ -156,8 +185,8 @@ When all 21 node files need the same structural change, use a **Python script vi
   - Request body: `{ nodes, edges, layerName }` — strips position/style before sending, only semantic data
   - System prompt: expert architect analysis covering correctness, LLD flaws, HLD gaps, recommendations; "no idea" is valid
   - Streams `text/plain` chunks directly from Claude to client (real-time)
-- **`components/AIChatPanel.tsx`** — two additions:
-  - `onEvaluate?: (onChunk: (chunk: string) => void) => Promise<void>` prop — streaming callback
+- **`components/AIChatPanel.tsx`** — two additions (subsequently redesigned in PR-18/PR-19):
+  - `onEvaluate?: (onChunk: (chunk: string) => void) => Promise<void>` prop — streaming callback (signature later extended to include `question?` in PR-19)
   - "Evaluate this diagram" amber button shown above the input when `hasNodes && onEvaluate`; clicking adds a user message, streams assistant response chunk-by-chunk into the chat bubble
   - Assistant message bubbles now use `whitespace-pre-wrap` so multi-line evaluation text renders correctly
 - **`components/DiagramPage.tsx`** — wiring:

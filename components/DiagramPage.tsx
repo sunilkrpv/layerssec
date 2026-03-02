@@ -19,6 +19,7 @@ import ReassignLayerModal from '@/components/ReassignLayerModal';
 import DeleteLayerModal from '@/components/DeleteLayerModal';
 import AssignLayerModal from '@/components/AssignLayerModal';
 import AIChatPanel from '@/components/AIChatPanel';
+import { Lock, ArrowRight } from 'lucide-react';
 import FileLoadPrompt from '@/components/FileLoadPrompt';
 import StartupModal from '@/components/StartupModal';
 import AuthModal from '@/components/AuthModal';
@@ -234,6 +235,9 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
       } else if (e.key === 'p') {
         e.preventDefault();
         setShowProjectsModal(true);
+      } else if (e.key === 'i') {
+        e.preventDefault();
+        setShowChatPanel((v) => !v);
       }
     };
     document.addEventListener('keydown', handleKeyDown);
@@ -264,8 +268,8 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
   });
   const [startupLoading, setStartupLoading] = useState(false);
 
-  // AI chat panel — open on initial load only when startup modal is not shown
-  const [showChatPanel, setShowChatPanel] = useState(!showStartupModal);
+  // AI chat panel — hidden by default; toggle with Cmd+I
+  const [showChatPanel, setShowChatPanel] = useState(false);
 
   // Right-click context menu
   const [contextMenu, setContextMenu] = useState<{
@@ -815,14 +819,14 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
   // ── Diagram evaluation (streaming) ────────────────────────────────────────
 
   const handleEvaluate = useCallback(
-    async (onChunk: (chunk: string) => void) => {
+    async (onChunk: (chunk: string) => void, userQuestion?: string) => {
       const nodes = (rfInstanceRef.current as ReactFlowInstance | null)?.getNodes() ?? [];
       const edges = (rfInstanceRef.current as ReactFlowInstance | null)?.getEdges() ?? [];
       const layerName = layers[currentLayerId]?.name ?? 'Diagram';
       const response = await fetch('/api/evaluate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nodes, edges, layerName }),
+        body: JSON.stringify({ nodes, edges, layerName, userQuestion }),
       });
       if (!response.ok) {
         const errBody = await response.json().catch(() => ({ error: 'Request failed' })) as { error?: string };
@@ -1511,6 +1515,7 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
             onMyProjects={() => router.push('/projects')}
             onCopy={() => rfInstanceRef.current?.doCopy()}
             onPaste={() => rfInstanceRef.current?.doPaste()}
+            isReadOnly={isReadOnly}
           />
 
           {/* ── Layer breadcrumb bar ─────────────────────────────────────── */}
@@ -1546,24 +1551,47 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
             </div>
           )}
 
-          {/* ── Read-only banner (shown when viewing a published diagram) ──── */}
+          {/* ── Published read-only banner ───────────────────────────────── */}
           {isReadOnly && (
-            <div className="flex flex-shrink-0 items-center gap-3 border-b border-amber-200 bg-amber-50 px-4 py-2 text-sm dark:border-amber-900 dark:bg-amber-900/20">
-              <span className="text-amber-700 dark:text-amber-400">
-                This is a published version — read only.
-              </span>
+            <div
+              className="relative flex flex-shrink-0 items-center gap-3 overflow-hidden px-4 py-2.5"
+              style={{ background: 'linear-gradient(90deg, #1e1b4b 0%, #1e3a8a 60%, #0f172a 100%)' }}
+            >
+              {/* Subtle mesh glow */}
+              <div className="pointer-events-none absolute inset-0">
+                <div className="absolute -left-10 top-0 h-16 w-32 rounded-full bg-indigo-400/10 blur-2xl" />
+                <div className="absolute right-32 top-0 h-12 w-24 rounded-full bg-blue-400/8 blur-2xl" />
+              </div>
+              {/* Lock icon */}
+              <div className="relative flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-md bg-white/10 ring-1 ring-white/20">
+                <Lock size={11} className="text-indigo-300" />
+              </div>
+              {/* Labels */}
+              <div className="relative flex items-center gap-2">
+                <span className="text-xs font-semibold text-white">Published version</span>
+                {publishedVersionCount > 0 && (
+                  <span className="rounded-full bg-indigo-500/30 px-1.5 py-0.5 text-[10px] font-semibold text-indigo-200 ring-1 ring-indigo-400/30">
+                    v{publishedVersionCount}
+                  </span>
+                )}
+                <span className="text-indigo-400/60">·</span>
+                <span className="text-xs text-indigo-300/70">Read only</span>
+              </div>
+              {/* CTA */}
               <button
                 onClick={handleCheckoutFromEditor}
-                className="ml-auto rounded border border-amber-300 bg-amber-100 px-3 py-1 text-xs font-medium text-amber-700 hover:bg-amber-200 dark:border-amber-800 dark:bg-amber-900/30 dark:text-amber-400 dark:hover:bg-amber-900/50"
+                className="relative ml-auto flex items-center gap-1.5 rounded-lg bg-white/10 px-3 py-1.5 text-xs font-semibold text-white ring-1 ring-white/20 backdrop-blur-sm transition hover:bg-white/20"
               >
                 Check Out to Edit
+                <ArrowRight size={11} />
               </button>
             </div>
           )}
 
           {/* ── Main content area ────────────────────────────────────────── */}
           <div className="flex flex-1 overflow-hidden">
-            <NodePalette onDragStart={onPaletteDragStart} onAddNode={handleAddNode} />
+            {/* Components palette hidden in read-only (published) view */}
+            {!isReadOnly && <NodePalette onDragStart={onPaletteDragStart} onAddNode={handleAddNode} />}
 
             <DiagramCanvas
               key={`${currentLayerId}_${canvasLoadKey}`}
@@ -1624,6 +1652,7 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
                 status={generatingStatus}
                 onClose={() => setShowChatPanel(false)}
                 hasNodes={hasNodes}
+                isReadOnly={isReadOnly}
               />
             )}
           </div>
