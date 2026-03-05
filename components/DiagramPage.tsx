@@ -28,11 +28,12 @@ import PublishModal from '@/components/PublishModal';
 import type { AssignableLayer } from '@/components/AssignLayerModal';
 
 import type { NodeData, NodeType, GenerateResponse } from '@/lib/types';
-import type { UserProfile, Project } from '@/lib/api';
+import type { UserProfile, Project, ChatMessage } from '@/lib/api';
 import {
   apiUpdateDiagram, apiCreateDiagram, apiGenerateDiagram,
   apiPublishDiagram, apiListProjectVersions, apiGetProjectDraft,
   apiGetDiagram, apiGetProject, apiCheckoutVersion, DraftExistsError,
+  apiChatGenerate, apiChatEvaluate, apiGetChatHistory,
 } from '@/lib/api';
 import { getStoredUser, clearTokens, isLoggedIn, isLocalMode, clearLocalMode } from '@/lib/authStore';
 import {
@@ -270,6 +271,8 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
 
   // AI chat panel — hidden by default; toggle with Cmd+I
   const [showChatPanel, setShowChatPanel] = useState(false);
+  // Chat history loaded from backend for cloud projects
+  const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
 
   // Right-click context menu
   const [contextMenu, setContextMenu] = useState<{
@@ -397,6 +400,11 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
         // Load project name in background — non-blocking, failure is non-fatal
         apiGetProject(projectId)
           .then((proj) => setCurrentProjectName(proj.name))
+          .catch(() => {/* non-fatal */});
+
+        // Load chat history in background — non-blocking
+        apiGetChatHistory(projectId)
+          .then((msgs) => setChatHistory(msgs))
           .catch(() => {/* non-fatal */});
 
         // ?view=diagramId — load a specific version as read-only
@@ -823,25 +831,35 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
       const nodes = (rfInstanceRef.current as ReactFlowInstance | null)?.getNodes() ?? [];
       const edges = (rfInstanceRef.current as ReactFlowInstance | null)?.getEdges() ?? [];
       const layerName = layers[currentLayerId]?.name ?? 'Diagram';
-      const response = await fetch('/api/evaluate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nodes, edges, layerName, userQuestion }),
-      });
-      if (!response.ok) {
-        const errBody = await response.json().catch(() => ({ error: 'Request failed' })) as { error?: string };
-        throw new Error(errBody.error ?? 'Evaluation failed');
-      }
-      const reader = response.body?.getReader();
-      if (!reader) throw new Error('No response stream');
-      const decoder = new TextDecoder();
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        onChunk(decoder.decode(value, { stream: true }));
+      const isCloud = projectId !== 'local' && isLoggedIn();
+      if (isCloud) {
+        // Cloud: route through drafter-rest — saves both messages to chat history server-side
+        await apiChatEvaluate(
+          { nodes, edges, layerName, userQuestion, projectId, layerId: currentLayerId },
+          onChunk,
+        );
+      } else {
+        // Local fallback — Next.js API route, no history
+        const response = await fetch('/api/evaluate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nodes, edges, layerName, userQuestion }),
+        });
+        if (!response.ok) {
+          const errBody = await response.json().catch(() => ({ error: 'Request failed' })) as { error?: string };
+          throw new Error(errBody.error ?? 'Evaluation failed');
+        }
+        const reader = response.body?.getReader();
+        if (!reader) throw new Error('No response stream');
+        const decoder = new TextDecoder();
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          onChunk(decoder.decode(value, { stream: true }));
+        }
       }
     },
-    [currentLayerId, layers],
+    [currentLayerId, layers, projectId],
   );
 
   // ── Layer navigation ──────────────────────────────────────────────────────
@@ -1257,13 +1275,28 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
     setError(null);
     setGeneratingStatus('Thinking...');
     try {
-      // Route through the backend — persists to ai_interactions and uses auth
-      const result = await apiGenerateDiagram(
-        prompt,
-        backendDiagramIdRef.current ?? undefined,
-      );
+      let diagram: GenerateResponse;
+      const isCloud = projectId !== 'local' && isLoggedIn();
+      if (isCloud) {
+        // Cloud: use chat-specific endpoint — saves to chat history
+        diagram = await apiChatGenerate({
+          prompt,
+          projectId,
+          diagramId: backendDiagramIdRef.current ?? undefined,
+          layerId: currentLayerId,
+          layerName: layers[currentLayerId]?.name,
+        }) as GenerateResponse;
+      } else {
+        // Local fallback — Next.js API route, no history
+        const response = await fetch('/api/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt }),
+        });
+        if (!response.ok) throw new Error('Generation failed');
+        diagram = await response.json() as GenerateResponse;
+      }
       setGeneratingStatus('Rendering diagram...');
-      const diagram = result.data as GenerateResponse;
       rfInstanceRef.current?.loadDiagram(diagram);
       setTimeout(() => {
         (rfInstanceRef.current as ReactFlowInstance | null)?.fitView({ padding: 0.15 });
@@ -1275,7 +1308,7 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
       setIsGenerating(false);
       setGeneratingStatus('');
     }
-  }, []);
+  }, [currentLayerId, layers, projectId]);
 
   // ── Generate on a new standalone layer ────────────────────────────────────
 
@@ -1492,6 +1525,11 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
             layersVisible={showLayersPanel}
             onToggleLayers={() => setShowLayersPanel((v) => !v)}
             onShowAI={() => setShowChatPanel(true)}
+            onShowAIHistory={() => {
+              if (projectId !== 'local' && isLoggedIn()) {
+                router.push(`/projects/${projectId}/ai-history`);
+              }
+            }}
             userEmail={user?.email ?? null}
             onSignIn={() => setShowAuthModal(true)}
             onSignOut={handleSignOut}
@@ -1653,6 +1691,7 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
                 onClose={() => setShowChatPanel(false)}
                 hasNodes={hasNodes}
                 isReadOnly={isReadOnly}
+                initialMessages={chatHistory.map((m) => ({ role: m.role, content: m.content }))}
               />
             )}
           </div>

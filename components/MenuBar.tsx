@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Share2, Minus, Sparkles, LogIn, LogOut, User, Sun, Moon, Monitor, Lock } from 'lucide-react';
+import { Share2, Minus, Sparkles, LogIn, LogOut, User, Sun, Moon, Monitor, Lock, Layers2, Layers, History } from 'lucide-react';
 import { useTheme } from '@/lib/themeContext';
 import type { Theme } from '@/lib/themeStore';
 
@@ -19,6 +19,7 @@ interface MenuBarProps {
   layersVisible: boolean;
   onToggleLayers: () => void;
   onShowAI: () => void;
+  onShowAIHistory?: () => void;
   /** Logged-in user email; null/undefined = not logged in */
   userEmail?: string | null;
   onSignIn?: () => void;
@@ -135,6 +136,7 @@ export default function MenuBar({
   layersVisible,
   onToggleLayers,
   onShowAI,
+  onShowAIHistory,
   userEmail,
   onSignIn,
   onSignOut,
@@ -157,7 +159,7 @@ export default function MenuBar({
       <div className="flex h-9 flex-shrink-0 items-center border-b border-slate-200 bg-slate-50 px-3 dark:border-slate-700 dark:bg-slate-900">
         {/* Logo */}
         <div className="mr-4 flex items-center gap-1.5 pl-1">
-          <Share2 size={14} className="text-blue-600" />
+          <Layers size={14} className="text-blue-600" />
           <span className="text-sm font-bold text-slate-800 dark:text-slate-100">Drafter</span>
         </div>
 
@@ -221,6 +223,14 @@ export default function MenuBar({
                 Open AI Assistant
               </span>
             </MenuItem>
+            {onShowAIHistory && (
+              <MenuItem onClick={onShowAIHistory}>
+                <span className="flex items-center gap-2">
+                  <History size={13} className="text-blue-500" />
+                  AI History
+                </span>
+              </MenuItem>
+            )}
           </Dropdown>
 
           <button
@@ -308,7 +318,7 @@ export default function MenuBar({
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-600">
-              <Share2 size={28} className="text-white" />
+              <Layers size={28} className="text-white" />
             </div>
             <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Drafter</h1>
             <p className="mt-1 text-base font-medium text-slate-500 dark:text-slate-400">v0.1 Alpha</p>

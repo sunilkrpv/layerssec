@@ -263,3 +263,127 @@ export function apiGenerateDiagram(
     body: JSON.stringify({ prompt, diagramId }),
   });
 }
+
+// ─── Chat History ─────────────────────────────────────────────────────────────
+
+export interface ChatMessage {
+  id: string;
+  projectId: string;
+  role: 'user' | 'assistant';
+  content: string;
+  layerId?: string | null;
+  layerName?: string | null;
+  createdAt: string;
+}
+
+interface ChatMessageInput {
+  role: 'user' | 'assistant';
+  content: string;
+  layerId?: string;
+  layerName?: string;
+}
+
+export function apiGetChatHistory(projectId: string): Promise<ChatMessage[]> {
+  return apiFetch<ChatMessage[]>(`/api/projects/${projectId}/chat/messages`);
+}
+
+export function apiSaveChatMessages(
+  projectId: string,
+  messages: ChatMessageInput[],
+): Promise<void> {
+  return apiFetch<void>(`/api/projects/${projectId}/chat/messages`, {
+    method: 'POST',
+    body: JSON.stringify({ messages }),
+  });
+}
+
+/** Chat-specific generate endpoint — uses Drafter system prompt and saves to chat history. */
+export function apiChatGenerate(payload: {
+  prompt: string;
+  projectId?: string;
+  diagramId?: string;
+  layerId?: string;
+  layerName?: string;
+}): Promise<{ nodes: unknown[]; edges: unknown[] }> {
+  return apiFetch<{ nodes: unknown[]; edges: unknown[] }>('/api/ai/chat/generate', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+/** Streaming conversational chat with memory — streams text and saves to chat history server-side. */
+export async function apiChatAsk(
+  payload: {
+    message: string;
+    projectId?: string;
+    history?: Array<{ role: 'user' | 'assistant'; content: string }>;
+  },
+  onChunk: (chunk: string) => void,
+): Promise<void> {
+  const token = getAccessToken();
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const res = await fetch(`${BASE_URL}/api/ai/chat/ask`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(payload),
+  });
+
+  if (res.status === 401) {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('drafter:unauthorized'));
+    }
+    throw new ApiUnauthorizedError();
+  }
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+  const reader = res.body?.getReader();
+  if (!reader) throw new Error('No response stream');
+  const decoder = new TextDecoder();
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    onChunk(decoder.decode(value, { stream: true }));
+  }
+}
+
+/** Streaming evaluate — streams text chunks and saves both messages to chat history server-side. */
+export async function apiChatEvaluate(
+  payload: {
+    nodes: unknown[];
+    edges: unknown[];
+    layerName?: string;
+    userQuestion?: string;
+    projectId?: string;
+    layerId?: string;
+  },
+  onChunk: (chunk: string) => void,
+): Promise<void> {
+  const token = getAccessToken();
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const res = await fetch(`${BASE_URL}/api/ai/chat/evaluate`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(payload),
+  });
+
+  if (res.status === 401) {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('drafter:unauthorized'));
+    }
+    throw new ApiUnauthorizedError();
+  }
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+  const reader = res.body?.getReader();
+  if (!reader) throw new Error('No response stream');
+  const decoder = new TextDecoder();
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    onChunk(decoder.decode(value, { stream: true }));
+  }
+}

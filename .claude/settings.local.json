@@ -20,7 +20,8 @@
       "Bash(node -e \"const {execSync} = require\\(''child_process''\\); console.log\\(execSync\\(''which npx'', {encoding:''utf8''}\\)\\)\")",
       "Bash(export PATH=\"$HOME/.nvm/versions/node/v23.11.1/bin:$PATH\")",
       "Bash(echo \"Exit: $?\")",
-      "Bash(node -e \"console.log\\(require\\(''./node_modules/react-markdown/package.json''\\).version\\)\")"
+      "Bash(node -e \"console.log\\(require\\(''./node_modules/react-markdown/package.json''\\).version\\)\")",
+      "Bash(npx prisma migrate dev --name add_chat_messages)"
     ]
   }
 }
