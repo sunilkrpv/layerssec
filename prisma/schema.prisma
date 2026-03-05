@@ -23,16 +23,17 @@ model User {
 }
 
 model Project {
-  id          String    @id @default(uuid()) @db.Uuid
-  name        String
-  description String?
-  owner       User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  ownerId     String    @map("owner_id") @db.Uuid
-  diagrams    Diagram[]
-  isPublic    Boolean   @default(false) @map("is_public")
-  tags        String[]  @default([])
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
+  id           String        @id @default(uuid()) @db.Uuid
+  name         String
+  description  String?
+  owner        User          @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  ownerId      String        @map("owner_id") @db.Uuid
+  diagrams     Diagram[]
+  chatMessages ChatMessage[]
+  isPublic     Boolean       @default(false) @map("is_public")
+  tags         String[]      @default([])
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
 
   @@index([ownerId])
   @@map("projects")
@@ -71,6 +72,20 @@ model AiInteraction {
 
   @@index([userId])
   @@map("ai_interactions")
+}
+
+model ChatMessage {
+  id        String   @id @default(uuid()) @db.Uuid
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId String   @map("project_id") @db.Uuid
+  role      String   // 'user' | 'assistant'
+  content   String   @db.Text
+  layerId   String?  @map("layer_id")
+  layerName String?  @map("layer_name")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([projectId])
+  @@map("chat_messages")
 }
 
 enum DiagramType {

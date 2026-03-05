@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ChatAnthropic } from '@langchain/anthropic';
 import { ChatOllama } from '@langchain/ollama';
-import { HumanMessage, SystemMessage } from '@langchain/core/messages';
+import { AIMessage, HumanMessage, SystemMessage } from '@langchain/core/messages';
 
 export type LlmProvider = 'anthropic' | 'ollama';
 
@@ -24,7 +24,10 @@ export interface LlmResponse {
 @Injectable()
 export class LlmService {
   private readonly logger = new Logger(LlmService.name);
+  /** Used for invoke() — JSON-constrained for diagram generation */
   private readonly llm: ChatAnthropic | ChatOllama;
+  /** Used for stream()/streamConversation() — no JSON constraint so markdown works */
+  private readonly llmText: ChatAnthropic | ChatOllama;
 
   readonly provider: LlmProvider;
   readonly modelName: string;
@@ -40,7 +43,14 @@ export class LlmService {
         baseUrl,
         model: this.modelName,
         temperature: 0,
-        format: 'json', // Ask Ollama to constrain output to JSON
+        format: 'json', // JSON-constrained for diagram generation
+      });
+
+      this.llmText = new ChatOllama({
+        baseUrl,
+        model: this.modelName,
+        temperature: 0,
+        // No format constraint — allows markdown/plain text responses
       });
 
       this.logger.log(`LLM provider: Ollama — ${this.modelName} @ ${baseUrl}`);
@@ -53,6 +63,9 @@ export class LlmService {
         maxTokens: 4096,
         temperature: 0,
       });
+
+      // Anthropic has no JSON-only constraint, same instance works for both
+      this.llmText = this.llm;
 
       this.logger.log(`LLM provider: Anthropic — ${this.modelName}`);
     }
@@ -68,14 +81,7 @@ export class LlmService {
       new HumanMessage(userMessage),
     ]);
 
-    // Normalise content — both providers can return string or array
-    const content =
-      typeof response.content === 'string'
-        ? response.content
-        : (response.content as Array<{ type: string; text?: string }>)
-            .filter((c) => c.type === 'text')
-            .map((c) => c.text ?? '')
-            .join('');
+    const content = this.extractText(response.content);
 
     // usage_metadata is populated by LangChain for both Anthropic and Ollama
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -104,5 +110,51 @@ export class LlmService {
     console.log('LLM provider:', this.provider);
 
     return { content, tokensUsed };
+  }
+
+  /**
+   * Stream a system + user message pair, yielding text chunks as they arrive.
+   * Uses llmText (no JSON constraint) so responses are markdown/plain text.
+   */
+  async *stream(systemPrompt: string, userMessage: string): AsyncGenerator<string> {
+    const chunks = await this.llmText.stream([
+      new SystemMessage(systemPrompt),
+      new HumanMessage(userMessage),
+    ]);
+    for await (const chunk of chunks) {
+      const text = this.extractText(chunk.content);
+      if (text) yield text;
+    }
+  }
+
+  /**
+   * Multi-turn conversational stream with history context.
+   * Uses llmText so responses are markdown/plain text.
+   */
+  async *streamConversation(
+    systemPrompt: string,
+    history: Array<{ role: 'user' | 'assistant'; content: string }>,
+    userMessage: string,
+  ): AsyncGenerator<string> {
+    const msgs = [
+      new SystemMessage(systemPrompt),
+      ...history.map((m) =>
+        m.role === 'user' ? new HumanMessage(m.content) : new AIMessage(m.content),
+      ),
+      new HumanMessage(userMessage),
+    ];
+    const chunks = await this.llmText.stream(msgs);
+    for await (const chunk of chunks) {
+      const text = this.extractText(chunk.content);
+      if (text) yield text;
+    }
+  }
+
+  private extractText(content: unknown): string {
+    if (typeof content === 'string') return content;
+    return (content as Array<{ type: string; text?: string }>)
+      .filter((c) => c.type === 'text')
+      .map((c) => c.text ?? '')
+      .join('');
   }
 }
