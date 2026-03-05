@@ -52,6 +52,36 @@ When all 21 node files need the same structural change, use a **Python script vi
 
 ## PR Log
 
+### PR-20 — AI History Page & Diagram Intelligence
+- **`components/AIHistoryPage.tsx`** (new full-page component at `/projects/:id/ai-history`):
+  - **Layers sidebar**: expandable tree of all project layers — each row has Eye (preview popup) and Paperclip (attach to chat) icon buttons on hover
+  - **`LayerPreviewPopup`**: `position: fixed` overlay anchored right of sidebar row; shows `MiniDiagramPreview` + "Attach to chat context" button
+  - **`attachedLayer` state**: persists for entire session; chip shown above input with × to dismiss; nodes/edges sent as `layerContext` with every message
+  - **`splitDiagramContent(raw)`**: splits on `---DIAGRAM---` first; falls back to extracting the last ` ```json ``` ` code block if it parses to `{ nodes[], edges[] }` — handles both AI output formats
+  - **`DiagramBubble`**: renders in every assistant message that contains a diagram; has "Preview/Hide" toggle (inline `h-56` React Flow) + `Maximize2` icon to open fullscreen overlay + "Apply →" button
+  - **Fullscreen overlay** (`fixed inset-0 z-50`): full viewport React Flow preview with gradient header, Apply button, and close
+  - **`ApplyDiagramModal`** (2-step flow):
+    - Step 1 "Choose": "Override attached layer" (amber warning, only shown when a layer is attached) OR "Create new standalone layer" (always available); if no layer attached, override is hidden and an info banner explains why
+    - Step 2 "Link to shape" (only for "Create new"): lists all non-line nodes from all layers; user optionally picks one to set its `_childLayerId` to the new layer; "Skip" available
+    - Modal is `z-[60]` so it renders above the `z-50` fullscreen overlay
+  - **`handleApplyDiagram`**: takes `{ mode, targetLayerId?, newLayerName?, linkToNode? }`, creates/overrides layer in `diagramLayers` state, sets `_childLayerId` on linked node, persists via `apiUpdateDiagram`
+  - **Modal condition**: `applyTarget && diagramLayers` (no longer requires `attachedLayer` — Apply always works)
+  - **Streaming**: `splitDiagramContent` applied to live streamed text so diagram JSON is stripped from visible markdown during streaming; final message replaces streaming item with `diagramData` populated
+  - **Markdown**: `react-markdown` + `remark-gfm`; `CopyableCodeBlock` for fenced code with copy button
+  - **Navigation guard**: `beforeunload` blocked while streaming; back button disabled while streaming
+  - **`ThinkingDots`** animation while waiting for first chunk
+- **`components/MiniDiagramPreview.tsx`** (new shared component):
+  - Lightweight read-only React Flow canvas wrapped in `ReactFlowProvider`
+  - `miniNode` custom type: renders palette icon + label + type badge
+  - `FitOnMount` inner component calls `fitView({ padding: 0.2 })` on mount
+  - Props: `nodes: unknown[], edges: unknown[], className?: string`
+  - Used in: `LayerPreviewPopup`, `DiagramBubble` inline preview, `DiagramBubble` fullscreen overlay
+- **`lib/api.ts`** additions:
+  - `ChatMessage` interface: `id, projectId, role, content, layerId?, layerName?, diagramData?, createdAt`
+  - `apiGetChatHistory(projectId)` — GET `/api/projects/:id/chat`
+  - `apiChatAsk({ message, projectId, history?, layerContext? }, onChunk)` — streaming POST `/api/ai/chat/ask`
+  - `layerContext` type: `{ layerId?, layerName?, nodes: unknown[], edges: unknown[] }`
+
 ### PR-19 — Brand Colors, Read-Only Published Mode, AI Q&A
 - **AI panel brand colors**: `AIChatPanel` now uses the login page dark navy/indigo brand scheme — `linear-gradient(160deg, #1e1b4b, #1e3a8a, #0f172a)` background, three mesh blob divs, glass `bg-white/10 ring-1 ring-white/20` logo container; always dark regardless of app theme
 - **AI panel hidden by default**: `showChatPanel` initialises to `false`; **Cmd+I** keyboard shortcut toggles it (added alongside existing `Cmd+L` / `Cmd+P` in DiagramPage keydown handler)
@@ -360,6 +390,8 @@ When all 21 node files need the same structural change, use a **Python script vi
 | `components/DiffCanvas.tsx` | Read-only React Flow canvas with `diffNode` renderer; diff status overlays |
 | `components/DiffLayersPanel.tsx` | Layer list with diff status badges, change counts, legend |
 | `app/diff/page.tsx` | Server Component route → `<DiffPage />` |
+| `components/AIHistoryPage.tsx` | Full-page AI chat history; layers sidebar tree; DiagramBubble with preview/maximize/apply; ApplyDiagramModal 2-step flow |
+| `components/MiniDiagramPreview.tsx` | Shared read-only React Flow canvas (used in layer preview popup + chat diagram bubbles) |
 
 ## Verification Commands
 ```bash

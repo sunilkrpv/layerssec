@@ -273,6 +273,7 @@ export interface ChatMessage {
   content: string;
   layerId?: string | null;
   layerName?: string | null;
+  diagramData?: { nodes: unknown[]; edges: unknown[] } | null;
   createdAt: string;
 }
 
@@ -317,6 +318,7 @@ export async function apiChatAsk(
     message: string;
     projectId?: string;
     history?: Array<{ role: 'user' | 'assistant'; content: string }>;
+    layerContext?: { layerId?: string; layerName?: string; nodes: unknown[]; edges: unknown[] };
   },
   onChunk: (chunk: string) => void,
 ): Promise<void> {
