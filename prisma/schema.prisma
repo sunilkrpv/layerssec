@@ -75,14 +75,15 @@ model AiInteraction {
 }
 
 model ChatMessage {
-  id        String   @id @default(uuid()) @db.Uuid
-  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  projectId String   @map("project_id") @db.Uuid
-  role      String   // 'user' | 'assistant'
-  content   String   @db.Text
-  layerId   String?  @map("layer_id")
-  layerName String?  @map("layer_name")
-  createdAt DateTime @default(now()) @map("created_at")
+  id          String   @id @default(uuid()) @db.Uuid
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId   String   @map("project_id") @db.Uuid
+  role        String   // 'user' | 'assistant'
+  content     String   @db.Text
+  layerId     String?  @map("layer_id")
+  layerName   String?  @map("layer_name")
+  diagramData Json?    @map("diagram_data")
+  createdAt   DateTime @default(now()) @map("created_at")
 
   @@index([projectId])
   @@map("chat_messages")

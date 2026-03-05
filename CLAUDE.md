@@ -27,8 +27,9 @@ Handles authentication, project/diagram storage, and AI interaction tracking.
 |-------|-----------|
 | `User` | `id` (uuid), `email` (unique), `passwordHash`, `name`, `avatarUrl` |
 | `Project` | `id`, `name`, `ownerId → User`, `isPublic`, `tags[]`, timestamps |
-| `Diagram` | `id`, `name`, `type` (DiagramType enum), `canvasData` (Json), `projectId → Project`, `version`, timestamps |
+| `Diagram` | `id`, `name`, `type`, `canvasData` (Json), `status` (draft/published), `publishComment`, `publishedAt`, `projectId → Project`, `version` |
 | `AiInteraction` | `userId`, `diagramId?`, `prompt`, `response`, `tokensUsed`, `model` |
+| `ChatMessage` | `id`, `projectId → Project`, `userId → User`, `role` (user/assistant), `content`, `layerId?`, `layerName?`, `diagramData?` (Json), `createdAt` |
 
 ### Diagram → Drafter mapping
 Each Drafter project = one NestJS **Project** + one NestJS **Diagram** (named "main", type `GENERAL`).
@@ -41,13 +42,23 @@ src/
   auth/         AuthModule — register, login, refresh; JwtAuthGuard; CurrentUser decorator
   users/        UsersModule — GET /api/users/me
   projects/     ProjectsModule — CRUD for projects
-  diagrams/     DiagramsModule — CRUD for diagrams (under /api/projects/:id/diagrams and /api/diagrams/:id)
+  diagrams/     DiagramsModule — CRUD for diagrams
+  chat/         ChatModule — persist + retrieve per-project chat history
+    chat.service.ts     — saveMessages(projectId, userId, items[]), getHistory(projectId, userId)
+    dto/save-chat-messages.dto.ts — ChatMessageItemDto (role, content, layerId?, layerName?, diagramData?)
   prisma/       PrismaModule — global PrismaService (onModuleInit: $connect)
   ai/           AiModule — LangChain LLM orchestration + diagram generation endpoints
-    llm.service.ts  — LlmService: selects Anthropic or Ollama at startup via AI_PROVIDER env var
-    ai.service.ts   — AiService: generate/suggest/refine; logs to AiInteraction table
-    ai.controller.ts — POST /api/ai/generate | /suggest | /refine
-    prompts/     — SYSTEM_PROMPT, buildGeneratePrompt, buildRefinePrompt, buildSuggestPrompt
+    llm.service.ts   — LlmService: selects Anthropic or Ollama at startup via AI_PROVIDER env var
+    ai.service.ts    — AiService: generate/suggest/refine/chatGenerate/chatEvaluate/chatAsk
+    ai.controller.ts — POST /api/ai/generate|suggest|refine|chat/generate|chat/evaluate|chat/ask
+    prompts/
+      system-prompt.ts         — SYSTEM_PROMPT (original diagram generation)
+      generate-prompt.ts       — buildGeneratePrompt
+      refine-prompt.ts         — buildRefinePrompt
+      suggest-prompt.ts        — buildSuggestPrompt
+      drafter-system-prompt.ts — DRAFTER_SYSTEM_PROMPT (chatGenerate)
+      eval-system-prompt.ts    — EVAL_SYSTEM_PROMPT, QA_SYSTEM_PROMPT
+      chat-system-prompt.ts    — CHAT_SYSTEM_PROMPT + buildLayerContextSystemPrompt(layerContext)
   storage/      StorageModule — Supabase Storage (thumbnails)
 ```
 
@@ -84,16 +95,28 @@ POST   /api/auth/refresh
 
 GET    /api/users/me
 
-GET    /api/projects                    — list user's projects (includes _count.diagrams)
-POST   /api/projects                    — create project { name, description?, isPublic?, tags? }
-GET    /api/projects/:id               — project + diagrams[] (metadata only, no canvasData)
-PATCH  /api/projects/:id               — update project
-DELETE /api/projects/:id               — delete project
+GET    /api/projects                       — list user's projects
+POST   /api/projects                       — create project { name, description?, isPublic?, tags? }
+GET    /api/projects/:id                   — project + diagrams[] metadata
+PATCH  /api/projects/:id                   — update project
+DELETE /api/projects/:id                   — delete project
 
-POST   /api/projects/:id/diagrams      — create diagram { name, type?, canvasData? }
-GET    /api/diagrams/:id               — get full diagram (includes canvasData)
-PATCH  /api/diagrams/:id               — update diagram { name?, type?, canvasData?, thumbnail? }
-DELETE /api/diagrams/:id               — delete diagram
+POST   /api/projects/:id/diagrams          — create diagram { name, type?, canvasData? }
+GET    /api/diagrams/:id                   — get full diagram (includes canvasData)
+PATCH  /api/diagrams/:id                   — update diagram { name?, type?, canvasData?, thumbnail? }
+DELETE /api/diagrams/:id                   — delete diagram
+POST   /api/diagrams/:id/publish           — publish diagram { comment? }
+GET    /api/projects/:id/versions          — list published versions
+GET    /api/projects/:id/draft             — get current draft diagram
+POST   /api/projects/:id/checkout          — checkout a published version as new draft
+
+GET    /api/projects/:id/chat              — get chat history for project
+POST   /api/ai/chat/ask                    — streaming chat with optional layerContext
+POST   /api/ai/chat/evaluate               — streaming diagram evaluation (or Q&A with userQuestion)
+POST   /api/ai/chat/generate               — generate a new diagram from prompt (non-streaming)
+POST   /api/ai/generate                    — original diagram generation (legacy)
+POST   /api/ai/suggest                     — auto-suggest improvements
+POST   /api/ai/refine                      — refine existing diagram
 ```
 
 ## Development Setup
@@ -139,3 +162,19 @@ npm run db:generate         # regenerate Prisma Client after schema change
 - All `db:*` scripts + `start:dev` + `start:debug` prefixed with `dotenv -e .env.local --`
 - `.env.local` points to `postgresql://postgres:postgres@localhost:5432/drafter`
 - `.env.local` added to `.gitignore`
+
+### Chat History + AI Diagram Intelligence
+- **`ChatMessage` model**: added to Prisma schema with fields `role`, `content`, `layerId?`, `layerName?`, `diagramData?` (Json); migration `add_chat_diagram_data` applied
+- **`ChatModule`** (`src/chat/`): `ChatService.saveMessages()` + `getHistory()` — used by `AiService` to persist every exchange
+- **`chatAsk` endpoint** (`POST /api/ai/chat/ask`): streaming LLM response; accepts `layerContext` (nodes+edges of an attached layer) which activates `buildLayerContextSystemPrompt`; after stream splits on `---DIAGRAM---` separator OR falls back to extracting the last ` ```json ``` ` code block to capture diagram JSON; stores both `textContent` and `diagramData` in `ChatMessage`
+- **`chatEvaluate` endpoint** (`POST /api/ai/chat/evaluate`): streaming architecture review; accepts `userQuestion?` to switch between `EVAL_SYSTEM_PROMPT` (review) and `QA_SYSTEM_PROMPT` (Q&A)
+- **`buildLayerContextSystemPrompt(layerContext)`** (`prompts/chat-system-prompt.ts`): injects simplified nodes/edges into system prompt; instructs AI to append `---DIAGRAM---` + raw JSON (no fences) when user requests diagram changes; specifies exact node/edge JSON schema and layout guidelines
+
+### Key AI Protocol: Diagram Extraction
+The `---DIAGRAM---` separator is the **primary** protocol. If AI ignores it and outputs JSON in a ` ```json ``` ` block, both backend (`ai.service.ts` `chatAsk`) and frontend (`splitDiagramContent` in `AIHistoryPage.tsx`) fall back to extracting the **last** code block that parses to `{ nodes[], edges[] }`. Always implement both layers of detection when processing AI responses that may contain diagram JSON.
+
+### Versioning (Publish / Check Out)
+- `Diagram.status`: `draft` | `published`
+- `publish`: sets status=published, snapshots canvasData, increments version
+- `checkout`: clones published diagram as new draft (409 if draft already exists)
+- `getDraft` / `listVersions` on `ProjectsService`

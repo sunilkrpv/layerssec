@@ -8,7 +8,7 @@ import { buildSuggestPrompt } from './prompts/suggest-prompt';
 import { buildRefinePrompt } from './prompts/refine-prompt';
 import { DRAFTER_SYSTEM_PROMPT } from './prompts/drafter-system-prompt';
 import { EVAL_SYSTEM_PROMPT, QA_SYSTEM_PROMPT } from './prompts/eval-system-prompt';
-import { CHAT_SYSTEM_PROMPT } from './prompts/chat-system-prompt';
+import { CHAT_SYSTEM_PROMPT, buildLayerContextSystemPrompt } from './prompts/chat-system-prompt';
 import { ChatService } from '../chat/chat.service';
 import { ChatGenerateDto } from './dto/chat-generate.dto';
 import { ChatEvaluateDto } from './dto/chat-evaluate.dto';
@@ -121,10 +121,14 @@ export class AiService {
     res.setHeader('Transfer-Encoding', 'chunked');
     res.setHeader('Cache-Control', 'no-cache');
 
+    const systemPrompt = dto.layerContext
+      ? buildLayerContextSystemPrompt(dto.layerContext)
+      : CHAT_SYSTEM_PROMPT;
+
     let fullResponse = '';
     try {
       for await (const chunk of this.llm.streamConversation(
-        CHAT_SYSTEM_PROMPT,
+        systemPrompt,
         dto.history ?? [],
         dto.message,
       )) {
@@ -133,9 +137,56 @@ export class AiService {
       }
     } finally {
       if (dto.projectId && fullResponse) {
+        // Split off optional diagram JSON appended after ---DIAGRAM---
+        const DIAGRAM_SEPARATOR = '---DIAGRAM---';
+        const sepIdx = fullResponse.indexOf(DIAGRAM_SEPARATOR);
+        let textContent = fullResponse;
+        let diagramData: Record<string, unknown> | null = null;
+
+        if (sepIdx !== -1) {
+          textContent = fullResponse.slice(0, sepIdx).trim();
+          const jsonStr = fullResponse.slice(sepIdx + DIAGRAM_SEPARATOR.length).trim();
+          try {
+            const parsed = JSON.parse(jsonStr) as Record<string, unknown>;
+            if (Array.isArray(parsed.nodes) && Array.isArray(parsed.edges)) {
+              diagramData = parsed;
+            }
+          } catch {
+            // Malformed JSON — ignore, treat whole response as text
+            textContent = fullResponse;
+          }
+        }
+
+        // Fallback: extract diagram from the last ```json code block in the response
+        if (!diagramData) {
+          const codeBlockMatches = Array.from(fullResponse.matchAll(/```(?:json)?\s*\n?([\s\S]*?)```/gi));
+          if (codeBlockMatches.length > 0) {
+            const lastMatch = codeBlockMatches[codeBlockMatches.length - 1];
+            try {
+              const parsed = JSON.parse(lastMatch[1].trim()) as Record<string, unknown>;
+              if (Array.isArray(parsed.nodes) && Array.isArray(parsed.edges)) {
+                diagramData = parsed;
+                // Strip the code block from the displayed text
+                textContent = fullResponse.slice(0, lastMatch.index).trim();
+              }
+            } catch { /* not a diagram JSON block */ }
+          }
+        }
+
         await this.chat.saveMessages(dto.projectId, userId, [
-          { role: 'user', content: dto.message },
-          { role: 'assistant', content: fullResponse },
+          {
+            role: 'user',
+            content: dto.message,
+            layerId: dto.layerContext?.layerId,
+            layerName: dto.layerContext?.layerName,
+          },
+          {
+            role: 'assistant',
+            content: textContent,
+            layerId: dto.layerContext?.layerId,
+            layerName: dto.layerContext?.layerName,
+            diagramData: diagramData ?? undefined,
+          },
         ]);
       }
       res.end();
