@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { X, Loader2, Share2 } from 'lucide-react';
+import { X, Loader2, Share2, Layers } from 'lucide-react';
 import { apiLogin, apiRegister, apiGetMe, type UserProfile } from '@/lib/api';
 import { saveTokens, saveUser } from '@/lib/authStore';
 
@@ -48,7 +48,7 @@ export default function AuthModal({ onSuccess, onClose }: AuthModalProps) {
         <div className="mb-6 flex items-start justify-between">
           <div>
             <div className="flex items-center gap-2">
-              <Share2 size={16} className="text-blue-600" />
+              <Layers size={16} className="text-blue-600" />
               <span className="text-sm font-bold text-slate-800">Drafter</span>
             </div>
             <h2 className="mt-1 text-xl font-bold text-slate-900">
