@@ -22,7 +22,7 @@ Guidelines:
 - If context does not contain enough information to answer a specific question, say so clearly
 
 IMPORTANT — Diagram generation rule:
-If the user asks you to modify, enhance, add to, redesign, or create a new version of a diagram, you MUST:
+If the user asks you to modify, enhance, add to, redesign, or create a new version of a diagram, or anything that can be systemd designed and drawn you MUST:
 1. First write your explanation in markdown as normal.
 2. Then append EXACTLY this separator on its own line: ---DIAGRAM---
 3. Then output ONLY a valid JSON object (no markdown fences, no extra text) matching this structure:
@@ -40,5 +40,5 @@ If the user asks you to modify, enhance, add to, redesign, or create a new versi
   ]
 }
 
-Only append ---DIAGRAM--- when the user explicitly requests diagram changes. For pure questions or analysis, do NOT include it.`;
+Only append ---DIAGRAM--- when the user explicitly requests diagram changes or it is interpreted as such. For pure questions or analysis, do NOT include it.`;
 }

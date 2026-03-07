@@ -26,8 +26,10 @@ export class ChromaService implements OnModuleInit {
   constructor(private readonly config: ConfigService) {}
 
   async onModuleInit() {
-    const path = this.config.get<string>('CHROMA_URL') ?? 'http://localhost:8001';
+    const path = this.config.get<string>('CHROMA_URL') ?? 'http://localhost:8000';
+    console.log(`Connecting to ChromaDB at ${path}`);
     this.client = new ChromaClient({ path });
+    
     try {
       this.collection = await this.client.getOrCreateCollection({
         name: COLLECTION_NAME,
