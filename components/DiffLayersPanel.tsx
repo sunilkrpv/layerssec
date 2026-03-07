@@ -138,7 +138,7 @@ export default function DiffLayersPanel({ diff, activeLayerId, onSelectLayer }: 
 
       {/* Legend */}
       <div className="border-t border-slate-100 px-3 py-2 dark:border-slate-800">
-        <div className="mb-1 text-[9px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Legend</div>
+        <div className="mb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Legend</div>
         <div className="flex flex-col gap-0.5">
           {(
             [
@@ -150,7 +150,7 @@ export default function DiffLayersPanel({ diff, activeLayerId, onSelectLayer }: 
           ).map(([status, label, textCls]) => (
             <div key={status} className="flex items-center gap-1.5">
               <span className={`h-1.5 w-1.5 rounded-full ${STATUS_DOT[status]}`} />
-              <span className={`text-[9px] ${textCls}`}>{label}</span>
+              <span className={`text-[10px] ${textCls}`}>{label}</span>
             </div>
           ))}
         </div>
