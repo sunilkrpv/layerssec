@@ -98,6 +98,19 @@ export class RagIndexingService {
   }
 
   /**
+   * Called before a project is deleted.
+   * Removes all ChromaDB documents scoped to this project.
+   */
+  async deleteProjectContext(projectId: string, userId: string): Promise<void> {
+    if (!this.chroma.isReady) return;
+    try {
+      await this.chroma.deleteByFilter({ projectId, userId });
+    } catch (err) {
+      this.logger.warn(`Failed to delete RAG context for project ${projectId}: ${String(err)}`);
+    }
+  }
+
+  /**
    * Called after chat messages are saved.
    * Indexes each message as a RAG document for conversation memory.
    */

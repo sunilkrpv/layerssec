@@ -1,11 +1,15 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { RagIndexingService } from '../rag/rag-indexing.service';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
 
 @Injectable()
 export class ProjectsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private ragIndexing: RagIndexingService,
+  ) {}
 
   async findAllByUser(userId: string) {
     const projects = await this.prisma.project.findMany({
@@ -66,6 +70,8 @@ export class ProjectsService {
 
   async remove(id: string, userId: string) {
     await this.ensureOwnership(id, userId);
+    // Clean up ChromaDB context before deleting from DB — non-blocking, errors swallowed
+    this.ragIndexing.deleteProjectContext(id, userId).catch(() => {});
     return this.prisma.project.delete({ where: { id } });
   }
 
