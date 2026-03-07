@@ -91,17 +91,14 @@ function readCurrLayerParam(): string | null {
   return new URLSearchParams(window.location.search).get('currLayer');
 }
 
-// ─── helper: read ?view=diagramId — load a specific published version ─────────
-function readViewDiagramParam(): string | null {
-  if (typeof window === 'undefined') return null;
-  return new URLSearchParams(window.location.search).get('view');
-}
-
 interface DiagramPageProps {
   projectId: string;
+  /** Diagram ID passed from the Server Component page via ?view=diagramId search param.
+   *  When set, load this specific diagram rather than the project draft. */
+  viewDiagramId?: string;
 }
 
-export default function DiagramPage({ projectId }: DiagramPageProps) {
+export default function DiagramPage({ projectId, viewDiagramId }: DiagramPageProps) {
   const router = useRouter();
   const rfInstanceRef = useRef<ExtendedRFInstance | null>(null);
   const canvasRef = useRef<HTMLDivElement | null>(null);
@@ -387,13 +384,11 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
 
   // ── Auto-load cloud project by URL ────────────────────────────────────────
   // When navigating directly to /projects/:uuid, fetch draft (or latest published) from backend.
-  // If ?view=diagramId is in the URL, load that specific version (read-only).
+  // If viewDiagramId prop is set (from ?view= search param), load that specific diagram.
   const autoLoadedRef = useRef(false);
   useEffect(() => {
     if (projectId === 'local' || !isLoggedIn() || backendDiagramId || autoLoadedRef.current) return;
     autoLoadedRef.current = true;
-
-    const viewDiagramId = readViewDiagramParam();
 
     (async () => {
       try {
@@ -407,12 +402,19 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
           .then((msgs) => setChatHistory(msgs))
           .catch(() => {/* non-fatal */});
 
-        // ?view=diagramId — load a specific version as read-only
+        // viewDiagramId prop — load a specific diagram by ID (passed from page searchParams)
         if (viewDiagramId) {
           const full = await apiGetDiagram(viewDiagramId);
           loadCanvasFromDataRef.current(full.canvasData as ProjectFile);
           setBackendDiagramId(full.id);
-          setIsReadOnly(true); // viewed versions are always read-only
+          const isDraft = (full as { status?: string }).status === 'draft';
+          setIsReadOnly(!isDraft);
+          if (isDraft) {
+            // Load version count in background so Publish button shows correct next version
+            apiListProjectVersions(projectId)
+              .then((v) => setPublishedVersionCount(v.filter((d) => d.status === 'published').length))
+              .catch(() => {/* non-fatal */});
+          }
           return;
         }
 
@@ -460,7 +462,7 @@ export default function DiagramPage({ projectId }: DiagramPageProps) {
       }
     })();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [projectId]);
+  }, [projectId, viewDiagramId]);
 
   // ── File operations ───────────────────────────────────────────────────────
 

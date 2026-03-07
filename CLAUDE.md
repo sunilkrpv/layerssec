@@ -1,354 +1,129 @@
 # Drafter — Project Intelligence
 
 ## Overview
-Drafter is a web-based layered diagramming tool built with **Next.js 14 App Router**, **React Flow 11**, and **Anthropic Claude** (for AI diagram generation). Users can build architecture diagrams, drill down into nodes to create sub-layers, and export diagrams as PNG or JSON.
+Drafter is a web-based layered diagramming tool built with **Next.js 14 App Router**, **React Flow 11**, and **Anthropic Claude** (AI diagram generation). Users build architecture diagrams, drill into nodes to create sub-layers, and export as PNG or JSON.
 
 ## Stack
 - **Framework**: Next.js 14 App Router (`app/` directory, `'use client'` components)
 - **Canvas**: React Flow 11 (`reactflow`) — nodes, edges, handles, NodeResizer
-- **AI**: Anthropic Claude API — streaming generation via `app/api/generate/route.ts`
-- **Styling**: Tailwind CSS v3
-- **Storage**: `localStorage` via `lib/layerStore.ts` (no database)
+- **AI**: Anthropic Claude API — streaming via `app/api/generate/route.ts` and `app/api/evaluate/route.ts`
+- **Styling**: Tailwind CSS v3 (`darkMode: 'class'`)
+- **Storage**: `localStorage` via `lib/layerStore.ts` (no database); cloud via drafter-rest backend
 - **Icons**: `lucide-react`
+
+---
 
 ## Key Architecture Patterns
 
 ### Layer System
 - `lib/layerStore.ts` — `LayerMap = Record<string, Layer>`, persisted in `localStorage`
-- Each `Layer` has `{ id, name, description, parentLayerId, parentNodeId, nodes, edges, createdAt }`
-- `app/page.tsx` uses `key={currentLayerId}` on `<DiagramCanvas>` to force React remount on layer switch, re-initialising React Flow state cleanly
-- Navigation stack `navStack: string[]` — last item is current layer
+- Each `Layer`: `{ id, name, description, parentLayerId, parentNodeId, nodes, edges, createdAt }`
+- `app/page.tsx` uses `key={currentLayerId}` on `<DiagramCanvas>` to force React remount on layer switch
+- Navigation: `navStack: string[]` — last item is current layer
+- `deleteLayerCascade` removes layer + all descendants + clears `_childLayerId` badges
+- `getOrphanedLayers` returns layers with `parentNodeId === null` (standalone layers)
 
 ### CanvasContext (`lib/canvasContext.ts`)
 Provides to all node components without prop-drilling:
 - `navigateTo(layerId)` — drill-down navigation
 - `updateNodeData(nodeId, data)` — live node data updates
 - `editingNodeId`, `editInitialChar`, `startEditing`, `stopEditing` — inline label editing state
-- `pushHistoryNow()` — allows node components (e.g. `RotateHandle`) to snapshot undo state before a drag gesture
+- `pushHistoryNow()` — snapshot undo state before drag gestures
 
 ### ExtendedRFInstance (`components/DiagramCanvas.tsx`)
-Extends `ReactFlowInstance` with custom methods stored on `rfInstanceRef`:
+Extends `ReactFlowInstance` with custom methods on `rfInstanceRef`:
 - `loadDiagram`, `clearDiagram`, `updateNodeData`, `deleteNode`, `addNodeAtCenter`
 - `bringToFront`, `sendToBack` — adjust `zIndex` relative to current min/max
 - `groupNodes(nodeIds)` — calc bounding box, create GroupNode, set `parentNode`+`extent:'parent'` on children
 - `ungroupNode(groupId)` — restore absolute positions, remove `parentNode`/`extent`
-- `updateEdge(edgeId, updates)` — partial edge update
-- `deleteEdge(edgeId)` — remove edge by ID
-- `pushHistoryNow()` — exposes `pushHistory` for external callers (e.g. RotateHandle via CanvasContext)
+- `updateEdge(edgeId, updates)`, `deleteEdge(edgeId)`, `pushHistoryNow()`
 
-### Node Color System (`lib/types.ts` → node files)
+### Node Color System
 Each `NodeData` carries optional `borderColor`, `fillColor`, `textColor` (CSS color strings) and `rotation?: number`.
-Nodes apply these via **inline styles** that override Tailwind defaults:
+Nodes apply via **inline styles** overriding Tailwind:
 ```tsx
 style={{ borderColor: data.borderColor || undefined, backgroundColor: data.fillColor || undefined,
          transform: `rotate(${data.rotation ?? 0}deg)`, transformOrigin: 'center', overflow: 'visible' }}
 ```
-`EditableLabel` accepts a `style` prop for text color.
 
-### Bulk Node Updates
-When all 21 node files need the same structural change, use a **Python script via Task agent** to avoid the Write-tool "file not read" limitation.
+### Theme System
+- `lib/themeStore.ts` — `Theme = 'light' | 'dark' | 'system'`, `THEME_KEY = 'drafter_theme'`
+- `lib/themeContext.ts` — `useTheme()` hook; `components/ThemeProvider.tsx` applies/removes `dark` class on `<html>`
+- FOUC prevention: inline `<script>` in `app/layout.tsx` runs before React hydrates
+- MenuBar right side cycles light → dark → system (Sun/Moon/Monitor icons)
+- Components use `dark:` Tailwind variants (e.g. `dark:bg-slate-800 dark:text-slate-100`)
+
+### Cloud Persistence
+- Backend: drafter-rest (NestJS); base URL from `NEXT_PUBLIC_API_URL`
+- `lib/api.ts` — `apiFetch` with `Authorization: Bearer` header; dispatches `drafter:unauthorized` on 401
+- `lib/authStore.ts` — `saveTokens/clearTokens/getAccessToken/getStoredUser`
+- Each Drafter project = one NestJS `Project` + one NestJS `Diagram` (`canvasData` = `ProjectFile`)
+- Versioning: diagrams have `status` (draft/published); endpoints: `publish`, `checkout`, `listVersions`, `getDraft`
+- **Checkout rule**: "Check Out" button only shown for the **latest** published version AND only when no draft exists. Both frontend (`ProjectsListPage`) and backend (`DiagramsService.checkout`) enforce this — backend throws 400 for non-latest version, 409 for existing draft.
+- DiagramPage: debounced `apiUpdateDiagram` 2s after last change; blocked when `isReadOnly`
+
+### Important Implementation Patterns
+- **Pure setLayers updaters**: Never put side-effects inside `setLayers` callback (React 18 Strict Mode double-invokes). All setState calls go OUTSIDE the updater.
+- **Stale closure pattern**: Use refs (`saveEnabledRef`, `autoSaveRef`, `backendDiagramIdRef`, `buildProjectSnapshotRef`) for values needed inside timers/intervals.
+- **Cloud save pattern**: After mutation → `setTimeout(() => buildProjectSnapshotRef.current() → apiUpdateDiagram, 200)` to let React state settle.
+- **Bulk node file edits**: Use a Python script via Task agent to avoid the Write-tool "file not read" limitation.
 
 ---
 
-## PR Log
+## Features
 
-### PR-20 — AI History Page & Diagram Intelligence
-- **`components/AIHistoryPage.tsx`** (new full-page component at `/projects/:id/ai-history`):
-  - **Layers sidebar**: expandable tree of all project layers — each row has Eye (preview popup) and Paperclip (attach to chat) icon buttons on hover
-  - **`LayerPreviewPopup`**: `position: fixed` overlay anchored right of sidebar row; shows `MiniDiagramPreview` + "Attach to chat context" button
-  - **`attachedLayer` state**: persists for entire session; chip shown above input with × to dismiss; nodes/edges sent as `layerContext` with every message
-  - **`splitDiagramContent(raw)`**: splits on `---DIAGRAM---` first; falls back to extracting the last ` ```json ``` ` code block if it parses to `{ nodes[], edges[] }` — handles both AI output formats
-  - **`DiagramBubble`**: renders in every assistant message that contains a diagram; has "Preview/Hide" toggle (inline `h-56` React Flow) + `Maximize2` icon to open fullscreen overlay + "Apply →" button
-  - **Fullscreen overlay** (`fixed inset-0 z-50`): full viewport React Flow preview with gradient header, Apply button, and close
-  - **`ApplyDiagramModal`** (2-step flow):
-    - Step 1 "Choose": "Override attached layer" (amber warning, only shown when a layer is attached) OR "Create new standalone layer" (always available); if no layer attached, override is hidden and an info banner explains why
-    - Step 2 "Link to shape" (only for "Create new"): lists all non-line nodes from all layers; user optionally picks one to set its `_childLayerId` to the new layer; "Skip" available
-    - Modal is `z-[60]` so it renders above the `z-50` fullscreen overlay
-  - **`handleApplyDiagram`**: takes `{ mode, targetLayerId?, newLayerName?, linkToNode? }`, creates/overrides layer in `diagramLayers` state, sets `_childLayerId` on linked node, persists via `apiUpdateDiagram`
-  - **Modal condition**: `applyTarget && diagramLayers` (no longer requires `attachedLayer` — Apply always works)
-  - **Streaming**: `splitDiagramContent` applied to live streamed text so diagram JSON is stripped from visible markdown during streaming; final message replaces streaming item with `diagramData` populated
-  - **Markdown**: `react-markdown` + `remark-gfm`; `CopyableCodeBlock` for fenced code with copy button
-  - **Navigation guard**: `beforeunload` blocked while streaming; back button disabled while streaming
-  - **`ThinkingDots`** animation while waiting for first chunk
-- **`components/MiniDiagramPreview.tsx`** (new shared component):
-  - Lightweight read-only React Flow canvas wrapped in `ReactFlowProvider`
-  - `miniNode` custom type: renders palette icon + label + type badge
-  - `FitOnMount` inner component calls `fitView({ padding: 0.2 })` on mount
-  - Props: `nodes: unknown[], edges: unknown[], className?: string`
-  - Used in: `LayerPreviewPopup`, `DiagramBubble` inline preview, `DiagramBubble` fullscreen overlay
-- **`lib/api.ts`** additions:
-  - `ChatMessage` interface: `id, projectId, role, content, layerId?, layerName?, diagramData?, createdAt`
-  - `apiGetChatHistory(projectId)` — GET `/api/projects/:id/chat`
-  - `apiChatAsk({ message, projectId, history?, layerContext? }, onChunk)` — streaming POST `/api/ai/chat/ask`
-  - `layerContext` type: `{ layerId?, layerName?, nodes: unknown[], edges: unknown[] }`
+### Canvas & Nodes
+- 21 node types: 12 cloud service nodes + 9 shape nodes (rectangle, circle, ellipse, line, arrowline, dottedline, actor, cylinder, triangle)
+- Node colors: `borderColor`, `fillColor` (incl. transparent `∅`), `textColor`; 9-swatch picker in PropertiesPanel
+- Node rotation: drag `RotateHandle` to rotate; snaps to 5°; undo-aware (`pushHistoryNow` at drag start)
+- Inline label editing: type-to-edit when single node selected; `EditableLabel` + CanvasContext
+- Copy/Paste: Ctrl+C/V with ID remapping, +30px offset; clipboard lifted to DiagramPage (survives `key=` remounts)
+- Undo/Redo: Cmd+Z / Cmd+Shift+Z; history stacks (refs, capped at 50) in DiagramCanvas
+- Z-order: Bring to Front / Send to Back via right-click
+- Grouping: select 2+ nodes → Group (React Flow parent-child containment); Ungroup restores absolute positions
+- NodeResizer on all non-line nodes
 
-### PR-19 — Brand Colors, Read-Only Published Mode, AI Q&A
-- **AI panel brand colors**: `AIChatPanel` now uses the login page dark navy/indigo brand scheme — `linear-gradient(160deg, #1e1b4b, #1e3a8a, #0f172a)` background, three mesh blob divs, glass `bg-white/10 ring-1 ring-white/20` logo container; always dark regardless of app theme
-- **AI panel hidden by default**: `showChatPanel` initialises to `false`; **Cmd+I** keyboard shortcut toggles it (added alongside existing `Cmd+L` / `Cmd+P` in DiagramPage keydown handler)
-- **`isReadOnly` on `AIChatPanel`**: when true — lock badge in header, different welcome message + example chips (Q&A-focused only), different placeholder text, submit routes to Q&A mode via `onEvaluate(onChunk, question)` instead of diagram generation
-- **`isReadOnly` on `Toolbar`**: hides Save, Auto Save, Paste, Delete, Animate buttons; only My Projects, Copy, and Zoom controls remain
-- **NodePalette hidden**: `{!isReadOnly && <NodePalette ... />}` in DiagramPage layout
-- **Premium published banner**: replaced amber warning with a dark indigo gradient banner (`linear-gradient(90deg, #1e1b4b, #1e3a8a, #0f172a)`) — Lock icon in glass pill, "Published version" label, `v{N}` version badge, "Read only" label, glass "Check Out to Edit →" CTA button
-- **`/api/evaluate` Q&A mode**: added `userQuestion?: string` to request body; `QA_SYSTEM_PROMPT` for targeted Q&A; `isQA` flag selects prompt + appends `Question: ...` to diagram context
-- **`onEvaluate` signature extended**: `(onChunk: (chunk: string) => void, question?: string) => Promise<void>` — DiagramPage passes `userQuestion` to `/api/evaluate` fetch body
-- **`handleEvaluate` in DiagramPage**: accepts optional `userQuestion` arg, includes it in POST body to `/api/evaluate`
-- **`Lock`, `ArrowRight`** added to lucide imports in DiagramPage for the premium banner
+### Line Nodes
+- Line/arrowline/dottedline support rotation via `RotateHandle`
+- `LineEndpointHandle`: small blue dots at endpoints when selected; drag to snap/attach to nearby nodes
+- Live attachment sync: when attached node moves, line position/width update in real-time (`attachedSource`/`attachedTarget` in NodeData)
+- Snap-to-shape on drop: endpoints snap to nearest shape boundary within 40px
 
-### PR-18 — AI Assistant New-Age Redesign
-- **Docked sidebar**: `AIChatPanel` converted from floating `fixed bottom-0 right-6 z-40` to a full-height `h-full w-[360px] flex-shrink-0` flex sibling alongside `DiagramCanvas` in the main content row
-- **`react-markdown` v10.1.0 + `remark-gfm`**: assistant message bubbles render full markdown — headings, bold/italic, bullet lists, inline and block code; all markdown components styled for the dark panel (white text, blue-200 inline code, `bg-black/40` code blocks)
-- **Per-message AI avatar**: small gradient square with `Sparkles` icon shown left of every assistant bubble
-- **`ThinkingDots` component**: three indigo circles with staggered `animationDelay` shown while streaming
-- **2×2 example chip grid**: replaces old single-column example list; chips have a "+" icon prefix
-- **Removed props**: `isMinimized`, `onMinimize`, `onExpand` removed — panel is always fully visible or unmounted
-- **DiagramPage cleanup**: removed `isChatMinimized` state and all four `setIsChatMinimized` call sites; `onShowAI` now just calls `setShowChatPanel(true)`; AIChatPanel rendered as flex child (not floating overlay)
-- **`runStreaming(userLabel, question?)` helper**: unified internal function for both evaluate and Q&A flows
+### Layer Navigation
+- Drill-down: right-click node → create/navigate child layer; `_childLayerId` links node to its layer
+- Layer bar breadcrumbs, rebuilt from URL on deep-link load
+- Layers manager modal: inline name/description edit, navigate button
+- `ChildLayerBadge` on nodes with drill-down layers
+- Assign/Reassign layer: right-click shape → assign orphaned or sibling-owned layer; 2-step confirm; `AssignableLayer` type
 
-### PR-17 — Toolbar UX Reorganization
-- **Save / Auto Save group**: moved from far-right trailing position into a dedicated `BtnGroup` immediately after the My Projects group; always visible when not read-only
-- **Delete in Copy/Paste group**: `Trash2` delete button appended inside the Copy+Paste `BtnGroup` (not its own group)
-- **Animate in Zoom group**: `Zap` animate toggle moved inside the Zoom BtnGroup after Fit View, with an inner `mx-0.5 h-5 w-px` divider
-- **Last-saved indicator**: stays at `ml-auto` far right (trailing), visible only in editing mode when `lastSaved && (hasFileHandle || hasCloudProject)`
-- **`isReadOnly?: boolean` prop on `Toolbar`**: when `true`, hides Save + Auto Save group, Paste button, Delete button, and Animate button; leaves My Projects, Copy, and Zoom controls visible
+### AI Features
+- **Generation**: streaming Claude → nodes/edges via `/api/generate`
+- **Evaluation**: streaming architecture analysis via `/api/evaluate`; Q&A mode via `userQuestion` param
+- **AIChatPanel**: docked full-height sidebar (Cmd+I toggle); dark navy/indigo brand colors; `ThinkingDots`; `react-markdown` + `remark-gfm`; `isReadOnly` mode for Q&A only
+- **AI History Page** (`/projects/:id/ai-history`):
+  - Layers sidebar tree with Eye (preview popup) and Paperclip (attach context) per layer
+  - `DiagramBubble`: Preview/Hide toggle (inline React Flow) + Maximize + "Apply →"
+  - `ApplyDiagramModal` 2-step: (1) override attached layer OR create new, (2) optionally link to node
+  - `splitDiagramContent`: splits on `---DIAGRAM---`, falls back to last ` ```json ``` ` block
+  - Streaming: diagram JSON stripped from visible markdown live; `beforeunload` blocked while streaming
+- **`MiniDiagramPreview`**: shared read-only React Flow canvas (layer previews + chat bubbles)
+- **Contextual chat (RAG)**: AI History Page uses `apiContextualChatAsk` → `POST /api/ai/chat/contextual-ask`; backend gathers diagram info, nodes, versions + ChromaDB semantic memories before responding; `diagramId` (draft) passed from page state
 
-### PR-1 — Foundation
-- Next.js + React Flow setup, AI generation endpoint
-- Streaming Claude response, basic node types (12 cloud nodes)
-- localStorage persistence, PNG export, JSON import/export
-- Layered canvas with drill-down, breadcrumb navigation
-- `NodeResizer` on all nodes, arrows on edges
+### File & Project Management
+- File System Access API: open/save/save-as project JSON; fallback browser download
+- Auto-save: 60s interval (local file) + 2s debounced backend save
+- URL sync: `/projects/:projectId?currLayer=:layerId`; navStack rebuilt from URL via `getLayerPath`
+- Project versioning: Publish (with comment) → read-only view; Check Out → new draft; version history list
+- Project diff: `/diff` route; `diffProjects(left, right): ProjectDiff`; split-view two canvases; color-coded by `DiffStatus`
 
-### PR-2 — Canvas UX (5 features)
-- **Click-to-add**: palette items clickable → `addNodeAtCenter` places at canvas center
-- **Copy/Paste**: Ctrl+C/V in `DiagramCanvas.tsx` via `clipboardRef`, ID remapping, +30px offset
-- **Inline label editing**: `EditableLabel` component + `CanvasContext` for global edit state; type-to-edit when single node selected
-- **Collapsible palette**: `NodePalette.tsx` — section collapse + full panel toggle
-- **9 new shape nodes**: rectangle, circle, ellipse, line, arrowline, dottedline, actor, cylinder, triangle
-- **Grouped palette**: Cloud Services + Shapes sections
-- **Project export/import**: full `LayerMap` serialisation
-- **Child layer badges**: `ChildLayerBadge` on nodes with drill-down layers
-- **Line nodes**: no drill-down option in context menu
-
-### PR-3 — Colors & Layers Manager
-- **Node colors**: border, fill, text color pickers (9 swatches) in Properties panel
-- **Color persistence**: `borderColor`, `fillColor`, `textColor` stored in `NodeData`
-- **Layers manager**: modal listing all layers with inline name/description editing, navigate button
-- **Layer descriptions**: `description?: string` added to `Layer` interface
-
-### PR-5 — Undo/Redo, Line Snap, Alignment Guides, Collapsed Palette Submenu
-- **Undo/Redo**: Cmd+Z / Cmd+Shift+Z — history stacks (refs, capped at 50) in DiagramCanvas; wired into all node/edge mutations
-- **Line snap-to-shape**: On drag release, line/arrowline/dottedline endpoints snap to the nearest shape boundary within 40px
-- **Alignment guides**: Red dotted lines appear during drag when node center/edge aligns within 5px of another node; cleared on release. Rendered as absolute divs using `useViewport()` transform
-- **Collapsed palette submenu**: Collapsed mode shows Cloud/Shapes group icons; click to open floating submenu with full item list
-
-### PR-7 — Line Node Rotation + Endpoint Attachment
-- **Line rotation**: Line/arrowline/dottedline now support rotation via `RotateHandle` (same as other nodes)
-- **Draggable endpoint handles**: When a line node is selected, small blue dots appear at the left and right endpoints (`LineEndpointHandle` component). Drag either dot to a nearby node — the endpoint snaps to that node's edge and records the attachment
-- **Live attachment sync**: When an attached non-line node is dragged, the line's position and width update in real-time so the connection is maintained. Both single-end and dual-end attachments are supported
-- **Snap-on-drop attachment**: Existing whole-line snap-to-shape (PR-5) now also records `attachedSource`/`attachedTarget` in `NodeData`; dragging the whole line clears the old attachment and sets new one if it snaps
-- **`attachedSource/Target`** added to `NodeData` — IDs of nodes each line endpoint is attached to; cleared when line is dragged manually to a new position
-- **`LineEndpointHandle`** (`components/nodes/LineEndpointHandle.tsx`): uses `useNodeId`, `useReactFlow`, `useStore`; updates `position` and `style.width` directly via `setNodes` during mousemove
-- **`computeUpdatedLinePosition`** module-level helper in `DiagramCanvas.tsx`: recalculates line `position.x/y` and `style.width` to maintain both-end attachments when a connected node moves
-
-### PR-6 — Node Rotation
-- **Drag-to-rotate**: All non-line nodes show a rotate handle (circle with RotateCw icon) above the node when selected; drag it to rotate the node around its center
-- **Snap to 5°**: Rotation snaps to 5° increments during drag
-- **Rotation undo**: `pushHistoryNow()` called once at drag start (not on every mousemove) — one undo step per rotation gesture
-- **Properties panel**: Rotation section shows current angle (deg), "Rotate by" input + "Apply CW" button (or Enter), and "Reset rotation" button
-- **`rotation?: number` in NodeData**: CSS `transform: rotate(Xdeg)` + `transformOrigin: 'center'` + `overflow: 'visible'` on the outermost node div
-- **`RotateHandle` component** (`components/nodes/RotateHandle.tsx`): uses `useNodeId`, `useReactFlow`, `useStore` (nodeInternals + viewport transform) to compute center in screen coords and derive angle from cursor
-- **`pushHistoryNow`**: Added to `ExtendedRFInstance`, `CanvasContext` (as `pushHistoryNow: () => void`), and `canvasContextValue` in `app/page.tsx`
-
-### PR-16 — Layer Assign / Reassign Enhancement
-- **"Assign Layer" expanded**: Right-clicking a shape with no child layer now offers "Assign Layer" for ALL assignable layers at the current level — both orphaned (standalone) layers AND layers currently owned by sibling shapes (1 level deep only, no deep nesting)
-- **Sibling-layer reassignment**: When picking a layer that belongs to another shape, the old owner's `_childLayerId` badge is cleared (in state AND live canvas) before the layer is moved to the new shape
-- **2-step confirmation**: Both `AssignLayerModal` and `ReassignLayerModal` now use select-then-confirm flow — clicking a row highlights it; a "Assign Layer" / "Reassign Layer" button is needed to commit (disabled until a selection is made). `AssignLayerModal` also shows a warning banner when the chosen layer is being moved from another shape
-- **Cloud save**: `handleReassignLayerConfirm` and `handleAssignLayerConfirm` both persist the full project to the backend immediately after the operation (200 ms defer to let React state settle)
-- **`AssignableLayer` type**: Exported from `components/AssignLayerModal.tsx` — `{ id, name, description?, nodeCount, currentOwnerLabel? }`; `assignLayerTarget` state in DiagramPage updated to use `availableLayers: AssignableLayer[]` instead of `orphans: Layer[]`
-
-### PR-15 — Project Versioning (Publish / Check Out)
-- **Backend (`drafter-rest`)**:
-  - `prisma/schema.prisma` — added `status` (draft/published), `publishComment`, `publishedAt` to `Diagram` model; ran migration `add_diagram_versioning`
-  - `src/diagrams/dto/publish-diagram.dto.ts` (new) — `{ comment?: string }`
-  - `src/diagrams/dto/checkout.dto.ts` (new) — `{ fromDiagramId: string }`
-  - `src/diagrams/diagrams.service.ts` — added `publish`, `checkout`, `getDraft`, `listVersions`; guarded `update` against published diagrams
-  - `src/diagrams/diagrams.controller.ts` — added 4 new endpoints: `POST /diagrams/:id/publish`, `GET /projects/:projectId/versions`, `GET /projects/:projectId/draft`, `POST /projects/:projectId/checkout`; all ownership-verified in service via `verifyProjectAccess` + `findById`
-  - `src/projects/projects.service.ts` — `findAllByUser` now includes `hasDraft`, `draftId`, `publishedCount` using filtered `_count` + `take: 1` draft query
-- **`lib/api.ts`** — added `DiagramVersion`, `ProjectWithVersioning` interfaces; `DraftExistsError` class; `apiListProjectVersions`, `apiPublishDiagram`, `apiCheckoutVersion` (handles 409 → `DraftExistsError`), `apiGetProjectDraft`; updated `apiListProjects` return type
-- **`app/projects/page.tsx`** (new) — Server Component route → `<ProjectsListPage />`
-- **`components/ProjectsListPage.tsx`** (new) — full projects table + right side-sheet with version history; "Check Out" with draft-conflict inline confirm; "New Project" inline form
-- **`components/PublishModal.tsx`** (new) — publish with optional comment, shows upcoming version number
-- **`components/DiagramPage.tsx`**:
-  - `isReadOnly`, `diagramStatus`, `showPublishModal`, `isPublishing`, `publishedVersionCount` state
-  - `loadCanvasFromData` helper — extracts layer loading shared by auto-load and open handlers
-  - Auto-load `useEffect` — when navigating directly to `/projects/:uuid`, fetches draft or latest published; sets `isReadOnly` accordingly
-  - `handlePublish(comment)` — calls `apiPublishDiagram`, sets read-only, clears save timer
-  - `handleCheckoutFromEditor()` — calls `apiCheckoutVersion`; on `DraftExistsError` confirms and opens existing draft
-  - Backend auto-save blocked when `isReadOnlyRef.current` is true
-  - Read-only amber banner above canvas with "Check Out to Edit" button
-  - `onMyProjects` now navigates to `/projects` (not ProjectsModal)
-  - Passes `isCloudProject`, `isReadOnly`, `onPublish` to MenuBar; `readOnly` to DiagramCanvas
-- **`components/DiagramCanvas.tsx`** — `readOnly?: boolean` prop; when true sets `nodesDraggable/nodesConnectable/elementsSelectable=false`, `deleteKeyCode=null`
-- **`components/MenuBar.tsx`** — `isCloudProject`, `isReadOnly`, `onPublish` props; "Publish…" item in File menu (only when cloud + not read-only)
-
-### PR-14 — Cloud Persistence + Session Handling
-- **`lib/api.ts`** — added `ApiUnauthorizedError` class + 401 handling in `apiFetch`:
-  - On `HTTP 401`: dispatches `drafter:unauthorized` custom window event, then throws `ApiUnauthorizedError`
-  - All other non-OK responses throw a generic `Error`
-- **`components/ProjectsModal.tsx`** — "no diagrams" case: when an opened project has no diagrams, `apiCreateDiagram` is called immediately to create a blank "main" diagram, ensuring `diagramId` is always a valid UUID passed back to DiagramPage
-- **`components/DiagramPage.tsx`**:
-  - `currentProjectName: string | null` state — set when opening/creating a cloud project; cleared on sign-out
-  - `backendSaveTimerRef` — debounced backend save: on every `handleLayerSave`, schedules `apiUpdateDiagram` 2 s after the last change; clears and reschedules if another save fires first; calls `setLastSaved` on success
-  - `drafter:unauthorized` event listener (global) — on 401 from any API call: `clearTokens()`, sets `user`/`backendDiagramId`/`currentProjectName` to null, shows AuthModal
-  - `handleOpenCloudProject` + `handleCreateCloudProject` — both now set `currentProjectName = project.name`
-  - `handleSignOut` — also clears `currentProjectName`
-  - Passes `projectName={currentProjectName}` to `<MenuBar>`
-- **`components/MenuBar.tsx`** — added `projectName?: string | null` prop; shown between logo and menu items as a truncated document-title label (max 200px, with tooltip on hover)
-
-### PR-12 — Startup Prompt, Diagram Evaluation
-- **`components/StartupModal.tsx`** (new): Modal shown on every fresh load (blank localStorage) with three options:
-  - "Open project" → calls `pickAndReadFile`, loads layers + navStack, sets file handle, dismisses
-  - "New project" → calls `pickSaveAndWrite` with empty project (Chrome/Edge), or starts fresh (Safari); opens AI chat
-  - "Continue without saving" — dismisses modal, opens AI chat; label shows existing layer count if returning
-  - `isLoading` prop shows spinner on both buttons while file picker is open; modal stays open if user cancels picker
-- **`app/api/evaluate/route.ts`** (new): Streaming Claude evaluation endpoint
-  - Request body: `{ nodes, edges, layerName }` — strips position/style before sending, only semantic data
-  - System prompt: expert architect analysis covering correctness, LLD flaws, HLD gaps, recommendations; "no idea" is valid
-  - Streams `text/plain` chunks directly from Claude to client (real-time)
-- **`components/AIChatPanel.tsx`** — two additions (subsequently redesigned in PR-18/PR-19):
-  - `onEvaluate?: (onChunk: (chunk: string) => void) => Promise<void>` prop — streaming callback (signature later extended to include `question?` in PR-19)
-  - "Evaluate this diagram" amber button shown above the input when `hasNodes && onEvaluate`; clicking adds a user message, streams assistant response chunk-by-chunk into the chat bubble
-  - Assistant message bubbles now use `whitespace-pre-wrap` so multi-line evaluation text renders correctly
-- **`components/DiagramPage.tsx`** — wiring:
-  - `showStartupModal` state: `true` when localStorage is blank AND no URL `currLayer` param
-  - `showChatPanel` initial value: `!showStartupModal` (so chat doesn't auto-open when startup modal shows)
-  - `handleStartupOpen` / `handleStartupNew` / `handleStartupContinue` callbacks passed to `<StartupModal>`
-  - `handleEvaluate` — reads nodes/edges from `rfInstanceRef`, fetches `/api/evaluate`, pipes streaming response to `onChunk`
-  - `onEvaluate={handleEvaluate}` passed to `<AIChatPanel>`
-
-### PR-13 — Login + Cloud Projects (drafter-rest backend)
-- **`lib/api.ts`** (new): Typed API client for drafter-rest backend
-  - Base URL from `NEXT_PUBLIC_API_URL` (defaults to `http://localhost:4000`)
-  - `apiFetch<T>` — reads `drafter_access_token` from localStorage, injects `Authorization: Bearer` header
-  - Auth: `apiLogin`, `apiRegister`, `apiGetMe` — returns `AuthResponse` (`accessToken`, `refreshToken`) or `UserProfile`
-  - Projects: `apiListProjects`, `apiCreateProject`, `apiGetProject` — CRUD for `Project` records
-  - Diagrams: `apiCreateDiagram`, `apiUpdateDiagram`, `apiGetDiagram` — CRUD for `Diagram` records
-  - Each Drafter project = one NestJS `Project` + one NestJS `Diagram` (`canvasData` = `ProjectFile`)
-- **`lib/authStore.ts`** (new): localStorage token/user management
-  - `saveTokens(access, refresh)`, `clearTokens()`, `getAccessToken()`, `isLoggedIn()`
-  - `saveUser(user)`, `getStoredUser()` — cache `UserProfile` for instant init without a round-trip
-- **`components/AuthModal.tsx`** (new): Login / Register modal
-  - Tab switcher: Sign in | Register (email + optional name + password)
-  - On success: `saveTokens` + `apiGetMe` + `saveUser` → calls `onSuccess(user)` → parent shows ProjectsModal
-  - Error display inline in form
-- **`components/ProjectsModal.tsx`** (new): Cloud project browser
-  - Loads project list via `apiListProjects()` on mount; shows diagram count + last updated
-  - Click project → `apiGetProject` (diagram metadata) → `apiGetDiagram` (full canvasData) → `onOpen(project, canvasData, diagramId)`
-  - Footer: "New project" form → `apiCreateProject` → `onCreate(project)`
-- **`components/StartupModal.tsx`** — updated: added cloud option at top
-  - If logged in: "My Projects" button (cloud icon, shows user email)
-  - If not logged in: "Sign in" button (LogIn icon)
-  - Local options (Open project, New project) below an `—or—` divider unchanged
-- **`components/MenuBar.tsx`** — updated: right side user area
-  - If logged in: "My Projects" button + user email + LogOut icon
-  - If not logged in: "Sign in" button with LogIn icon
-  - Props: `userEmail`, `onSignIn`, `onMyProjects`, `onSignOut`
-- **`components/DiagramPage.tsx`** — auth + cloud wiring:
-  - `user: UserProfile | null` state (init from `getStoredUser()`)
-  - `backendDiagramId: string | null` state — set when a cloud project is opened; enables backend auto-save
-  - `backendDiagramIdRef` — stable ref for auto-save interval closure
-  - Auto-save interval now also `apiUpdateDiagram(backendDiagramId, projectData)` when a cloud diagram is open
-  - `showAuthModal` / `showProjectsModal` state
-  - `handleAuthSuccess(user)` — sets user, closes AuthModal, opens ProjectsModal
-  - `handleSignOut()` — `clearTokens()`, sets user/backendDiagramId to null
-  - `handleOpenCloudProject(project, canvasData, diagramId)` — loads canvasData into layers, sets `backendDiagramId`
-  - `handleCreateCloudProject(project)` — creates blank diagram in backend via `apiCreateDiagram`, loads it, sets `backendDiagramId`
-  - Renders `<AuthModal>` and `<ProjectsModal>` when their show states are true
-- **`.env.local`** — added `NEXT_PUBLIC_API_URL=http://localhost:4000`
-
-### PR-11 — Visual Project Diff
-- **`lib/diffEngine.ts`** (new): Pure diff computation between two `LayerMap` objects
-  - `DiffStatus`: `'added' | 'removed' | 'modified' | 'unchanged'`
-  - `diffProjects(leftLayers, rightLayers): ProjectDiff` — compares every layer and every node/edge by ID; nodes compared by type, position, data, style; edges by source/target/label/markers; layers sorted root-first
-  - Layer-level status derived from node/edge change counts + name change
-  - `counts` at both layer and project level: `{ added, removed, modified, total }`
-- **`components/DiffCanvas.tsx`** (new): Read-only React Flow canvas for diff view
-  - Single `diffNode` custom type (module-level to avoid re-registration)
-  - Renders node icon + label from `PALETTE_ITEMS` lookup; diff status shown as colored ring + badge (+ green / − red / ~ amber)
-  - `side='left'` renders base-project nodes; `side='right'` renders modified-project nodes
-  - `nodesDraggable=false`, `nodesConnectable=false`, `elementsSelectable=false`; `fitView` on load
-- **`components/DiffLayersPanel.tsx`** (new): Left panel listing all layers across both projects
-  - Color-coded rows by diff status; shows `+N −N ~N` change counts per layer
-  - Summary badges at top; legend at bottom; click row to switch active layer in both canvases
-- **`components/DiffPage.tsx`** (new): Split-view diff page at `/diff`
-  - File upload phase: two DropZones (drag-and-drop or click to browse) for base + modified `.json` files
-  - Once both loaded: `diffProjects` runs, active layer state drives both canvases in sync
-  - Top bar with back link and project-level summary counts
-- **`app/diff/page.tsx`** (new): Server Component route at `/diff` → renders `<DiffPage />`
-- **`components/MenuBar.tsx`** — added `onOpenDiff` prop + "Diff…" item at bottom of File menu (after a separator)
-- **`components/DiagramPage.tsx`** — added `useRouter`, passes `onOpenDiff={() => router.push('/diff')}` to MenuBar
-
-### PR-10 — File-Based Storage + Auto-Save
-- **`lib/fileStore.ts`** (new): File System Access API utilities (Chrome/Edge 86+)
-  - `canUseFileSystemAPI()` — feature detection
-  - `pickAndReadFile()` — opens file picker, reads + parses project JSON; normalises bare `LayerMap` or `{ layers, navStack }`
-  - `writeToHandle(handle, data)` — writes project data to existing `FileSystemFileHandle`
-  - `pickSaveAndWrite(data)` — opens Save-As picker and writes; returns handle
-  - `downloadProjectFile(data)` — fallback browser download for non-supported browsers
-- **`components/FileLoadPrompt.tsx`** (new): Modal shown when URL references a layer not in localStorage
-  - Prompts user to open project file; shows info warning for Safari/browsers without File API
-  - On success: reads file, validates layer exists, navigates + populates breadcrumbs
-  - On wrong file: shows error "Layer not found — you may have opened the wrong project"
-- **`components/DiagramPage.tsx`** — new file management:
-  - `fileHandle` state, `autoSave` state (default ON), `lastSaved` date state
-  - Refs (`layersRef`, `navStackRef`, `fileHandleRef`) prevent stale closures in `setInterval`
-  - `handleOpenFile` — opens picker, loads layers + navStack
-  - `handleSaveFile` — writes to handle; falls back to Save-As or browser download
-  - `handleOpenFileForURL(targetLayerId)` — URL-sharing flow: open file → validate → navigate
-  - `buildProjectSnapshot()` — flushes canvas then builds `{ layers, navStack }` payload
-  - Auto-save interval: `setInterval(60_000)`, only fires when `autoSave && fileHandle`; updates `lastSaved`
-  - `showFileLoadPrompt` — initialised from URL param if `currLayer` not in localStorage
-- **`components/Toolbar.tsx`** — added: Save button, Auto Save toggle (green/amber/gray), last-saved time indicator
-- **`components/MenuBar.tsx`** — File menu additions: Open File… (⌘O), Save File (⌘S)
-
-### PR-9 — URL Sync / Deep Linking
-- **URL format**: `localhost:3000/projects/:projectId?currLayer=:layerId`
-- **Route**: New `app/projects/[projectId]/page.tsx` (Server Component) renders `<DiagramPage projectId={...} />`
-- **`app/page.tsx`** now redirects to `/projects/local` (default project)
-- **`components/DiagramPage.tsx`**: Extracted client component (was `app/page.tsx`) with two additions:
-  1. **Init navStack from URL** — `useState` lazy init reads `window.location.search` for `currLayer` param; calls `getLayerPath(layers, currLayerId)` to reconstruct full breadcrumb nav stack from any deep layer
-  2. **Sync URL on navigate** — `useEffect([currentLayerId])` calls `window.history.replaceState` so URL always reflects active layer without triggering a page re-render
-- **`getLayerPath`** already in `lib/layerStore.ts` — walks parent chain from root to any layerId, returns `Layer[]`; used to rebuild navStack on URL load
-- **Breadcrumbs auto-populated**: navStack rebuilt from `getLayerPath` → `LayerBar` breadcrumbs correct on deep-link load
-- **Same project file assumption**: `projectId` in URL is structural; all data loads from the single `drafter_layers` localStorage key
-
-### PR-8 — Menu Bar, AI Chat Panel, Docked Layers
-- **MenuBar** (`components/MenuBar.tsx`): App-style menu bar at top of page with dropdowns for File, View, AI, and About
-  - **File menu**: New (clears + opens AI chat), Open/Import JSON, Export JSON, Save as Image, Import Project, Export Project
-  - **View menu**: Toggle Layers Panel (docked to right sidebar)
-  - **AI menu**: Open AI Assistant chat panel
-  - **About**: Modal showing "DRAFTER v0.1 Alpha" with branding
-- **Toolbar simplified**: Removed logo, import/export, layers button — now only zoom in/out/fit + clear canvas (`components/Toolbar.tsx`)
-- **AIChatPanel** (`components/AIChatPanel.tsx`): Floating AI chat window fixed to bottom-right
-  - Opens automatically on page load and after File > New
-  - Conversation-style UI with user/assistant message bubbles
-  - Example prompts shown with welcome message
-  - If canvas has existing nodes: asks whether to generate on current layer or new layer
-  - Minimize to bottom tab (shows "AI Assistant ▲"); close to hide
-  - `onGenerateNewLayer(prompt, layerName)` creates a standalone layer, navigates to it, then generates
-- **LayersPanel docked mode**: Added `docked?: boolean` prop — when true, renders as a `w-64` right sidebar (no modal backdrop); when false, keeps existing modal behavior
-- **`createStandaloneLayer`** added to `lib/layerStore.ts` — creates a top-level layer with `parentLayerId=ROOT_LAYER_ID, parentNodeId=null`
-- **Layout order**: MenuBar (h-9) → Toolbar (h-10) → LayerBar → main content row
-- **Right sidebar**: When `showLayersPanel` is true, LayersPanel docks to right; PropertiesPanel/EdgePropertiesPanel overlay it (`absolute inset-0 z-10`) when a node/edge is selected
-
-### PR-4 — Z-order, Grouping, Transparent Fill, Edge Properties, Root Bug Fix
-- **Send to Front/Back**: right-click → "Bring to Front" / "Send to Back" — adjusts `zIndex` on node
-- **Group/Ungroup**: select 2+ nodes → right-click → "Group N nodes" — true React Flow parent-child containment; right-click group → "Ungroup"
-- **Transparent fill**: `∅` button in Fill color picker (`fillColor: 'transparent'`)
-- **Edge properties panel**: click an edge → `EdgePropertiesPanel` sidebar with label, arrow direction (→/←/↔/—), stroke color
-- **Edge markers**: `EDGE_MARKER_START` added to `lib/diagramUtils.ts` for backward/bidirectional arrows
-- **Root layer rename bug**: Root layer (`ROOT_LAYER_ID`) renders as plain text in LayersPanel — cannot be renamed
-- **Convention**: CLAUDE.md is updated on every code change
+### UX
+- Toolbar: Save, Auto Save toggle, Zoom in/out/fit, last-saved indicator, Delete, Animate toggle; hides edit controls in `isReadOnly`
+- MenuBar: File/View/AI/About dropdowns; project name display; theme toggle; My Projects / Sign in/out
+- PropertiesPanel: colors, rotation controls, node data
+- EdgePropertiesPanel: label, arrow direction (→/←/↔/—), stroke color
+- Alignment guides: red dotted lines during drag when centers/edges align within 5px
+- Read-only published mode: dark indigo banner with "Check Out to Edit" CTA; `isReadOnly` hides all edit controls
+- Startup modal: Open project / New project / Continue / My Cloud Projects
 
 ---
 
@@ -356,42 +131,50 @@ When all 21 node files need the same structural change, use a **Python script vi
 | File | Purpose |
 |------|---------|
 | `app/page.tsx` | Redirects to `/projects/local` |
-| `app/projects/[projectId]/page.tsx` | Server Component route wrapper — passes `projectId` to `DiagramPage` |
+| `app/projects/[projectId]/page.tsx` | Server Component route → `DiagramPage` |
 | `components/DiagramPage.tsx` | Main client component — all state, handlers, URL sync, context wiring |
+| `components/DiagramCanvas.tsx` | React Flow wrapper, copy/paste, undo/redo, ExtendedRFInstance |
 | `lib/types.ts` | `NodeType`, `NodeData`, `DiagramEdge`, `GenerateResponse` |
 | `lib/layerStore.ts` | Layer CRUD + localStorage persistence |
 | `lib/canvasContext.ts` | React context shared with all node components |
 | `lib/nodeConfig.ts` | `PALETTE_ITEMS`, `LINE_NODE_TYPES` |
 | `lib/diagramUtils.ts` | `generateId`, `toReactFlowNodes/Edges`, `EDGE_MARKER`, `EDGE_MARKER_START` |
-| `lib/api.ts` | Typed API client for drafter-rest backend (auth, projects, diagrams) |
-| `lib/authStore.ts` | localStorage token/user management (`saveTokens`, `clearTokens`, `getStoredUser`) |
-| `components/AuthModal.tsx` | Login / Register modal (email + password, tab switcher) |
-| `components/ProjectsModal.tsx` | Cloud project browser — lists projects, click to open or create new |
-| `components/DiagramCanvas.tsx` | React Flow wrapper, copy/paste, type-to-edit, addNodeAtCenter, z-order, group/ungroup, edge CRUD |
-| `components/PropertiesPanel.tsx` | Right sidebar for selected node properties + colors (incl. transparent fill) |
-| `components/EdgePropertiesPanel.tsx` | Right sidebar for selected edge (label, arrow direction, color) |
+| `lib/api.ts` | Typed API client for drafter-rest (auth, projects, diagrams, versioning) |
+| `lib/authStore.ts` | localStorage token/user management |
+| `lib/themeStore.ts` / `lib/themeContext.ts` | Theme persistence and `useTheme()` hook |
+| `lib/fileStore.ts` | File System Access API utilities |
+| `lib/diffEngine.ts` | `diffProjects(left, right): ProjectDiff` |
+| `components/ThemeProvider.tsx` | Applies/removes `dark` class on `<html>` |
+| `components/MenuBar.tsx` | App-style menu bar — File/View/AI/About dropdowns |
+| `components/Toolbar.tsx` | Zoom controls, Save, Auto Save toggle, clear |
 | `components/NodePalette.tsx` | Left sidebar, collapsible, click/drag to add |
-| `components/MenuBar.tsx` | App-style menu bar — File/View/AI/About dropdowns (incl. Open File, Save File) |
-| `components/AIChatPanel.tsx` | Floating AI chat panel (bottom-right); minimizable |
-| `components/FileLoadPrompt.tsx` | Modal shown when URL layer not found locally — prompts file open |
-| `lib/fileStore.ts` | File System Access API utilities: open, write, save-as, download fallback |
-| `components/LayersPanel.tsx` | Modal OR docked right sidebar for all layers (`docked` prop) |
+| `components/PropertiesPanel.tsx` | Selected node: colors, rotation, data |
+| `components/EdgePropertiesPanel.tsx` | Selected edge: label, arrow direction, color |
+| `components/LayersPanel.tsx` | Modal OR docked right sidebar (`docked` prop) |
 | `components/LayerBar.tsx` | Breadcrumb navigation bar |
-| `components/Toolbar.tsx` | Zoom controls + clear (simplified) |
+| `components/AIChatPanel.tsx` | Docked AI chat sidebar; markdown; streaming; read-only Q&A mode |
+| `components/AIHistoryPage.tsx` | Full-page AI chat history; DiagramBubble; ApplyDiagramModal |
+| `components/MiniDiagramPreview.tsx` | Shared read-only React Flow canvas |
+| `components/AuthModal.tsx` | Login / Register modal |
+| `components/ProjectsModal.tsx` | Cloud project browser |
+| `components/ProjectsListPage.tsx` | Projects table + version history side-sheet |
+| `components/PublishModal.tsx` | Publish with optional comment; shows version number |
+| `components/StartupModal.tsx` | Fresh-load modal: Open / New / Continue / Cloud |
+| `components/FileLoadPrompt.tsx` | Modal when URL layer not found locally |
+| `components/DiffPage.tsx` | Split-view diff UI at `/diff` |
+| `components/DiffCanvas.tsx` | Read-only React Flow canvas with diff status overlays |
+| `components/DiffLayersPanel.tsx` | Layer list with diff badges and change counts |
+| `components/AssignLayerModal.tsx` | Assign orphaned/sibling layer to node (2-step confirm) |
 | `components/nodes/EditableLabel.tsx` | Inline label editor (context-driven) |
-| `components/nodes/ChildLayerBadge.tsx` | Badge shown on nodes with child layers |
-| `components/nodes/RotateHandle.tsx` | Drag-to-rotate handle rendered inside all nodes |
-| `components/nodes/LineEndpointHandle.tsx` | Draggable endpoint dot for line/arrowline/dottedline nodes |
+| `components/nodes/ChildLayerBadge.tsx` | Badge on nodes with child layers |
+| `components/nodes/RotateHandle.tsx` | Drag-to-rotate handle |
+| `components/nodes/LineEndpointHandle.tsx` | Draggable endpoint dots for line nodes |
 | `components/nodes/*.tsx` | 21 node types (12 cloud + 9 shape) |
-| `components/StartupModal.tsx` | Modal on fresh load — Open project / New project / Continue without saving |
-| `app/api/evaluate/route.ts` | Streaming Claude endpoint for diagram evaluation (architecture correctness, LLD/HLD insights) |
-| `lib/diffEngine.ts` | Pure diff computation: `diffProjects(left, right): ProjectDiff`; `DiffStatus`, `NodeDiff`, `LayerDiff` |
-| `components/DiffPage.tsx` | Split-view diff UI at `/diff`; file loading (DropZone), diff state |
-| `components/DiffCanvas.tsx` | Read-only React Flow canvas with `diffNode` renderer; diff status overlays |
-| `components/DiffLayersPanel.tsx` | Layer list with diff status badges, change counts, legend |
+| `app/api/generate/route.ts` | Streaming Claude diagram generation |
+| `app/api/evaluate/route.ts` | Streaming Claude diagram evaluation |
+| `app/api/ai/chat/ask/route.ts` | Streaming Claude chat for AI History page |
+| `lib/api.ts → apiContextualChatAsk` | RAG-enhanced streaming chat; passes `projectId` + `diagramId` to backend |
 | `app/diff/page.tsx` | Server Component route → `<DiffPage />` |
-| `components/AIHistoryPage.tsx` | Full-page AI chat history; layers sidebar tree; DiagramBubble with preview/maximize/apply; ApplyDiagramModal 2-step flow |
-| `components/MiniDiagramPreview.tsx` | Shared read-only React Flow canvas (used in layer preview popup + chat diagram bubbles) |
 
 ## Verification Commands
 ```bash

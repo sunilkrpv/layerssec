@@ -148,6 +148,9 @@ function SideSheet({ project, onClose, onNavigate, onView, onDiff }: SideSheetPr
 
   const draft = versions.find((v) => v.status === 'draft');
   const published = versions.filter((v) => v.status === 'published');
+  // After .reverse() on load, published[0] is the newest published version.
+  // Check Out is only available on the latest published version when no draft exists.
+  const latestPublishedId = published[0]?.id;
   const canDiff = published.length >= 2;
 
   return (
@@ -350,7 +353,7 @@ function SideSheet({ project, onClose, onNavigate, onView, onDiff }: SideSheetPr
                         )}
                       </button>
                     ) : (
-                      /* Normal mode — View + Check Out */
+                      /* Normal mode — View + Check Out (only for latest published, only when no draft) */
                       <div className="flex flex-shrink-0 flex-col gap-1.5">
                         <button
                           onClick={() => onView(project.id, v.id)}
@@ -358,17 +361,19 @@ function SideSheet({ project, onClose, onNavigate, onView, onDiff }: SideSheetPr
                         >
                           View
                         </button>
-                        <button
-                          onClick={() => handleCheckout(v.id)}
-                          disabled={!!checkingOut}
-                          className="rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1 text-[11px] font-medium text-blue-700 hover:bg-blue-100 disabled:opacity-60 dark:border-blue-900 dark:bg-blue-900/20 dark:text-blue-400"
-                        >
-                          {checkingOut === v.id ? (
-                            <Loader2 size={11} className="animate-spin" />
-                          ) : (
-                            'Check Out'
-                          )}
-                        </button>
+                        {!draft && v.id === latestPublishedId && (
+                          <button
+                            onClick={() => handleCheckout(v.id)}
+                            disabled={!!checkingOut}
+                            className="rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1 text-[11px] font-medium text-blue-700 hover:bg-blue-100 disabled:opacity-60 dark:border-blue-900 dark:bg-blue-900/20 dark:text-blue-400"
+                          >
+                            {checkingOut === v.id ? (
+                              <Loader2 size={11} className="animate-spin" />
+                            ) : (
+                              'Check Out'
+                            )}
+                          </button>
+                        )}
                       </div>
                     )}
                   </div>

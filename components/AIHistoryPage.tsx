@@ -11,7 +11,7 @@ import {
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import {
-  apiChatAsk, apiGetChatHistory, apiGetProject, apiGetProjectDraft,
+  apiContextualChatAsk, apiGetChatHistory, apiGetProject, apiGetProjectDraft,
   apiUpdateDiagram, ApiUnauthorizedError, type ChatMessage,
 } from '@/lib/api';
 import { ROOT_LAYER_ID, type Layer, type LayerMap } from '@/lib/layerStore';
@@ -764,18 +764,9 @@ export default function AIHistoryPage({ projectId }: AIHistoryPageProps) {
     setIsStreaming(true);
     streamingRef.current = '';
 
-    const layerContext = attachedLayer
-      ? {
-          layerId: attachedLayer.id,
-          layerName: attachedLayer.name,
-          nodes: attachedLayer.nodes,
-          edges: attachedLayer.edges,
-        }
-      : undefined;
-
     try {
-      await apiChatAsk(
-        { message: text, projectId, history, layerContext },
+      await apiContextualChatAsk(
+        { message: text, projectId, diagramId: diagramId ?? undefined, history },
         (chunk) => {
           streamingRef.current += chunk;
           const accumulated = streamingRef.current;

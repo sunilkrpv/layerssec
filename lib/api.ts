@@ -312,6 +312,45 @@ export function apiChatGenerate(payload: {
   });
 }
 
+/** Streaming contextual chat — gathers live diagram info, nodes, versions + semantic memories
+ *  from ChromaDB before generating a response. Used by the AI History page. */
+export async function apiContextualChatAsk(
+  payload: {
+    message: string;
+    projectId: string;
+    diagramId?: string;
+    history?: Array<{ role: 'user' | 'assistant'; content: string }>;
+  },
+  onChunk: (chunk: string) => void,
+): Promise<void> {
+  const token = getAccessToken();
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const res = await fetch(`${BASE_URL}/api/ai/chat/contextual-ask`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(payload),
+  });
+
+  if (res.status === 401) {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('drafter:unauthorized'));
+    }
+    throw new ApiUnauthorizedError();
+  }
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+  const reader = res.body?.getReader();
+  if (!reader) throw new Error('No response stream');
+  const decoder = new TextDecoder();
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    onChunk(decoder.decode(value, { stream: true }));
+  }
+}
+
 /** Streaming conversational chat with memory — streams text and saves to chat history server-side. */
 export async function apiChatAsk(
   payload: {
