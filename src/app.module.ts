@@ -8,11 +8,13 @@ import { DiagramsModule } from './diagrams/diagrams.module';
 import { AiModule } from './ai/ai.module';
 import { StorageModule } from './storage/storage.module';
 import { ChatModule } from './chat/chat.module';
+import { RagModule } from './rag/rag.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true, envFilePath: ['.env.local', '.env'] }),
     PrismaModule,
+    RagModule,
     AuthModule,
     UsersModule,
     ProjectsModule,
