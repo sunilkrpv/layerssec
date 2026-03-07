@@ -194,6 +194,17 @@ export function apiGetProject(id: string): Promise<ProjectWithDiagrams> {
   return apiFetch<ProjectWithDiagrams>(`/api/projects/${id}`);
 }
 
+export function apiUpdateProject(id: string, name: string): Promise<Project> {
+  return apiFetch<Project>(`/api/projects/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ name }),
+  });
+}
+
+export function apiDeleteProject(id: string): Promise<void> {
+  return apiFetch<void>(`/api/projects/${id}`, { method: 'DELETE' });
+}
+
 export function apiCreateDiagram(
   projectId: string,
   name: string,
