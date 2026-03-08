@@ -6,16 +6,18 @@ import dynamic from 'next/dynamic';
 import {
   ArrowLeft, Check, ChevronRight, Copy, Eye, Layers, Loader2,
   Maximize2, MessageSquare, Minimize2, Paperclip, PlusCircle, Send, Sparkles, SquarePen,
-  User, X, Zap, AlertTriangle, GitBranch,
+  User, X, Zap, AlertTriangle, GitBranch, Sun, Moon, Monitor, LogOut,
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import {
-  apiChatAsk, apiGetChatHistory, apiGetProject, apiGetProjectDraft,
+  apiContextualChatAsk, apiGetChatHistory, apiGetProject, apiGetProjectDraft,
   apiUpdateDiagram, ApiUnauthorizedError, type ChatMessage,
 } from '@/lib/api';
 import { ROOT_LAYER_ID, type Layer, type LayerMap } from '@/lib/layerStore';
 import { LINE_NODE_TYPES } from '@/lib/nodeConfig';
+import { getStoredUser, clearTokens } from '@/lib/authStore';
+import { useTheme } from '@/lib/themeContext';
 
 const MiniDiagramPreview = dynamic(() => import('./MiniDiagramPreview'), { ssr: false });
 
@@ -633,6 +635,8 @@ interface AIHistoryPageProps { projectId: string }
 
 export default function AIHistoryPage({ projectId }: AIHistoryPageProps) {
   const router = useRouter();
+  const { theme, setTheme } = useTheme();
+  const storedUser = typeof window !== 'undefined' ? getStoredUser() : null;
 
   // ── Core chat state ──────────────────────────────────────────────────────
   const [uiItems, setUiItems] = useState<UIItem[]>([]);
@@ -764,18 +768,9 @@ export default function AIHistoryPage({ projectId }: AIHistoryPageProps) {
     setIsStreaming(true);
     streamingRef.current = '';
 
-    const layerContext = attachedLayer
-      ? {
-          layerId: attachedLayer.id,
-          layerName: attachedLayer.name,
-          nodes: attachedLayer.nodes,
-          edges: attachedLayer.edges,
-        }
-      : undefined;
-
     try {
-      await apiChatAsk(
-        { message: text, projectId, history, layerContext },
+      await apiContextualChatAsk(
+        { message: text, projectId, diagramId: diagramId ?? undefined, history },
         (chunk) => {
           streamingRef.current += chunk;
           const accumulated = streamingRef.current;
@@ -897,41 +892,80 @@ export default function AIHistoryPage({ projectId }: AIHistoryPageProps) {
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-white dark:bg-gray-950">
 
-      {/* Top bar */}
-      <div
-        className="relative z-10 flex flex-shrink-0 items-center gap-3 px-4 py-3"
-        style={{ background: 'linear-gradient(135deg, #1e1b4b 0%, #1e3a8a 100%)' }}
-      >
+      {/* Top bar — matches MenuBar style */}
+      <header className="flex h-9 flex-shrink-0 items-center border-b border-slate-200 bg-slate-50 px-3 dark:border-slate-700 dark:bg-slate-900">
+        {/* Logo */}
+        <div className="mr-4 flex items-center gap-1.5 pl-1">
+          <Layers size={14} className="text-blue-600" />
+          <span className="text-sm font-bold text-slate-800 dark:text-slate-100">Drafter</span>
+        </div>
+
+        {/* Back + page context */}
         <button
           onClick={() => !isStreaming && router.push(`/projects/${projectId}`)}
           disabled={isStreaming}
-          className="flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm text-indigo-200/70 transition hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+          className="flex items-center gap-1.5 rounded px-3 py-1 text-sm text-slate-700 hover:bg-slate-200 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-40 dark:text-slate-200 dark:hover:bg-slate-700 dark:hover:text-white"
         >
-          <ArrowLeft size={15} />
+          <ArrowLeft size={13} />
           Back to diagram
         </button>
 
-        <div className="h-4 w-px bg-white/15" />
+        <div className="mx-1 h-4 w-px bg-slate-200 dark:bg-slate-700" />
 
-        <div className="flex items-center gap-2">
-          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/10 ring-1 ring-white/20">
-            <Sparkles size={13} className="text-blue-300" />
-          </div>
-          <span className="text-sm font-semibold text-white">{projectName ?? 'AI History'}</span>
+        <div className="flex items-center gap-1.5">
+          <Sparkles size={12} className="text-blue-500" />
+          <span className="text-sm text-slate-600 dark:text-slate-300">
+            {projectName ?? 'AI History'}
+          </span>
         </div>
 
-        <span className="ml-auto text-xs text-indigo-300/50">
-          {messageCount} message{messageCount !== 1 ? 's' : ''}
-        </span>
+        {/* Right side */}
+        <div className="ml-auto flex items-center gap-1">
+          <span className="text-xs text-slate-400 dark:text-slate-500 mr-2">
+            {messageCount} message{messageCount !== 1 ? 's' : ''}
+          </span>
 
-        <button
-          onClick={handleNewConversation}
-          className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs text-indigo-200/70 transition hover:bg-white/10 hover:text-white"
-        >
-          <SquarePen size={13} />
-          New
-        </button>
-      </div>
+          <button
+            onClick={handleNewConversation}
+            className="flex items-center gap-1.5 rounded px-2.5 py-1 text-xs text-slate-700 hover:bg-slate-200 hover:text-slate-900 dark:text-slate-200 dark:hover:bg-slate-700 dark:hover:text-white"
+          >
+            <SquarePen size={12} />
+            New
+          </button>
+
+          <div className="mx-1 h-4 w-px bg-slate-200 dark:bg-slate-700" />
+
+          {/* Theme cycle */}
+          <button
+            onClick={() => {
+              const cycle = ['light', 'dark', 'system'] as const;
+              setTheme(cycle[(cycle.indexOf(theme) + 1) % cycle.length]);
+            }}
+            title={`Theme: ${theme} — click to cycle`}
+            className="flex items-center gap-1.5 rounded px-2 py-1 text-xs text-slate-500 hover:bg-slate-200 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200"
+          >
+            {theme === 'light' ? <Sun size={14} /> : theme === 'dark' ? <Moon size={14} /> : <Monitor size={14} />}
+            <span className="hidden sm:inline capitalize">{theme}</span>
+          </button>
+
+          <div className="mx-1 h-4 w-px bg-slate-200 dark:bg-slate-700" />
+
+          {/* User + sign out */}
+          {storedUser && (
+            <button
+              onClick={() => { clearTokens(); router.push('/projects/local'); }}
+              className="flex items-center gap-1.5 rounded px-2.5 py-1 text-sm text-slate-700 hover:bg-slate-200 hover:text-slate-900 dark:text-slate-200 dark:hover:bg-slate-700 dark:hover:text-white"
+              title="Sign out"
+            >
+              <User size={13} className="text-slate-500 dark:text-slate-400" />
+              <span className="max-w-[140px] truncate text-xs text-slate-500 dark:text-slate-400">
+                {storedUser.email}
+              </span>
+              <LogOut size={12} className="text-slate-400 dark:text-slate-500" />
+            </button>
+          )}
+        </div>
+      </header>
 
       {/* Body: sidebar + chat */}
       <div className="flex flex-1 overflow-hidden">

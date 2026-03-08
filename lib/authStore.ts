@@ -27,6 +27,11 @@ export function getAccessToken(): string | null {
   return localStorage.getItem(ACCESS_KEY);
 }
 
+export function getRefreshToken(): string | null {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem(REFRESH_KEY);
+}
+
 export function saveUser(user: UserProfile): void {
   if (typeof window === 'undefined') return;
   localStorage.setItem(USER_KEY, JSON.stringify(user));
@@ -43,8 +48,10 @@ export function getStoredUser(): UserProfile | null {
   }
 }
 
+// A user is considered logged in if they have a refresh token (even if the access token
+// has expired — it will be refreshed transparently on the first API call).
 export function isLoggedIn(): boolean {
-  return !!getAccessToken();
+  return !!(getAccessToken() || getRefreshToken());
 }
 
 // ── Local (no-login) mode ─────────────────────────────────────────────────────

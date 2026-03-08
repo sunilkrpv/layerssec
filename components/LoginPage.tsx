@@ -79,10 +79,10 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  // If already authenticated, skip login and go straight to the canvas
+  // If already authenticated, skip login and go straight to the projects list
   useEffect(() => {
     if (isLoggedIn()) {
-      router.replace('/projects/local');
+      router.replace('/projects');
     }
   }, [router]);
 
@@ -103,7 +103,7 @@ export default function LoginPage() {
       saveTokens(tokens.accessToken, tokens.refreshToken);
       const user = await apiGetMe();
       saveUser(user);
-      router.push('/projects/local');
+      router.push('/projects');
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Authentication failed');
     } finally {

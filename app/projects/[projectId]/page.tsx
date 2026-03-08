@@ -8,8 +8,9 @@ const DiagramPage = dynamic(() => import('@/components/DiagramPage'), { ssr: fal
 
 interface PageProps {
   params: { projectId: string };
+  searchParams: { view?: string };
 }
 
-export default function ProjectPage({ params }: PageProps) {
-  return <DiagramPage projectId={params.projectId} />;
+export default function ProjectPage({ params, searchParams }: PageProps) {
+  return <DiagramPage projectId={params.projectId} viewDiagramId={searchParams.view} />;
 }
