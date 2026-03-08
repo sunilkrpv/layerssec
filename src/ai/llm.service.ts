@@ -76,6 +76,10 @@ export class LlmService {
    * text content along with the total token count (0 when unavailable).
    */
   async invoke(systemPrompt: string, userMessage: string): Promise<LlmResponse> {
+
+    this.logger.debug(`system-prompt — ${systemPrompt}`);
+    this.logger.debug(`user-message — ${userMessage}`);
+    
     const response = await this.llm.invoke([
       new SystemMessage(systemPrompt),
       new HumanMessage(userMessage),
@@ -104,10 +108,10 @@ export class LlmService {
   // ]}.toString();
   // const tokensUsed = 42; // Placeholder token count
 
-    console.log('LLM response content:', content);
-    console.log('LLM tokens used:', tokensUsed);
-    console.log('LLM used model:', this.modelName);
-    console.log('LLM provider:', this.provider);
+    this.logger.debug(`LLM response content: ${content}`);
+    this.logger.debug(`LLM tokens used: ${tokensUsed}`);
+    this.logger.debug(`LLM used model: ${this.modelName}`);
+    this.logger.debug(`LLM provider: ${this.provider}`);
 
     return { content, tokensUsed };
   }
@@ -136,6 +140,7 @@ export class LlmService {
     history: Array<{ role: 'user' | 'assistant'; content: string }>,
     userMessage: string,
   ): AsyncGenerator<string> {
+    
     const msgs = [
       new SystemMessage(systemPrompt),
       ...history.map((m) =>

@@ -1,4 +1,4 @@
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
 import { Response } from 'express';
 import { PrismaService } from '../prisma/prisma.service';
 import { LlmService } from './llm.service';
@@ -9,17 +9,26 @@ import { buildRefinePrompt } from './prompts/refine-prompt';
 import { DRAFTER_SYSTEM_PROMPT } from './prompts/drafter-system-prompt';
 import { EVAL_SYSTEM_PROMPT, QA_SYSTEM_PROMPT } from './prompts/eval-system-prompt';
 import { CHAT_SYSTEM_PROMPT, buildLayerContextSystemPrompt } from './prompts/chat-system-prompt';
+import { buildContextualSystemPrompt } from './prompts/contextual-system-prompt';
 import { ChatService } from '../chat/chat.service';
+import { RagContextService } from '../rag/rag-context.service';
+import { RagIndexingService } from '../rag/rag-indexing.service';
 import { ChatGenerateDto } from './dto/chat-generate.dto';
 import { ChatEvaluateDto } from './dto/chat-evaluate.dto';
 import { ChatAskDto } from './dto/chat-ask.dto';
+import { ContextualAskDto } from './dto/contextual-ask.dto';
 
 @Injectable()
 export class AiService {
+
+  private readonly logger = new Logger(AiService.name);
+  
   constructor(
     private readonly llm: LlmService,
     private readonly prisma: PrismaService,
     private readonly chat: ChatService,
+    private readonly ragContext: RagContextService,
+    private readonly ragIndexing: RagIndexingService,
   ) {}
 
   async generate(
@@ -48,6 +57,8 @@ export class AiService {
   }
 
   async chatGenerate(userId: string, dto: ChatGenerateDto) {
+
+    this.logger.debug(`LLM provider: ${this.provider}`);
     const userMessage = `Generate a diagram for: ${dto.prompt}`;
     const { content } = await this.llm.invoke(DRAFTER_SYSTEM_PROMPT, userMessage);
     const raw = content
@@ -193,12 +204,71 @@ export class AiService {
     }
   }
 
+  async contextualAsk(userId: string, dto: ContextualAskDto, res: Response) {
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    res.setHeader('Transfer-Encoding', 'chunked');
+    res.setHeader('Cache-Control', 'no-cache');
+
+    // Gather context from all tools in parallel (diagram info, nodes, versions, semantic memory)
+    const contextBlock = await this.ragContext.gatherContext(
+      userId,
+      dto.projectId,
+      dto.diagramId,
+      dto.message,
+    );
+
+    const systemPrompt = buildContextualSystemPrompt(contextBlock);
+
+    let fullResponse = '';
+    try {
+      for await (const chunk of this.llm.streamConversation(
+        systemPrompt,
+        dto.history ?? [],
+        dto.message,
+      )) {
+        res.write(chunk);
+        fullResponse += chunk;
+      }
+    } finally {
+      if (fullResponse) {
+        // Split diagram JSON if present
+        const DIAGRAM_SEPARATOR = '---DIAGRAM---';
+        const sepIdx = fullResponse.indexOf(DIAGRAM_SEPARATOR);
+        let textContent = fullResponse;
+        let diagramData: Record<string, unknown> | null = null;
+
+        if (sepIdx !== -1) {
+          textContent = fullResponse.slice(0, sepIdx).trim();
+          try {
+            const parsed = JSON.parse(fullResponse.slice(sepIdx + DIAGRAM_SEPARATOR.length).trim()) as Record<string, unknown>;
+            if (Array.isArray(parsed.nodes) && Array.isArray(parsed.edges)) {
+              diagramData = parsed;
+            }
+          } catch { textContent = fullResponse; }
+        }
+
+        // Save to chat history + index to ChromaDB
+        const messages = [
+          { role: 'user' as const, content: dto.message },
+          { role: 'assistant' as const, content: textContent, diagramData: diagramData ?? undefined },
+        ];
+        await Promise.all([
+          this.chat.saveMessages(dto.projectId, userId, messages),
+          this.ragIndexing.indexChatMessages(dto.projectId, userId, messages),
+        ]);
+      }
+      res.end();
+    }
+  }
+
   private async callAi(
     userId: string,
     originalPrompt: string,
     userMessage: string,
     diagramId?: string,
   ) {
+
+    this.logger.debug(`Calling LLM with prompt: ${userMessage}`);
     const startTime = Date.now();
 
     try {

@@ -9,6 +9,7 @@ import { RefineDto } from './dto/refine.dto';
 import { ChatGenerateDto } from './dto/chat-generate.dto';
 import { ChatEvaluateDto } from './dto/chat-evaluate.dto';
 import { ChatAskDto } from './dto/chat-ask.dto';
+import { ContextualAskDto } from './dto/contextual-ask.dto';
 
 @Controller('ai')
 @UseGuards(JwtAuthGuard)
@@ -51,5 +52,14 @@ export class AiController {
     @Res() res: Response,
   ) {
     return this.ai.chatAsk(userId, dto, res);
+  }
+
+  @Post('chat/contextual-ask')
+  contextualAsk(
+    @CurrentUser('id') userId: string,
+    @Body() dto: ContextualAskDto,
+    @Res() res: Response,
+  ) {
+    return this.ai.contextualAsk(userId, dto, res);
   }
 }

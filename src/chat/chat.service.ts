@@ -1,10 +1,14 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { RagIndexingService } from '../rag/rag-indexing.service';
 import { ChatMessageItemDto } from './dto/save-chat-messages.dto';
 
 @Injectable()
 export class ChatService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly ragIndexing: RagIndexingService,
+  ) {}
 
   async saveMessages(
     projectId: string,
@@ -22,6 +26,9 @@ export class ChatService {
         diagramData: m.diagramData ?? null,
       })),
     });
+
+    // Index to ChromaDB — non-blocking
+    this.ragIndexing.indexChatMessages(projectId, userId, messages).catch(() => {});
   }
 
   async getHistory(projectId: string, userId: string) {

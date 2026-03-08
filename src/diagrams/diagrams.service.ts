@@ -1,11 +1,13 @@
 import {
   Injectable,
+  Logger,
   NotFoundException,
   ForbiddenException,
   ConflictException,
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { RagIndexingService } from '../rag/rag-indexing.service';
 import { CreateDiagramDto } from './dto/create-diagram.dto';
 import { UpdateDiagramDto } from './dto/update-diagram.dto';
 import { PublishDiagramDto } from './dto/publish-diagram.dto';
@@ -13,7 +15,12 @@ import { CheckoutDto } from './dto/checkout.dto';
 
 @Injectable()
 export class DiagramsService {
-  constructor(private prisma: PrismaService) {}
+  private readonly logger = new Logger(DiagramsService.name);
+
+  constructor(
+    private prisma: PrismaService,
+    private ragIndexing: RagIndexingService,
+  ) {}
 
   async create(projectId: string, userId: string, dto: CreateDiagramDto) {
     await this.verifyProjectAccess(projectId, userId);
@@ -69,7 +76,7 @@ export class DiagramsService {
       throw new BadRequestException('Diagram is already published');
     }
 
-    return this.prisma.diagram.update({
+    const published = await this.prisma.diagram.update({
       where: { id },
       data: {
         status: 'published',
@@ -77,6 +84,13 @@ export class DiagramsService {
         publishComment: dto.comment ?? null,
       },
     });
+
+    // Index to ChromaDB — non-blocking, errors are swallowed
+    this.ragIndexing.indexPublishedDiagram(published, userId).catch((err) => {
+      this.logger.warn(`RAG indexing failed for diagram ${id}: ${String(err)}`);
+    });
+
+    return published;
   }
 
   async checkout(projectId: string, userId: string, dto: CheckoutDto) {
@@ -93,13 +107,22 @@ export class DiagramsService {
       });
     }
 
-    // Verify source diagram belongs to this project and is published
+    // Verify source diagram belongs to this project and is the latest published version
     const source = await this.findById(dto.fromDiagramId, userId);
     if (source.projectId !== projectId) {
       throw new ForbiddenException('Source diagram does not belong to this project');
     }
     if (source.status !== 'published') {
       throw new BadRequestException('Can only check out from a published version');
+    }
+
+    // Enforce rule: only the latest published version may be checked out
+    const latestPublished = await this.prisma.diagram.findFirst({
+      where: { projectId, status: 'published' },
+      orderBy: { publishedAt: 'desc' },
+    });
+    if (!latestPublished || latestPublished.id !== dto.fromDiagramId) {
+      throw new BadRequestException('Can only check out from the latest published version');
     }
 
     return this.prisma.diagram.create({
