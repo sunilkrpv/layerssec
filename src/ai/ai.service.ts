@@ -1,4 +1,4 @@
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
 import { Response } from 'express';
 import { PrismaService } from '../prisma/prisma.service';
 import { LlmService } from './llm.service';
@@ -20,6 +20,9 @@ import { ContextualAskDto } from './dto/contextual-ask.dto';
 
 @Injectable()
 export class AiService {
+
+  private readonly logger = new Logger(AiService.name);
+  
   constructor(
     private readonly llm: LlmService,
     private readonly prisma: PrismaService,
@@ -54,6 +57,8 @@ export class AiService {
   }
 
   async chatGenerate(userId: string, dto: ChatGenerateDto) {
+
+    this.logger.debug(`LLM provider: ${this.provider}`);
     const userMessage = `Generate a diagram for: ${dto.prompt}`;
     const { content } = await this.llm.invoke(DRAFTER_SYSTEM_PROMPT, userMessage);
     const raw = content
@@ -262,6 +267,8 @@ export class AiService {
     userMessage: string,
     diagramId?: string,
   ) {
+
+    this.logger.debug(`Calling LLM with prompt: ${userMessage}`);
     const startTime = Date.now();
 
     try {
