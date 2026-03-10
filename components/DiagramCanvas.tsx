@@ -49,6 +49,7 @@ import ContainerNode from './nodes/ContainerNode';
 import ComponentNode from './nodes/ComponentNode';
 import CodeNode from './nodes/CodeNode';
 import TextNode from './nodes/TextNode';
+import TrustBoundaryNode from './nodes/TrustBoundaryNode';
 
 // ── Helper: recompute a line node's position/width to maintain endpoint attachments ──────────────
 function computeUpdatedLinePosition(
@@ -122,6 +123,7 @@ const NODE_TYPES = {
   component: ComponentNode,
   code: CodeNode,
   text: TextNode,
+  trustboundary: TrustBoundaryNode,
 };
 
 export type ExtendedRFInstance = ReactFlowInstance & {
@@ -394,6 +396,7 @@ export default function DiagramCanvas({
           description: '',
           technology: '',
         },
+        ...(nodeType === 'trustboundary' && { style: { width: 400, height: 300 }, zIndex: -1 }),
       };
       setNodes((nds) => nds.concat(newNode));
       // Auto-enter edit mode for the dropped node
@@ -639,6 +642,7 @@ export default function DiagramCanvas({
             description: '',
             technology: '',
           },
+          ...(nodeType === 'trustboundary' && { style: { width: 400, height: 300 }, zIndex: -1 }),
         };
         setNodes((nds) => nds.concat(newNode));
         onRequestEditRef.current?.(newNode.id);

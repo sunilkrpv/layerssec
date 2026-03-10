@@ -1,15 +1,19 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Sparkles, Send, Loader2, X, ScanSearch, Lock } from 'lucide-react';
+import { Sparkles, Send, Loader2, X, ScanSearch, Lock, ShieldAlert, Save, History } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useTheme } from '@/lib/themeContext';
+import ThreatResultCard from '@/components/ThreatResultCard';
+import ThreatHistoryPanel from '@/components/ThreatHistoryPanel';
+import type { ThreatItem } from '@/lib/api';
 
 interface Message {
   role: 'user' | 'assistant';
   content: string;
   isLoading?: boolean;
+  threatResults?: ThreatItem[];
 }
 
 interface AIChatPanelProps {
@@ -17,6 +21,12 @@ interface AIChatPanelProps {
   onGenerateNewLayer: (prompt: string, layerName: string) => Promise<void>;
   /** Full evaluation or Q&A — pass optional question for Q&A mode */
   onEvaluate?: (onChunk: (chunk: string) => void, question?: string) => Promise<void>;
+  /** Run STRIDE threat analysis — returns transient ThreatItems */
+  onThreatAnalysis?: () => Promise<ThreatItem[]>;
+  /** Save a named threat model snapshot to the backend */
+  onSaveThreatModel?: (name: string, threats: ThreatItem[]) => Promise<void>;
+  /** Project ID — needed to load threat history (cloud only) */
+  projectId?: string;
   isLoading: boolean;
   status?: string;
   onClose: () => void;
@@ -151,6 +161,9 @@ export default function AIChatPanel({
   onGenerate,
   onGenerateNewLayer,
   onEvaluate,
+  onThreatAnalysis,
+  onSaveThreatModel,
+  projectId,
   isLoading,
   status,
   onClose,
@@ -183,6 +196,11 @@ export default function AIChatPanel({
   const [input, setInput] = useState('');
   const [layerPrompt, setLayerPrompt] = useState<string | null>(null);
   const [isEvaluating, setIsEvaluating] = useState(false);
+  const [isAnalyzingThreats, setIsAnalyzingThreats] = useState(false);
+  const [pendingThreats, setPendingThreats] = useState<ThreatItem[] | null>(null);
+  const [saveModelName, setSaveModelName] = useState('');
+  const [isSavingModel, setIsSavingModel] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
   const streamingContentRef = useRef('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -264,6 +282,61 @@ export default function AIChatPanel({
     }
   };
 
+  // ── Threat analysis ─────────────────────────────────────────────────────
+  const runThreatAnalysis = async () => {
+    if (!onThreatAnalysis || isAnalyzingThreats || isLoading || isEvaluating) return;
+    setIsAnalyzingThreats(true);
+    setPendingThreats(null);
+    setSaveModelName('');
+    setMessages((prev) => [
+      ...prev,
+      { role: 'user', content: 'Run STRIDE threat analysis' },
+      { role: 'assistant', content: '', isLoading: true },
+    ]);
+    try {
+      const threats = await onThreatAnalysis();
+      const summary = `Found **${threats.length}** threat${threats.length !== 1 ? 's' : ''}. Review below and save as a named threat model if you want to keep this analysis.`;
+      setMessages((prev) => {
+        const updated = [...prev];
+        updated[updated.length - 1] = { role: 'assistant', content: summary, threatResults: threats };
+        return updated;
+      });
+      setPendingThreats(threats);
+    } catch {
+      setMessages((prev) => {
+        const updated = [...prev];
+        updated[updated.length - 1] = {
+          role: 'assistant',
+          content: 'Threat analysis failed. Please try again.',
+        };
+        return updated;
+      });
+    } finally {
+      setIsAnalyzingThreats(false);
+    }
+  };
+
+  const handleSaveThreatModel = async () => {
+    if (!onSaveThreatModel || !pendingThreats || isSavingModel) return;
+    setIsSavingModel(true);
+    try {
+      await onSaveThreatModel(saveModelName || 'Threat Analysis', pendingThreats);
+      setPendingThreats(null);
+      setSaveModelName('');
+      setMessages((prev) => [
+        ...prev,
+        { role: 'assistant', content: '✓ Threat model saved successfully.' },
+      ]);
+    } catch {
+      setMessages((prev) => [
+        ...prev,
+        { role: 'assistant', content: 'Failed to save threat model. Please try again.' },
+      ]);
+    } finally {
+      setIsSavingModel(false);
+    }
+  };
+
   const handleSubmit = async () => {
     const trimmed = input.trim();
     if (!trimmed || isLoading || isEvaluating) return;
@@ -310,7 +383,7 @@ export default function AIChatPanel({
   const placeholder = isReadOnly
     ? 'Ask about this architecture… (Enter to send)'
     : 'Describe a diagram… (Enter to send)';
-  const isBusy = isLoading || isEvaluating;
+  const isBusy = isLoading || isEvaluating || isAnalyzingThreats;
 
   return (
     <aside
@@ -349,6 +422,16 @@ export default function AIChatPanel({
             {isReadOnly ? 'Evaluation & Q&A mode' : 'Diagram Generation · Claude'}
           </div>
         </div>
+        {/* History button — cloud projects with threat support only */}
+        {projectId && onThreatAnalysis && (
+          <button
+            onClick={() => setShowHistory((v) => !v)}
+            title="Saved threat models"
+            className={`flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg transition-colors ${isDark ? 'text-white/40 hover:bg-white/10 hover:text-white' : 'text-slate-400 hover:bg-slate-100 hover:text-slate-700'} ${showHistory ? (isDark ? 'bg-white/10 text-white' : 'bg-slate-100 text-slate-700') : ''}`}
+          >
+            <History size={14} />
+          </button>
+        )}
         <button
           onClick={onClose}
           title="Close AI panel (⌘I)"
@@ -358,8 +441,17 @@ export default function AIChatPanel({
         </button>
       </div>
 
+      {/* ── Threat History view (replaces chat when active) ───────────────── */}
+      {showHistory && projectId && (
+        <ThreatHistoryPanel
+          projectId={projectId}
+          isDark={isDark}
+          onBack={() => setShowHistory(false)}
+        />
+      )}
+
       {/* ── Messages ──────────────────────────────────────────────────────── */}
-      <div className="relative flex-1 overflow-y-auto px-4 py-4">
+      {!showHistory && <div className="relative flex-1 overflow-y-auto px-4 py-4">
         <div className="space-y-5">
           {messages.map((msg, i) =>
             msg.role === 'user' ? (
@@ -377,11 +469,20 @@ export default function AIChatPanel({
                 </div>
                 <div className={`min-w-0 flex-1 ${isDark ? 'text-indigo-100/90' : 'text-slate-800'}`}>
                   {msg.isLoading ? (
-                    <ThinkingDots label={status ?? 'Thinking…'} />
+                    <ThinkingDots label={isAnalyzingThreats ? 'Analyzing threats…' : (status ?? 'Thinking…')} />
                   ) : (
-                    <ReactMarkdown remarkPlugins={[remarkGfm]} components={mdComponents}>
-                      {msg.content}
-                    </ReactMarkdown>
+                    <>
+                      <ReactMarkdown remarkPlugins={[remarkGfm]} components={mdComponents}>
+                        {msg.content}
+                      </ReactMarkdown>
+                      {msg.threatResults && msg.threatResults.length > 0 && (
+                        <div className="mt-3 space-y-2">
+                          {msg.threatResults.map((t, ti) => (
+                            <ThreatResultCard key={ti} threat={t} isDark={isDark} />
+                          ))}
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               </div>
@@ -431,19 +532,52 @@ export default function AIChatPanel({
 
           <div ref={messagesEndRef} />
         </div>
-      </div>
+      </div>}
 
       {/* ── Input footer ──────────────────────────────────────────────────── */}
-      <div className={`relative flex-shrink-0 space-y-2 border-t p-3 ${isDark ? 'border-white/10' : 'border-slate-200'}`}>
-        {/* Evaluate quick-action */}
-        {hasNodes && onEvaluate && !isEvaluating && !isLoading && (
-          <button
-            onClick={() => runStreaming('Evaluate this diagram')}
-            className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-amber-400/30 bg-amber-400/10 py-1.5 text-xs font-medium text-amber-600 transition hover:bg-amber-400/20 dark:text-amber-300"
-          >
-            <ScanSearch size={12} />
-            Evaluate this diagram
-          </button>
+      {!showHistory && <div className={`relative flex-shrink-0 space-y-2 border-t p-3 ${isDark ? 'border-white/10' : 'border-slate-200'}`}>
+        {/* Evaluate + Threat Analysis quick-actions */}
+        {hasNodes && !isBusy && (
+          <div className="flex gap-2">
+            {onEvaluate && (
+              <button
+                onClick={() => runStreaming('Evaluate this diagram')}
+                className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-amber-400/30 bg-amber-400/10 py-1.5 text-xs font-medium text-amber-600 transition hover:bg-amber-400/20 dark:text-amber-300"
+              >
+                <ScanSearch size={12} />
+                Evaluate
+              </button>
+            )}
+            {onThreatAnalysis && !isReadOnly && (
+              <button
+                onClick={runThreatAnalysis}
+                className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-red-400/30 bg-red-400/10 py-1.5 text-xs font-medium text-red-600 transition hover:bg-red-400/20 dark:text-red-300"
+              >
+                <ShieldAlert size={12} />
+                Threat Analysis
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Save threat model — shown after analysis completes */}
+        {pendingThreats && !isBusy && onSaveThreatModel && (
+          <div className={`flex items-center gap-2 rounded-xl border p-2 ${isDark ? 'border-white/10 bg-white/5' : 'border-slate-200 bg-slate-50'}`}>
+            <input
+              value={saveModelName}
+              onChange={(e) => setSaveModelName(e.target.value)}
+              placeholder="Model name (optional)"
+              className={`flex-1 rounded-lg border px-2.5 py-1.5 text-xs outline-none focus:ring-1 ${isDark ? 'border-white/15 bg-white/10 text-white placeholder-white/30 focus:ring-blue-400/30' : 'border-slate-200 bg-white text-slate-900 placeholder-slate-400 focus:ring-blue-400/30'}`}
+            />
+            <button
+              onClick={handleSaveThreatModel}
+              disabled={isSavingModel}
+              className="flex items-center gap-1 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-indigo-500 disabled:opacity-50"
+            >
+              {isSavingModel ? <Loader2 size={11} className="animate-spin" /> : <Save size={11} />}
+              Save
+            </button>
+          </div>
         )}
 
         <div className="flex items-end gap-2">
@@ -474,7 +608,7 @@ export default function AIChatPanel({
         <p className={`text-center text-[10px] ${isDark ? 'text-indigo-400/40' : 'text-slate-400'}`}>
           Enter to send · Shift+Enter for new line
         </p>
-      </div>
+      </div>}
     </aside>
   );
 }

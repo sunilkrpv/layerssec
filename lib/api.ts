@@ -425,6 +425,112 @@ export async function apiChatAsk(
   }
 }
 
+// ─── Threat Models ────────────────────────────────────────────────────────────
+
+export type StrideCategory =
+  | 'SPOOFING'
+  | 'TAMPERING'
+  | 'REPUDIATION'
+  | 'INFORMATION_DISCLOSURE'
+  | 'DENIAL_OF_SERVICE'
+  | 'ELEVATION_OF_PRIVILEGE';
+
+export type ThreatSeverity = 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW' | 'INFO';
+export type ThreatStatus =
+  | 'IDENTIFIED'
+  | 'IN_PROGRESS'
+  | 'MITIGATED'
+  | 'ACCEPTED'
+  | 'FALSE_POSITIVE';
+
+export interface ThreatItem {
+  targetId: string;
+  targetType: string;
+  targetLabel: string;
+  layerId: string;
+  strideCategory: StrideCategory;
+  title: string;
+  description: string;
+  severity: ThreatSeverity;
+}
+
+export interface SavedThreat extends ThreatItem {
+  id: string;
+  threatModelId: string;
+  status: ThreatStatus;
+  mitigationNotes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ThreatModelSummary {
+  id: string;
+  name: string;
+  diagramVersion: number;
+  savedAt: string;
+  threatCount: number;
+  severitySummary: Record<string, number>;
+  mitigatedCount: number;
+}
+
+export interface ThreatModelFull {
+  id: string;
+  name: string;
+  projectId: string;
+  diagramId: string;
+  diagramVersion: number;
+  snapshotData: unknown;
+  savedAt: string;
+  threats: SavedThreat[];
+}
+
+/** Run STRIDE threat analysis on the current diagram layer — returns transient threats (not saved). */
+export function apiRunThreatAnalysis(payload: {
+  diagramId: string;
+  layerId: string;
+  layerName?: string;
+  nodes: unknown[];
+  edges: unknown[];
+  trustBoundaries?: unknown[];
+}): Promise<{ threats: ThreatItem[] }> {
+  return apiFetch<{ threats: ThreatItem[] }>('/api/ai/threat-analysis', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+/** Save a threat model snapshot explicitly to the backend. */
+export function apiSaveThreatModel(
+  projectId: string,
+  payload: {
+    name?: string;
+    diagramId: string;
+    diagramVersion: number;
+    snapshotData: unknown;
+    threats: ThreatItem[];
+  },
+): Promise<ThreatModelFull> {
+  return apiFetch<ThreatModelFull>(`/api/projects/${projectId}/threat-models`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+/** List all saved threat models for a project (summary only). */
+export function apiListThreatModels(projectId: string): Promise<ThreatModelSummary[]> {
+  return apiFetch<ThreatModelSummary[]>(`/api/projects/${projectId}/threat-models`);
+}
+
+/** Get a single saved threat model with all threats. */
+export function apiGetThreatModel(threatModelId: string): Promise<ThreatModelFull> {
+  return apiFetch<ThreatModelFull>(`/api/threat-models/${threatModelId}`);
+}
+
+/** Delete a saved threat model. */
+export function apiDeleteThreatModel(threatModelId: string): Promise<void> {
+  return apiFetch<void>(`/api/threat-models/${threatModelId}`, { method: 'DELETE' });
+}
+
 /** Streaming evaluate — streams text chunks and saves both messages to chat history server-side. */
 export async function apiChatEvaluate(
   payload: {

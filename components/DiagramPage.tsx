@@ -28,12 +28,13 @@ import PublishModal from '@/components/PublishModal';
 import type { AssignableLayer } from '@/components/AssignLayerModal';
 
 import type { NodeData, NodeType, GenerateResponse } from '@/lib/types';
-import type { UserProfile, Project, ChatMessage } from '@/lib/api';
+import type { UserProfile, Project, ChatMessage, ThreatItem } from '@/lib/api';
 import {
   apiUpdateDiagram, apiCreateDiagram, apiGenerateDiagram,
   apiPublishDiagram, apiListProjectVersions, apiGetProjectDraft,
   apiGetDiagram, apiGetProject, apiCheckoutVersion, DraftExistsError,
   apiChatGenerate, apiChatEvaluate, apiGetChatHistory,
+  apiRunThreatAnalysis, apiSaveThreatModel,
 } from '@/lib/api';
 import { getStoredUser, clearTokens, isLoggedIn, isLocalMode, clearLocalMode } from '@/lib/authStore';
 import {
@@ -864,6 +865,69 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
     [currentLayerId, layers, projectId],
   );
 
+  // ── STRIDE Threat Analysis ────────────────────────────────────────────────
+
+  const handleThreatAnalysis = useCallback(async (): Promise<ThreatItem[]> => {
+    const nodes = (rfInstanceRef.current as ReactFlowInstance | null)?.getNodes() ?? [];
+    const edges = (rfInstanceRef.current as ReactFlowInstance | null)?.getEdges() ?? [];
+    const layer = layers[currentLayerId];
+
+    // Split trust boundary nodes from regular nodes
+    const trustBoundaries = nodes
+      .filter((n) => n.type === 'trustboundary')
+      .map((n) => ({ id: n.id, label: n.data?.label ?? 'Trust Boundary', trustLevel: n.data?.trustLevel ?? 'custom' }));
+
+    const regularNodes = nodes
+      .filter((n) => n.type !== 'trustboundary')
+      .map((n) => ({
+        id: n.id,
+        type: n.type ?? 'unknown',
+        label: n.data?.label ?? n.id,
+        technology: n.data?.technology,
+        description: n.data?.description,
+        trustLevel: n.data?.trustLevel,
+      }));
+
+    const serializedEdges = edges.map((e) => ({
+      id: e.id,
+      source: e.source,
+      target: e.target,
+      label: typeof e.label === 'string' ? e.label : undefined,
+    }));
+
+    const diagramId = backendDiagramIdRef.current ?? 'local';
+    const result = await apiRunThreatAnalysis({
+      diagramId,
+      layerId: currentLayerId,
+      layerName: layer?.name ?? 'Diagram',
+      nodes: regularNodes,
+      edges: serializedEdges,
+      trustBoundaries,
+    });
+    return result.threats;
+  }, [currentLayerId, layers]);
+
+  const handleSaveThreatModel = useCallback(
+    async (name: string, threats: ThreatItem[]) => {
+      if (projectId === 'local' || !backendDiagramIdRef.current) {
+        throw new Error('Sign in to save threat models');
+      }
+      const nodes = (rfInstanceRef.current as ReactFlowInstance | null)?.getNodes() ?? [];
+      const edges = (rfInstanceRef.current as ReactFlowInstance | null)?.getEdges() ?? [];
+      const layer = layers[currentLayerId];
+      const snapshotData = { nodes, edges, layerName: layer?.name };
+
+      await apiSaveThreatModel(projectId, {
+        name,
+        diagramId: backendDiagramIdRef.current,
+        diagramVersion: 1,
+        snapshotData,
+        threats,
+      });
+    },
+    [currentLayerId, layers, projectId],
+  );
+
   // ── Layer navigation ──────────────────────────────────────────────────────
 
   const navigateTo = useCallback(
@@ -1688,6 +1752,9 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
                 onGenerate={handleGenerate}
                 onGenerateNewLayer={handleGenerateNewLayer}
                 onEvaluate={handleEvaluate}
+                onThreatAnalysis={projectId !== 'local' ? handleThreatAnalysis : undefined}
+                onSaveThreatModel={projectId !== 'local' ? handleSaveThreatModel : undefined}
+                projectId={projectId !== 'local' ? projectId : undefined}
                 isLoading={isGenerating}
                 status={generatingStatus}
                 onClose={() => setShowChatPanel(false)}

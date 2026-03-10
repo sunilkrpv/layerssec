@@ -26,7 +26,8 @@ export type NodeType =
   | 'container'
   | 'component'
   | 'code'
-  | 'text';
+  | 'text'
+  | 'trustboundary';
 
 export interface NodeData {
   label: string;
@@ -55,6 +56,8 @@ export interface NodeData {
   fontSize?: number;
   /** Font family group: sans | serif | mono */
   fontFamily?: 'sans' | 'serif' | 'mono';
+  /** Trust level for trustboundary nodes */
+  trustLevel?: 'internal' | 'dmz' | 'external' | 'internet' | 'custom';
 }
 
 export interface DiagramNode {
