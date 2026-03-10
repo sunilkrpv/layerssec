@@ -16,6 +16,7 @@ model User {
   avatarUrl      String?         @map("avatar_url")
   projects       Project[]
   aiInteractions AiInteraction[]
+  threatModels   ThreatModel[]
   createdAt      DateTime        @default(now()) @map("created_at")
   updatedAt      DateTime        @updatedAt @map("updated_at")
 
@@ -30,6 +31,7 @@ model Project {
   ownerId      String        @map("owner_id") @db.Uuid
   diagrams     Diagram[]
   chatMessages ChatMessage[]
+  threatModels ThreatModel[]
   isPublic     Boolean       @default(false) @map("is_public")
   tags         String[]      @default([])
   createdAt    DateTime      @default(now()) @map("created_at")
@@ -53,6 +55,7 @@ model Diagram {
   publishedAt    DateTime?   @map("published_at")
   createdAt      DateTime    @default(now()) @map("created_at")
   updatedAt      DateTime    @updatedAt @map("updated_at")
+  threatModels   ThreatModel[]
 
   @@index([projectId])
   @@map("diagrams")
@@ -100,4 +103,72 @@ enum DiagramType {
   CLOUD_INFRASTRUCTURE
   FLOWCHART
   SEQUENCE
+}
+
+enum StrideCategory {
+  SPOOFING
+  TAMPERING
+  REPUDIATION
+  INFORMATION_DISCLOSURE
+  DENIAL_OF_SERVICE
+  ELEVATION_OF_PRIVILEGE
+}
+
+enum ThreatSeverity {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
+  INFO
+}
+
+enum ThreatStatus {
+  IDENTIFIED
+  IN_PROGRESS
+  MITIGATED
+  ACCEPTED
+  FALSE_POSITIVE
+}
+
+model ThreatModel {
+  id             String      @id @default(uuid()) @db.Uuid
+  projectId      String      @map("project_id") @db.Uuid
+  diagramId      String      @map("diagram_id") @db.Uuid
+  diagramVersion Int         @map("diagram_version")
+  snapshotData   Json        @map("snapshot_data")
+  name           String      @default("Threat Analysis")
+  savedBy        String      @map("saved_by") @db.Uuid
+  savedAt        DateTime    @default(now()) @map("saved_at")
+  threats        Threat[]
+
+  project        Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  diagram        Diagram     @relation(fields: [diagramId], references: [id], onDelete: Cascade)
+  savedByUser    User        @relation(fields: [savedBy], references: [id])
+
+  @@index([projectId])
+  @@index([diagramId])
+  @@map("threat_models")
+}
+
+model Threat {
+  id              String         @id @default(uuid()) @db.Uuid
+  threatModelId   String         @map("threat_model_id") @db.Uuid
+  targetId        String         @map("target_id")
+  targetType      String         @map("target_type")
+  targetLabel     String         @map("target_label")
+  layerId         String         @map("layer_id")
+  strideCategory  StrideCategory @map("stride_category")
+  title           String
+  description     String         @db.Text
+  severity        ThreatSeverity
+  status          ThreatStatus   @default(IDENTIFIED)
+  mitigationNotes String?        @db.Text @map("mitigation_notes")
+  codeEvidence    Json?          @map("code_evidence")
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+
+  threatModel     ThreatModel    @relation(fields: [threatModelId], references: [id], onDelete: Cascade)
+
+  @@index([threatModelId])
+  @@map("threats")
 }

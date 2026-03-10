@@ -9,6 +9,7 @@ import { AiModule } from './ai/ai.module';
 import { StorageModule } from './storage/storage.module';
 import { ChatModule } from './chat/chat.module';
 import { RagModule } from './rag/rag.module';
+import { ThreatModule } from './threat/threat.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { RagModule } from './rag/rag.module';
     AiModule,
     StorageModule,
     ChatModule,
+    ThreatModule,
   ],
 })
 export class AppModule {}

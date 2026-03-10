@@ -10,6 +10,8 @@ import { DRAFTER_SYSTEM_PROMPT } from './prompts/drafter-system-prompt';
 import { EVAL_SYSTEM_PROMPT, QA_SYSTEM_PROMPT } from './prompts/eval-system-prompt';
 import { CHAT_SYSTEM_PROMPT, buildLayerContextSystemPrompt } from './prompts/chat-system-prompt';
 import { buildContextualSystemPrompt } from './prompts/contextual-system-prompt';
+import { THREAT_ANALYSIS_SYSTEM_PROMPT, buildThreatAnalysisPrompt } from './prompts/threat-analysis-prompt';
+import { ThreatAnalysisDto } from './dto/threat-analysis.dto';
 import { ChatService } from '../chat/chat.service';
 import { RagContextService } from '../rag/rag-context.service';
 import { RagIndexingService } from '../rag/rag-indexing.service';
@@ -58,7 +60,7 @@ export class AiService {
 
   async chatGenerate(userId: string, dto: ChatGenerateDto) {
 
-    this.logger.debug(`LLM provider: ${this.provider}`);
+    this.logger.debug(`chatGenerate: ${dto.prompt}, projectId: ${dto.projectId}, diagramId: ${dto.diagramId}, layerId: ${dto.layerId}, layerName: ${dto.layerName}`);
     const userMessage = `Generate a diagram for: ${dto.prompt}`;
     const { content } = await this.llm.invoke(DRAFTER_SYSTEM_PROMPT, userMessage);
     const raw = content
@@ -259,6 +261,74 @@ export class AiService {
       }
       res.end();
     }
+  }
+
+  // ── STRIDE Threat Analysis ────────────────────────────────────────────────
+
+  async threatAnalysis(userId: string, dto: ThreatAnalysisDto) {
+    // Build node label lookup
+    const nodeLabelMap = new Map<string, string>();
+    const serializedNodes = dto.nodes
+      .filter((n) => n.type !== 'trustboundary')
+      .map((n) => {
+        const label = n.label ?? n.id;
+        nodeLabelMap.set(n.id, label);
+        return {
+          id: n.id,
+          type: n.type ?? 'unknown',
+          label,
+          technology: n.technology,
+          description: n.description,
+          trustLevel: n.trustLevel,
+        };
+      });
+
+    const trustBoundaries = (dto.trustBoundaries ?? []).map((tb) => ({
+      id: tb.id,
+      label: tb.label ?? 'Trust Boundary',
+      trustLevel: tb.trustLevel ?? 'custom',
+    }));
+
+    const serializedEdges = dto.edges.map((e) => ({
+      id: e.id,
+      from: e.source,
+      to: e.target,
+      fromLabel: nodeLabelMap.get(e.source) ?? e.source,
+      toLabel: nodeLabelMap.get(e.target) ?? e.target,
+      label: e.label,
+      crossesTrustBoundary: false, // simple heuristic — can be enhanced later
+    }));
+
+    const userMessage = buildThreatAnalysisPrompt({
+      layerId: dto.layerId,
+      layerName: dto.layerName ?? 'Diagram',
+      nodes: serializedNodes,
+      edges: serializedEdges,
+      trustBoundaries,
+    });
+
+    this.logger.debug(`Running STRIDE analysis for diagramId=${dto.diagramId}`);
+
+    const { content } = await this.llm.invoke(THREAT_ANALYSIS_SYSTEM_PROMPT, userMessage);
+
+    const raw = content
+      .replace(/^```json\s*/i, '')
+      .replace(/^```\s*/i, '')
+      .replace(/```\s*$/i, '')
+      .trim();
+
+    const parsed = JSON.parse(raw) as { threats: unknown[] };
+    if (!Array.isArray(parsed.threats)) {
+      throw new InternalServerErrorException('AI returned invalid threat analysis structure');
+    }
+
+    // Attach layerId to each threat
+    const threats = (parsed.threats as Array<Record<string, unknown>>).map((t) => ({
+      ...t,
+      layerId: dto.layerId,
+    }));
+
+    return { threats };
   }
 
   private async callAi(
