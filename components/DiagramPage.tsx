@@ -19,6 +19,7 @@ import ReassignLayerModal from '@/components/ReassignLayerModal';
 import DeleteLayerModal from '@/components/DeleteLayerModal';
 import AssignLayerModal from '@/components/AssignLayerModal';
 import AIChatPanel from '@/components/AIChatPanel';
+import ThreatModelPanel, { type ThreatModelInfo } from '@/components/ThreatModelPanel';
 import { Lock, ArrowRight } from 'lucide-react';
 import FileLoadPrompt from '@/components/FileLoadPrompt';
 import StartupModal from '@/components/StartupModal';
@@ -28,7 +29,7 @@ import PublishModal from '@/components/PublishModal';
 import type { AssignableLayer } from '@/components/AssignLayerModal';
 
 import type { NodeData, NodeType, GenerateResponse } from '@/lib/types';
-import type { UserProfile, Project, ChatMessage, ThreatItem } from '@/lib/api';
+import type { UserProfile, Project, ChatMessage, ThreatItem, ThreatModelFull } from '@/lib/api';
 import {
   apiUpdateDiagram, apiCreateDiagram, apiGenerateDiagram,
   apiPublishDiagram, apiListProjectVersions, apiGetProjectDraft,
@@ -237,6 +238,9 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
       } else if (e.key === 'i') {
         e.preventDefault();
         setShowChatPanel((v) => !v);
+      } else if (e.key === 't') {
+        e.preventDefault();
+        setShowThreatModelPanel((v) => !v);
       }
     };
     document.addEventListener('keydown', handleKeyDown);
@@ -271,6 +275,12 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
   const [showChatPanel, setShowChatPanel] = useState(false);
   // Chat history loaded from backend for cloud projects
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
+
+  // Threat Model panel — hidden by default; toggle with Cmd+T
+  const [showThreatModelPanel, setShowThreatModelPanel] = useState(false);
+  // Accumulated threats from AI analysis runs, keyed by layerId
+  const [threatPanelThreats, setThreatPanelThreats] = useState<ThreatItem[]>([]);
+  const [threatModelInfo, setThreatModelInfo] = useState<ThreatModelInfo | null>(null);
 
   // Right-click context menu
   const [contextMenu, setContextMenu] = useState<{
@@ -904,6 +914,15 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
       edges: serializedEdges,
       trustBoundaries,
     });
+
+    // Merge new threats for this layer into the panel (replace any prior run for this layer)
+    setThreatPanelThreats((prev) => [
+      ...prev.filter((t) => t.layerId !== currentLayerId),
+      ...result.threats,
+    ]);
+    setThreatModelInfo({ name: 'Current Analysis', isSaved: false });
+    setShowThreatModelPanel(true);
+
     return result.threats;
   }, [currentLayerId, layers]);
 
@@ -927,6 +946,38 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
     },
     [currentLayerId, layers, projectId],
   );
+
+  /** Save all current transient threats as a named model (called from ThreatModelPanel) */
+  const handleSaveThreatModelFromPanel = useCallback(
+    async (name: string) => {
+      if (projectId === 'local' || !backendDiagramIdRef.current) {
+        throw new Error('Sign in to save threat models');
+      }
+      const nodes = (rfInstanceRef.current as ReactFlowInstance | null)?.getNodes() ?? [];
+      const edges = (rfInstanceRef.current as ReactFlowInstance | null)?.getEdges() ?? [];
+      const snapshotData = { nodes, edges };
+      await apiSaveThreatModel(projectId, {
+        name,
+        diagramId: backendDiagramIdRef.current,
+        diagramVersion: 1,
+        snapshotData,
+        threats: threatPanelThreats,
+      });
+      setThreatModelInfo({ name, isSaved: true });
+    },
+    [projectId, threatPanelThreats],
+  );
+
+  /** Load a saved threat model into the panel */
+  const handleLoadModelToPanel = useCallback((model: ThreatModelFull) => {
+    setThreatPanelThreats(model.threats);
+    setThreatModelInfo({ name: model.name, version: model.diagramVersion, isSaved: true });
+  }, []);
+
+  /** Highlight a node or edge on the canvas by targetId */
+  const handleHighlightThreatTarget = useCallback((targetId: string) => {
+    (rfInstanceRef.current as ExtendedRFInstance | null)?.highlightThreatTarget(targetId);
+  }, []);
 
   // ── Layer navigation ──────────────────────────────────────────────────────
 
@@ -1591,6 +1642,7 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
             layersVisible={showLayersPanel}
             onToggleLayers={() => setShowLayersPanel((v) => !v)}
             onShowAI={() => setShowChatPanel(true)}
+            onShowThreatModel={projectId !== 'local' && !!user ? () => setShowThreatModelPanel((v) => !v) : undefined}
             onShowAIHistory={() => {
               if (projectId !== 'local' && isLoggedIn()) {
                 router.push(`/projects/${projectId}/ai-history`);
@@ -1744,6 +1796,21 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
                   />
                 )}
               </div>
+            )}
+
+            {/* ── Threat Model panel — docked right, cloud projects only ──────── */}
+            {showThreatModelPanel && !!user && projectId !== 'local' && (
+              <ThreatModelPanel
+                currentLayerId={currentLayerId}
+                threats={threatPanelThreats}
+                modelInfo={threatModelInfo}
+                projectId={projectId}
+                onHighlightTarget={handleHighlightThreatTarget}
+                onOpenAIAssistant={() => { setShowChatPanel(true); setShowThreatModelPanel(false); }}
+                onSave={handleSaveThreatModelFromPanel}
+                onLoadModel={handleLoadModelToPanel}
+                onClose={() => setShowThreatModelPanel(false)}
+              />
             )}
 
             {/* ── AI chat panel — docked right, only when signed in ─────────── */}

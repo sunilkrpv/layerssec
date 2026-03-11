@@ -4,11 +4,11 @@ import { useCallback, useEffect, useState } from 'react';
 import { ChevronLeft, Trash2, Loader2, ShieldCheck, ChevronDown, ChevronUp } from 'lucide-react';
 import ThreatResultCard from '@/components/ThreatResultCard';
 import {
-  apiListThreatModels,
   apiGetThreatModel,
   apiDeleteThreatModel,
-  type ThreatModelSummary,
+  apiListThreatModels,
   type ThreatModelFull,
+  type ThreatModelSummary,
   type ThreatItem,
 } from '@/lib/api';
 
@@ -16,8 +16,8 @@ interface ThreatHistoryPanelProps {
   projectId: string;
   isDark: boolean;
   onBack: () => void;
-  /** Called when user loads a saved model — parent can use for overlay etc. */
-  onLoadModel?: (threats: ThreatItem[]) => void;
+  /** Called when user loads a saved model — parent receives full model object. */
+  onLoadModel?: (model: ThreatModelFull) => void;
 }
 
 const SEVERITY_COLORS: Record<string, string> = {
@@ -84,7 +84,7 @@ export default function ThreatHistoryPanel({
     try {
       const model = await apiGetThreatModel(id);
       setFullModel(model);
-      if (onLoadModel) onLoadModel(model.threats);
+      if (onLoadModel) onLoadModel(model);
     } catch {
       // ignore
     } finally {
@@ -110,33 +110,28 @@ export default function ThreatHistoryPanel({
     }
   };
 
-  const border = isDark ? 'border-white/10' : 'border-slate-200';
-  const text = isDark ? 'text-white' : 'text-slate-900';
-  const subtext = isDark ? 'text-indigo-300/60' : 'text-slate-500';
-  const rowHover = isDark ? 'hover:bg-white/5' : 'hover:bg-slate-50';
-
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
       {/* Header */}
-      <div className={`flex flex-shrink-0 items-center gap-2 border-b px-4 py-3 ${border}`}>
+      <div className="flex flex-shrink-0 items-center gap-2 border-b border-slate-200 px-4 py-3 dark:border-slate-700">
         <button
           onClick={onBack}
-          className={`flex h-7 w-7 items-center justify-center rounded-lg transition-colors ${isDark ? 'text-white/50 hover:bg-white/10 hover:text-white' : 'text-slate-400 hover:bg-slate-100 hover:text-slate-700'}`}
+          className="flex h-7 w-7 items-center justify-center rounded-lg transition-colors text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-500 dark:hover:bg-slate-700 dark:hover:text-slate-300"
         >
           <ChevronLeft size={16} />
         </button>
-        <ShieldCheck size={14} className={isDark ? 'text-red-400' : 'text-red-600'} />
-        <span className={`text-sm font-semibold ${text}`}>Saved Threat Models</span>
+        <ShieldCheck size={14} className="text-red-500 dark:text-red-400" />
+        <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">Saved Threat Models</span>
       </div>
 
       {/* Body */}
       <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2">
         {isLoading ? (
           <div className="flex items-center justify-center py-10">
-            <Loader2 size={20} className={`animate-spin ${subtext}`} />
+            <Loader2 size={20} className="animate-spin text-slate-400 dark:text-slate-500" />
           </div>
         ) : models.length === 0 ? (
-          <div className={`py-10 text-center text-xs ${subtext}`}>
+          <div className="py-10 text-center text-xs text-slate-500 dark:text-slate-400">
             No saved threat models yet.
             <br />Run a threat analysis and save it.
           </div>
@@ -152,17 +147,17 @@ export default function ThreatHistoryPanel({
             return (
               <div
                 key={m.id}
-                className={`rounded-xl border overflow-hidden ${border} ${isDark ? 'bg-white/5' : 'bg-white'}`}
+                className="rounded-xl border border-slate-200 overflow-hidden bg-white dark:border-slate-700 dark:bg-slate-900/50"
               >
                 {/* Summary row */}
                 <button
                   onClick={() => handleExpand(m.id)}
-                  className={`w-full flex items-start gap-3 px-3 py-2.5 text-left transition-colors ${rowHover}`}
+                  className="w-full flex items-start gap-3 px-3 py-2.5 text-left transition-colors hover:bg-slate-50 dark:hover:bg-slate-700/50"
                 >
                   <div className="flex-1 min-w-0 space-y-1">
-                    <p className={`text-xs font-semibold truncate ${text}`}>{m.name}</p>
+                    <p className="text-xs font-semibold truncate text-slate-900 dark:text-slate-100">{m.name}</p>
                     <div className="flex items-center gap-2">
-                      <span className={`text-[10px] ${subtext}`}>
+                      <span className="text-[10px] text-slate-500 dark:text-slate-400">
                         {new Date(m.savedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
                         {' · '}v{m.diagramVersion}
                         {' · '}
@@ -172,7 +167,7 @@ export default function ThreatHistoryPanel({
                     <div className="flex items-center gap-2">
                       <SeverityDots summary={m.severitySummary} />
                       {m.mitigatedCount > 0 && (
-                        <span className={`text-[10px] ${isDark ? 'text-green-400' : 'text-green-600'}`}>
+                        <span className="text-[10px] text-green-600 dark:text-green-400">
                           {mitigatedPct}% mitigated
                         </span>
                       )}
@@ -181,33 +176,33 @@ export default function ThreatHistoryPanel({
 
                   <div className="flex items-center gap-1 flex-shrink-0 mt-0.5">
                     {isDeletingThis ? (
-                      <Loader2 size={13} className={`animate-spin ${subtext}`} />
+                      <Loader2 size={13} className="animate-spin text-slate-400 dark:text-slate-500" />
                     ) : (
                       <span
                         role="button"
                         tabIndex={0}
                         onClick={(e) => handleDelete(m.id, e)}
                         onKeyDown={(e) => e.key === 'Enter' && handleDelete(m.id, e as unknown as React.MouseEvent)}
-                        className={`flex h-6 w-6 items-center justify-center rounded-md transition-colors ${isDark ? 'text-white/30 hover:bg-white/10 hover:text-red-400' : 'text-slate-300 hover:bg-red-50 hover:text-red-500'}`}
+                        className="flex h-6 w-6 items-center justify-center rounded-md transition-colors text-slate-300 hover:bg-red-50 hover:text-red-500 dark:text-slate-600 dark:hover:bg-red-900/30 dark:hover:text-red-400"
                       >
                         <Trash2 size={11} />
                       </span>
                     )}
                     {isLoadingThis ? (
-                      <Loader2 size={13} className={`animate-spin ${subtext}`} />
+                      <Loader2 size={13} className="animate-spin text-slate-400 dark:text-slate-500" />
                     ) : isExpanded ? (
-                      <ChevronUp size={13} className={subtext} />
+                      <ChevronUp size={13} className="text-slate-400 dark:text-slate-500" />
                     ) : (
-                      <ChevronDown size={13} className={subtext} />
+                      <ChevronDown size={13} className="text-slate-400 dark:text-slate-500" />
                     )}
                   </div>
                 </button>
 
                 {/* Expanded threats */}
                 {isExpanded && fullModel && fullModel.id === m.id && (
-                  <div className={`border-t px-3 py-3 space-y-2 ${border}`}>
+                  <div className="border-t border-slate-200 px-3 py-3 space-y-2 dark:border-slate-700">
                     {fullModel.threats.length === 0 ? (
-                      <p className={`text-[11px] ${subtext}`}>No threats in this model.</p>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400">No threats in this model.</p>
                     ) : (
                       fullModel.threats.map((t) => (
                         <ThreatResultCard key={t.id} threat={t} isDark={isDark} />

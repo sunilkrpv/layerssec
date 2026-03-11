@@ -141,6 +141,8 @@ export type ExtendedRFInstance = ReactFlowInstance & {
   pushHistoryNow: () => void;
   doCopy: () => void;
   doPaste: () => void;
+  /** Visually highlight a node or edge by id; pass null to clear. Auto-clears after 3s. */
+  highlightThreatTarget: (targetId: string | null) => void;
 };
 
 interface DiagramCanvasProps {
@@ -787,6 +789,40 @@ export default function DiagramCanvas({
         setEdges((eds) => [...eds, ...newEdges]);
       };
 
+      const highlightTimerRef: { current: ReturnType<typeof setTimeout> | null } = { current: null };
+
+      const applyHighlight = (targetId: string | null) => {
+        const addClass = (cls: string) =>
+          cls.includes('threat-highlighted') ? cls : `${cls} threat-highlighted`.trim();
+        const removeClass = (cls: string) =>
+          cls.replace(/\bthreat-highlighted\b/g, '').trim();
+
+        setNodes((nds) =>
+          nds.map((n) => ({
+            ...n,
+            className: targetId === n.id
+              ? addClass(n.className ?? '')
+              : removeClass(n.className ?? ''),
+          })),
+        );
+        setEdges((eds) =>
+          eds.map((e) => ({
+            ...e,
+            className: targetId === e.id
+              ? addClass(e.className ?? '')
+              : removeClass(e.className ?? ''),
+          })),
+        );
+      };
+
+      const highlightThreatTarget = (targetId: string | null) => {
+        if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current);
+        applyHighlight(targetId);
+        if (targetId) {
+          highlightTimerRef.current = setTimeout(() => applyHighlight(null), 3000);
+        }
+      };
+
       rfInstanceRef.current = Object.assign(instance, {
         loadDiagram,
         clearDiagram,
@@ -802,6 +838,7 @@ export default function DiagramCanvas({
         pushHistoryNow,
         doCopy,
         doPaste,
+        highlightThreatTarget,
       }) as ExtendedRFInstance;
     },
     // initialNodes.length is intentionally included so fitView fires on remount

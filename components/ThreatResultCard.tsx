@@ -31,14 +31,30 @@ const STRIDE_FULL: Record<StrideCategory, string> = {
 interface ThreatResultCardProps {
   threat: ThreatItem;
   isDark?: boolean;
+  onClick?: () => void;
+  isActive?: boolean;
 }
 
-export default function ThreatResultCard({ threat, isDark = false }: ThreatResultCardProps) {
+export default function ThreatResultCard({ threat, isDark = false, onClick, isActive = false }: ThreatResultCardProps) {
   const stride = STRIDE_CONFIG[threat.strideCategory] ?? STRIDE_CONFIG.SPOOFING;
   const severity = SEVERITY_CONFIG[threat.severity] ?? SEVERITY_CONFIG.MEDIUM;
 
   return (
-    <div className={`rounded-xl border p-3 text-xs space-y-1.5 ${isDark ? 'border-white/10 bg-white/5' : 'border-slate-200 bg-white'}`}>
+    <div
+      onClick={onClick}
+      className={[
+        'rounded-xl border p-3 text-xs space-y-1.5 transition-all',
+        isDark ? 'border-white/10 bg-white/5' : 'border-slate-200 bg-white',
+        onClick ? 'cursor-pointer' : '',
+        isActive
+          ? isDark
+            ? 'ring-2 ring-amber-400/70 border-amber-400/40'
+            : 'ring-2 ring-amber-400 border-amber-300'
+          : onClick
+            ? isDark ? 'hover:border-white/25 hover:bg-white/10' : 'hover:border-slate-300 hover:bg-slate-50'
+            : '',
+      ].join(' ')}
+    >
       {/* Header row */}
       <div className="flex items-start gap-2">
         {/* STRIDE badge */}

@@ -87,3 +87,23 @@ body,
 .animate-dash {
   animation: moveDash 0.55s linear infinite;
 }
+
+/* ── Threat model node/edge highlight ──────────────────────────────────── */
+@keyframes threatPulse {
+  0%, 100% { outline-color: #f59e0b; box-shadow: 0 0 0 4px rgba(245,158,11,0.15); }
+  50%       { outline-color: #fbbf24; box-shadow: 0 0 0 8px rgba(245,158,11,0.08); }
+}
+
+.react-flow__node.threat-highlighted {
+  outline: 2.5px solid #f59e0b !important;
+  outline-offset: 4px;
+  border-radius: 10px;
+  animation: threatPulse 1.4s ease-in-out 2;
+  z-index: 9999 !important;
+}
+
+.react-flow__edge.threat-highlighted .react-flow__edge-path,
+.react-flow__edge.threat-highlighted .react-flow__edge-interaction {
+  stroke: #f59e0b !important;
+  stroke-width: 3px !important;
+}

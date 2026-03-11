@@ -63,25 +63,25 @@ const EXAMPLES_QA = [
   'How does data flow end-to-end?',
 ];
 
-// ── Markdown component map (theme-aware via Tailwind dark: variants) ─────────
+// ── Markdown component map ────────────────────────────────────────────────────
 const mdComponents = {
   p: ({ children }: { children?: React.ReactNode }) => (
     <p className="mb-2 text-sm leading-relaxed last:mb-0">{children}</p>
   ),
   h1: ({ children }: { children?: React.ReactNode }) => (
-    <h1 className="mb-2 mt-3 text-base font-bold text-slate-900 dark:text-white">{children}</h1>
+    <h1 className="mb-2 mt-3 text-base font-bold text-slate-900 dark:text-slate-100">{children}</h1>
   ),
   h2: ({ children }: { children?: React.ReactNode }) => (
-    <h2 className="mb-1.5 mt-3 text-sm font-bold text-slate-900 dark:text-white">{children}</h2>
+    <h2 className="mb-1.5 mt-3 text-sm font-bold text-slate-900 dark:text-slate-100">{children}</h2>
   ),
   h3: ({ children }: { children?: React.ReactNode }) => (
-    <h3 className="mb-1 mt-2 text-sm font-semibold text-slate-700 dark:text-indigo-100">{children}</h3>
+    <h3 className="mb-1 mt-2 text-sm font-semibold text-slate-700 dark:text-slate-200">{children}</h3>
   ),
   strong: ({ children }: { children?: React.ReactNode }) => (
-    <strong className="font-semibold text-slate-900 dark:text-white">{children}</strong>
+    <strong className="font-semibold text-slate-900 dark:text-slate-100">{children}</strong>
   ),
   em: ({ children }: { children?: React.ReactNode }) => (
-    <em className="italic text-slate-600 dark:text-indigo-200">{children}</em>
+    <em className="italic text-slate-600 dark:text-slate-300">{children}</em>
   ),
   ul: ({ children }: { children?: React.ReactNode }) => (
     <ul className="mb-2 ml-4 list-disc space-y-0.5 text-sm">{children}</ul>
@@ -95,22 +95,22 @@ const mdComponents = {
   code: ({ children, className }: { children?: React.ReactNode; className?: string }) => {
     const isBlock = /language-/.test(className ?? '');
     return isBlock ? (
-      <code className={`font-mono text-xs text-blue-700 dark:text-blue-200 ${className ?? ''}`}>{children}</code>
+      <code className={`font-mono text-xs text-blue-700 dark:text-blue-300 ${className ?? ''}`}>{children}</code>
     ) : (
-      <code className="rounded bg-blue-50 px-1.5 py-0.5 font-mono text-xs text-blue-700 dark:bg-indigo-800/60 dark:text-blue-200">
+      <code className="rounded bg-blue-50 px-1.5 py-0.5 font-mono text-xs text-blue-700 dark:bg-slate-700 dark:text-blue-300">
         {children}
       </code>
     );
   },
   pre: ({ children }: { children?: React.ReactNode }) => (
-    <pre className="mb-3 overflow-x-auto rounded-xl bg-slate-100 p-4 text-xs leading-relaxed ring-1 ring-slate-200 dark:bg-black/40 dark:ring-white/10">
+    <pre className="mb-3 overflow-x-auto rounded-xl bg-slate-100 p-4 text-xs leading-relaxed ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-600">
       {children}
     </pre>
   ),
   a: ({ children, href }: { children?: React.ReactNode; href?: string }) => (
     <a
       href={href}
-      className="text-blue-600 underline decoration-blue-400/40 underline-offset-2 hover:text-blue-500 dark:text-blue-300 dark:decoration-blue-500/40 dark:hover:text-blue-200"
+      className="text-blue-600 underline decoration-blue-400/40 underline-offset-2 hover:text-blue-500 dark:text-blue-400 dark:decoration-blue-500/40 dark:hover:text-blue-300"
       target="_blank"
       rel="noreferrer"
     >
@@ -118,26 +118,26 @@ const mdComponents = {
     </a>
   ),
   table: ({ children }: { children?: React.ReactNode }) => (
-    <div className="mb-3 overflow-x-auto rounded-lg ring-1 ring-slate-200 dark:ring-white/10">
+    <div className="mb-3 overflow-x-auto rounded-lg ring-1 ring-slate-200 dark:ring-slate-600">
       <table className="w-full border-collapse text-xs">{children}</table>
     </div>
   ),
   th: ({ children }: { children?: React.ReactNode }) => (
-    <th className="border-b border-slate-200 bg-slate-50 px-3 py-2 text-left font-semibold text-slate-800 dark:border-white/10 dark:bg-white/10 dark:text-indigo-100">
+    <th className="border-b border-slate-200 bg-slate-50 px-3 py-2 text-left font-semibold text-slate-800 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200">
       {children}
     </th>
   ),
   td: ({ children }: { children?: React.ReactNode }) => (
-    <td className="border-b border-slate-100 px-3 py-2 text-slate-600 last:border-0 dark:border-white/5 dark:text-indigo-200/80">
+    <td className="border-b border-slate-100 px-3 py-2 text-slate-600 last:border-0 dark:border-slate-700 dark:text-slate-300">
       {children}
     </td>
   ),
   blockquote: ({ children }: { children?: React.ReactNode }) => (
-    <blockquote className="mb-2 border-l-2 border-blue-400/60 pl-3 italic text-slate-600 dark:text-indigo-200/70">
+    <blockquote className="mb-2 border-l-2 border-blue-400/60 pl-3 italic text-slate-600 dark:text-slate-400">
       {children}
     </blockquote>
   ),
-  hr: () => <hr className="my-3 border-slate-200 dark:border-white/10" />,
+  hr: () => <hr className="my-3 border-slate-200 dark:border-slate-600" />,
 };
 
 function ThinkingDots({ label }: { label?: string }) {
@@ -152,7 +152,7 @@ function ThinkingDots({ label }: { label?: string }) {
           />
         ))}
       </div>
-      {label && <span className="text-xs text-indigo-300/60">{label}</span>}
+      {label && <span className="text-xs text-slate-500 dark:text-slate-400">{label}</span>}
     </div>
   );
 }
@@ -295,7 +295,7 @@ export default function AIChatPanel({
     ]);
     try {
       const threats = await onThreatAnalysis();
-      const summary = `Found **${threats.length}** threat${threats.length !== 1 ? 's' : ''}. Review below and save as a named threat model if you want to keep this analysis.`;
+      const summary = `Found **${threats.length}** threat${threats.length !== 1 ? 's' : ''}. Review in the **Threat Model panel** (⌘T) and save as a named model if you want to keep this analysis.`;
       setMessages((prev) => {
         const updated = [...prev];
         updated[updated.length - 1] = { role: 'assistant', content: summary, threatResults: threats };
@@ -386,39 +386,23 @@ export default function AIChatPanel({
   const isBusy = isLoading || isEvaluating || isAnalyzingThreats;
 
   return (
-    <aside
-      className="relative flex h-full w-[360px] flex-shrink-0 flex-col overflow-hidden"
-      style={{
-        background: isDark
-          ? 'linear-gradient(160deg, #1e1b4b 0%, #1e3a8a 50%, #0f172a 100%)'
-          : '#f8fafc',
-      }}
-    >
-      {/* Background mesh blobs — only in dark mode */}
-      {isDark && (
-        <div className="pointer-events-none absolute inset-0 overflow-hidden">
-          <div className="absolute -top-20 -right-20 h-64 w-64 rounded-full bg-blue-600/10 blur-3xl" />
-          <div className="absolute top-1/3 -left-16 h-48 w-48 rounded-full bg-indigo-500/10 blur-3xl" />
-          <div className="absolute -bottom-20 right-1/4 h-56 w-56 rounded-full bg-violet-600/8 blur-3xl" />
-        </div>
-      )}
-
+    <aside className="relative flex h-full w-[360px] flex-shrink-0 flex-col overflow-hidden border-l border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800">
       {/* ── Header ────────────────────────────────────────────────────────── */}
-      <div className={`relative flex flex-shrink-0 items-center gap-3 border-b px-4 py-3 ${isDark ? 'border-white/10' : 'border-slate-200'}`}>
-        <div className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl backdrop-blur-sm ring-1 ${isDark ? 'bg-white/10 ring-white/20' : 'bg-blue-50 ring-blue-200'}`}>
-          <Sparkles size={15} className={isDark ? 'text-blue-300' : 'text-blue-600'} />
+      <div className="relative flex flex-shrink-0 items-center gap-3 border-b border-slate-200 px-4 py-3 dark:border-slate-700">
+        <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl bg-blue-50 ring-1 ring-blue-200 dark:bg-slate-700 dark:ring-slate-600">
+          <Sparkles size={15} className="text-blue-600 dark:text-blue-400" />
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <span className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>AI Assistant</span>
+            <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">AI Assistant</span>
             {isReadOnly && (
-              <span className="flex items-center gap-1 rounded-full border border-amber-400/30 bg-amber-400/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-300">
+              <span className="flex items-center gap-1 rounded-full border border-amber-400/30 bg-amber-400/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400">
                 <Lock size={8} />
                 View only
               </span>
             )}
           </div>
-          <div className={`text-[10px] ${isDark ? 'text-indigo-300/60' : 'text-slate-500'}`}>
+          <div className="text-[10px] text-slate-500 dark:text-slate-400">
             {isReadOnly ? 'Evaluation & Q&A mode' : 'Diagram Generation · Claude'}
           </div>
         </div>
@@ -427,7 +411,7 @@ export default function AIChatPanel({
           <button
             onClick={() => setShowHistory((v) => !v)}
             title="Saved threat models"
-            className={`flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg transition-colors ${isDark ? 'text-white/40 hover:bg-white/10 hover:text-white' : 'text-slate-400 hover:bg-slate-100 hover:text-slate-700'} ${showHistory ? (isDark ? 'bg-white/10 text-white' : 'bg-slate-100 text-slate-700') : ''}`}
+            className={`flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg transition-colors text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-500 dark:hover:bg-slate-700 dark:hover:text-slate-300 ${showHistory ? 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300' : ''}`}
           >
             <History size={14} />
           </button>
@@ -435,7 +419,7 @@ export default function AIChatPanel({
         <button
           onClick={onClose}
           title="Close AI panel (⌘I)"
-          className={`flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg transition-colors ${isDark ? 'text-white/40 hover:bg-white/10 hover:text-white' : 'text-slate-400 hover:bg-slate-100 hover:text-slate-700'}`}
+          className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg transition-colors text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-500 dark:hover:bg-slate-700 dark:hover:text-slate-300"
         >
           <X size={14} />
         </button>
@@ -457,17 +441,17 @@ export default function AIChatPanel({
             msg.role === 'user' ? (
               /* User bubble */
               <div key={i} className="flex justify-end">
-                <div className="max-w-[82%] rounded-2xl rounded-tr-sm bg-indigo-600 px-4 py-2.5 text-sm leading-relaxed text-white shadow-sm shadow-indigo-900/40">
+                <div className="max-w-[82%] rounded-2xl rounded-tr-sm bg-indigo-600 px-4 py-2.5 text-sm leading-relaxed text-white shadow-sm">
                   {msg.content}
                 </div>
               </div>
             ) : (
               /* Assistant message with avatar */
               <div key={i} className="flex gap-3">
-                <div className={`mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-lg ring-1 ${isDark ? 'bg-indigo-500/30 ring-indigo-400/40' : 'bg-blue-50 ring-blue-200'}`}>
-                  <Sparkles size={11} className={isDark ? 'text-blue-300' : 'text-blue-600'} />
+                <div className="mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-lg bg-blue-50 ring-1 ring-blue-200 dark:bg-slate-700 dark:ring-slate-600">
+                  <Sparkles size={11} className="text-blue-600 dark:text-blue-400" />
                 </div>
-                <div className={`min-w-0 flex-1 ${isDark ? 'text-indigo-100/90' : 'text-slate-800'}`}>
+                <div className="min-w-0 flex-1 text-slate-800 dark:text-slate-200">
                   {msg.isLoading ? (
                     <ThinkingDots label={isAnalyzingThreats ? 'Analyzing threats…' : (status ?? 'Thinking…')} />
                   ) : (
@@ -500,7 +484,7 @@ export default function AIChatPanel({
               </button>
               <button
                 onClick={handleNewLayer}
-                className={`rounded-xl border px-3 py-1.5 text-xs font-medium transition ${isDark ? 'border-white/20 bg-white/10 text-indigo-100 hover:bg-white/20' : 'border-slate-200 bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
+                className="rounded-xl border border-slate-200 bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600"
               >
                 New layer
               </button>
@@ -510,7 +494,7 @@ export default function AIChatPanel({
           {/* Example prompts — welcome screen only */}
           {messages.length === 1 && (
             <div className="pl-9">
-              <p className={`mb-2 text-[10px] font-semibold uppercase tracking-widest ${isDark ? 'text-indigo-400/60' : 'text-slate-400'}`}>
+              <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-slate-400 dark:text-slate-500">
                 {isReadOnly ? 'Questions to ask' : 'Try an example'}
               </p>
               <div className="grid grid-cols-2 gap-1.5">
@@ -521,7 +505,7 @@ export default function AIChatPanel({
                       setInput(ex);
                       textareaRef.current?.focus();
                     }}
-                    className={`rounded-xl border p-2.5 text-left text-xs leading-snug backdrop-blur-sm transition ${isDark ? 'border-white/10 bg-white/5 text-indigo-200/80 hover:border-blue-400/30 hover:bg-white/10 hover:text-white' : 'border-slate-200 bg-white text-slate-700 hover:border-blue-300 hover:bg-blue-50 hover:text-slate-900'}`}
+                    className="rounded-xl border border-slate-200 bg-white p-2.5 text-left text-xs leading-snug text-slate-700 transition hover:border-blue-300 hover:bg-blue-50 hover:text-slate-900 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-300 dark:hover:border-slate-500 dark:hover:bg-slate-600 dark:hover:text-slate-100"
                   >
                     {ex}
                   </button>
@@ -535,14 +519,14 @@ export default function AIChatPanel({
       </div>}
 
       {/* ── Input footer ──────────────────────────────────────────────────── */}
-      {!showHistory && <div className={`relative flex-shrink-0 space-y-2 border-t p-3 ${isDark ? 'border-white/10' : 'border-slate-200'}`}>
+      {!showHistory && <div className="relative flex-shrink-0 space-y-2 border-t border-slate-200 p-3 dark:border-slate-700">
         {/* Evaluate + Threat Analysis quick-actions */}
         {hasNodes && !isBusy && (
           <div className="flex gap-2">
             {onEvaluate && (
               <button
                 onClick={() => runStreaming('Evaluate this diagram')}
-                className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-amber-400/30 bg-amber-400/10 py-1.5 text-xs font-medium text-amber-600 transition hover:bg-amber-400/20 dark:text-amber-300"
+                className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-amber-400/30 bg-amber-400/10 py-1.5 text-xs font-medium text-amber-600 transition hover:bg-amber-400/20 dark:text-amber-400"
               >
                 <ScanSearch size={12} />
                 Evaluate
@@ -551,7 +535,7 @@ export default function AIChatPanel({
             {onThreatAnalysis && !isReadOnly && (
               <button
                 onClick={runThreatAnalysis}
-                className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-red-400/30 bg-red-400/10 py-1.5 text-xs font-medium text-red-600 transition hover:bg-red-400/20 dark:text-red-300"
+                className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-red-400/30 bg-red-400/10 py-1.5 text-xs font-medium text-red-600 transition hover:bg-red-400/20 dark:text-red-400"
               >
                 <ShieldAlert size={12} />
                 Threat Analysis
@@ -562,12 +546,12 @@ export default function AIChatPanel({
 
         {/* Save threat model — shown after analysis completes */}
         {pendingThreats && !isBusy && onSaveThreatModel && (
-          <div className={`flex items-center gap-2 rounded-xl border p-2 ${isDark ? 'border-white/10 bg-white/5' : 'border-slate-200 bg-slate-50'}`}>
+          <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 p-2 dark:border-slate-600 dark:bg-slate-900/50">
             <input
               value={saveModelName}
               onChange={(e) => setSaveModelName(e.target.value)}
               placeholder="Model name (optional)"
-              className={`flex-1 rounded-lg border px-2.5 py-1.5 text-xs outline-none focus:ring-1 ${isDark ? 'border-white/15 bg-white/10 text-white placeholder-white/30 focus:ring-blue-400/30' : 'border-slate-200 bg-white text-slate-900 placeholder-slate-400 focus:ring-blue-400/30'}`}
+              className="flex-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-900 outline-none placeholder-slate-400 focus:ring-1 focus:ring-blue-400/30 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 dark:placeholder-slate-400"
             />
             <button
               onClick={handleSaveThreatModel}
@@ -594,8 +578,7 @@ export default function AIChatPanel({
             placeholder={placeholder}
             rows={2}
             disabled={isBusy || (!isReadOnly && !!layerPrompt)}
-            className={`flex-1 resize-none rounded-xl border px-3 py-2.5 text-sm outline-none transition focus:ring-1 disabled:opacity-50 ${isDark ? 'border-white/15 text-white placeholder-indigo-300/40 focus:border-blue-400/50 focus:ring-blue-400/30' : 'border-slate-200 bg-white text-slate-900 placeholder-slate-400 focus:border-blue-400 focus:ring-blue-400/30'}`}
-            style={isDark ? { backgroundColor: 'rgba(255,255,255,0.06)' } : undefined}
+            className="flex-1 resize-none rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition placeholder-slate-400 focus:border-blue-400 focus:ring-1 focus:ring-blue-400/30 disabled:opacity-50 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 dark:placeholder-slate-400 dark:focus:border-slate-500"
           />
           <button
             onClick={handleSubmit}
@@ -605,7 +588,7 @@ export default function AIChatPanel({
             {isBusy ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
           </button>
         </div>
-        <p className={`text-center text-[10px] ${isDark ? 'text-indigo-400/40' : 'text-slate-400'}`}>
+        <p className="text-center text-[10px] text-slate-400 dark:text-slate-500">
           Enter to send · Shift+Enter for new line
         </p>
       </div>}

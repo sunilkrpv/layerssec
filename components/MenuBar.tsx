@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Share2, Minus, Sparkles, LogIn, LogOut, User, Sun, Moon, Monitor, Lock, Layers2, Layers, History } from 'lucide-react';
+import { Share2, Minus, Sparkles, LogIn, LogOut, User, Sun, Moon, Monitor, Lock, Layers2, Layers, History, ShieldCheck } from 'lucide-react';
 import { useTheme } from '@/lib/themeContext';
 import type { Theme } from '@/lib/themeStore';
 
@@ -20,6 +20,7 @@ interface MenuBarProps {
   onToggleLayers: () => void;
   onShowAI: () => void;
   onShowAIHistory?: () => void;
+  onShowThreatModel?: () => void;
   /** Logged-in user email; null/undefined = not logged in */
   userEmail?: string | null;
   onSignIn?: () => void;
@@ -137,6 +138,7 @@ export default function MenuBar({
   onToggleLayers,
   onShowAI,
   onShowAIHistory,
+  onShowThreatModel,
   userEmail,
   onSignIn,
   onSignOut,
@@ -221,8 +223,18 @@ export default function MenuBar({
               <span className="flex items-center gap-2">
                 <Sparkles size={13} className="text-blue-500" />
                 Open AI Assistant
+                <span className="ml-auto text-[10px] text-slate-400">⌘I</span>
               </span>
             </MenuItem>
+            {onShowThreatModel && (
+              <MenuItem onClick={onShowThreatModel}>
+                <span className="flex items-center gap-2">
+                  <ShieldCheck size={13} className="text-red-500" />
+                  Threat Model
+                  <span className="ml-auto text-[10px] text-slate-400">⌘T</span>
+                </span>
+              </MenuItem>
+            )}
             {onShowAIHistory && (
               <MenuItem onClick={onShowAIHistory}>
                 <span className="flex items-center gap-2">
