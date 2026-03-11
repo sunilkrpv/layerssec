@@ -1746,8 +1746,12 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
 
           {/* ── Main content area ────────────────────────────────────────── */}
           <div className="flex flex-1 overflow-hidden">
-            {/* Components palette hidden in read-only (published) view */}
-            {!isReadOnly && <NodePalette onDragStart={onPaletteDragStart} onAddNode={handleAddNode} />}
+            {/* Components palette — collapses smoothly when Threat Model panel opens */}
+            {!isReadOnly && (
+              <div className={`overflow-hidden transition-[max-width] duration-300 ease-in-out flex-shrink-0 ${showThreatModelPanel ? 'max-w-0' : 'max-w-[240px]'}`}>
+                <NodePalette onDragStart={onPaletteDragStart} onAddNode={handleAddNode} />
+              </div>
+            )}
 
             <DiagramCanvas
               key={`${currentLayerId}_${canvasLoadKey}`}
