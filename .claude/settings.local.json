@@ -24,7 +24,19 @@
       "Bash(npx prisma migrate dev --name add_chat_messages)",
       "Bash(dotenv -e .env.local -- npx prisma migrate dev --name add_chat_diagram_data)",
       "Bash(npm run db:migrate -- --name add_chat_diagram_data)",
-      "Bash(npm run:*)"
+      "Bash(npm run:*)",
+      "Bash(node -e \"const rf = require\\(''reactflow''\\); const NT = rf.NodeToolbar; console.log\\(NT.toString\\(\\).slice\\(0,300\\)\\)\")",
+      "Bash(dotenv -e .env.local -- npx prisma migrate dev --name add_threat_identified_by)",
+      "Bash(node -e \"require\\(''dotenv''\\).config\\({path:''.env.local''}\\)\")",
+      "Bash(npx prisma:*)",
+      "Bash(pg_isready -h localhost -p 5432)",
+      "Bash(psql -h localhost -p 5432 -U postgres -c \"SELECT 1\" drafter)",
+      "Bash(DATABASE_URL=\"postgresql://postgres:postgres@localhost:5432/drafter?schema=public\" DIRECT_URL=\"postgresql://postgres:postgres@localhost:5432/drafter?schema=public\" npx prisma migrate dev --name add_threat_identified_by)",
+      "Bash(psql -h localhost -p 5432 -U postgres drafter -c \"SELECT pid, query, state FROM pg_stat_activity WHERE query LIKE ''%advisory%'' OR state = ''idle in transaction'';\")",
+      "Bash(psql -h localhost -p 5432 -U postgres drafter -c \"SELECT pg_terminate_backend\\(13823\\); SELECT pg_terminate_backend\\(13904\\);\")"
+    ],
+    "additionalDirectories": [
+      "/Users/sunil/Development/github/drafter/.next/types/app/projects/[projectId]/threats/report"
     ]
   }
 }

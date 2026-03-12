@@ -133,6 +133,7 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
   const navStackRef = useRef(navStack);
   const fileHandleRef = useRef<FileSystemFileHandle | null>(null);
   const autoSaveRef = useRef(true); // mirrors autoSave state for use inside callbacks
+  const saveFileRef = useRef<() => Promise<void>>(() => Promise.resolve()); // set after handleSaveFile is declared
   useEffect(() => { layersRef.current = layers; }, [layers]);
   useEffect(() => { navStackRef.current = navStack; }, [navStack]);
   useEffect(() => { fileHandleRef.current = fileHandle; }, [fileHandle]);
@@ -238,9 +239,14 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
       } else if (e.key === 'i') {
         e.preventDefault();
         setShowChatPanel((v) => !v);
-      } else if (e.key === 't') {
+      } else if (e.key === 'M' && e.shiftKey) {
+        // Cmd+Shift+M — Threat Model panel (Cmd+T and Cmd+Shift+T are browser-reserved for tab management)
         e.preventDefault();
         setShowThreatModelPanel((v) => !v);
+      } else if (e.key === 'S' && e.shiftKey) {
+        // Cmd+Shift+S — Save (Cmd+S triggers browser save dialog)
+        e.preventDefault();
+        saveFileRef.current();
       }
     };
     document.addEventListener('keydown', handleKeyDown);
@@ -281,6 +287,8 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
   // Accumulated threats from AI analysis runs, keyed by layerId
   const [threatPanelThreats, setThreatPanelThreats] = useState<ThreatItem[]>([]);
   const [threatModelInfo, setThreatModelInfo] = useState<ThreatModelInfo | null>(null);
+  // When user clicks a canvas threat badge → highlights that node in ThreatModelPanel
+  const [canvasBadgeTargetId, setCanvasBadgeTargetId] = useState<string | null>(null);
 
   // Right-click context menu
   const [contextMenu, setContextMenu] = useState<{
@@ -671,6 +679,7 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
       setIsSaving(false);
     }
   }, [fileHandle, buildProjectSnapshot]);
+  useEffect(() => { saveFileRef.current = handleSaveFile; }, [handleSaveFile]);
 
   // ── Auth handlers ─────────────────────────────────────────────────────────
 
@@ -956,14 +965,15 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
       const nodes = (rfInstanceRef.current as ReactFlowInstance | null)?.getNodes() ?? [];
       const edges = (rfInstanceRef.current as ReactFlowInstance | null)?.getEdges() ?? [];
       const snapshotData = { nodes, edges };
-      await apiSaveThreatModel(projectId, {
+      const saved = await apiSaveThreatModel(projectId, {
         name,
         diagramId: backendDiagramIdRef.current,
         diagramVersion: 1,
         snapshotData,
         threats: threatPanelThreats,
       });
-      setThreatModelInfo({ name, isSaved: true });
+      setThreatPanelThreats(saved.threats);
+      setThreatModelInfo({ name, isSaved: true, threatModelId: saved.id });
     },
     [projectId, threatPanelThreats],
   );
@@ -971,7 +981,7 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
   /** Load a saved threat model into the panel */
   const handleLoadModelToPanel = useCallback((model: ThreatModelFull) => {
     setThreatPanelThreats(model.threats);
-    setThreatModelInfo({ name: model.name, version: model.diagramVersion, isSaved: true });
+    setThreatModelInfo({ name: model.name, version: model.diagramVersion, isSaved: true, threatModelId: model.id });
   }, []);
 
   /** Highlight a node or edge on the canvas by targetId */
@@ -1652,6 +1662,7 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
             onSignIn={() => setShowAuthModal(true)}
             onSignOut={handleSignOut}
             isCloudProject={!!backendDiagramId && projectId !== 'local'}
+            projectId={projectId !== 'local' ? projectId : undefined}
             isReadOnly={isReadOnly}
             onPublish={() => setShowPublishModal(true)}
           />
@@ -1767,6 +1778,12 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
               onRequestEdit={startEditing}
               animateEdges={animateEdges}
               readOnly={isReadOnly}
+              threatOverlays={showThreatModelPanel ? threatPanelThreats.filter((t) => t.layerId === currentLayerId) : undefined}
+              activeThreatTargetId={canvasBadgeTargetId}
+              onThreatNodeClick={(targetId) => {
+                handleHighlightThreatTarget(targetId);
+                setCanvasBadgeTargetId(targetId);
+              }}
             />
 
             {/* ── Right sidebar ─────────────────────────────────────────── */}
@@ -1810,9 +1827,12 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
                 modelInfo={threatModelInfo}
                 projectId={projectId}
                 onHighlightTarget={handleHighlightThreatTarget}
+                externalTargetId={canvasBadgeTargetId}
+                onExternalTargetConsumed={() => setCanvasBadgeTargetId(null)}
                 onOpenAIAssistant={() => { setShowChatPanel(true); setShowThreatModelPanel(false); }}
                 onSave={handleSaveThreatModelFromPanel}
                 onLoadModel={handleLoadModelToPanel}
+                onThreatsChanged={setThreatPanelThreats}
                 onClose={() => setShowThreatModelPanel(false)}
               />
             )}

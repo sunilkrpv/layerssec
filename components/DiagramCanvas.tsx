@@ -19,6 +19,7 @@ import ReactFlow, {
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 
+import ThreatOverlay from '@/components/ThreatOverlay';
 import type { NodeData, NodeType, GenerateResponse } from '@/lib/types';
 import { generateId, toReactFlowNodes, toReactFlowEdges, EDGE_MARKER } from '@/lib/diagramUtils';
 import { LINE_NODE_TYPES } from '@/lib/nodeConfig';
@@ -166,6 +167,12 @@ interface DiagramCanvasProps {
   animateEdges?: boolean;
   /** When true, canvas is view-only: nodes cannot be moved, connected, or edited */
   readOnly?: boolean;
+  /** Threats for the current layer — renders severity badges on affected nodes */
+  threatOverlays?: import('@/lib/api').ThreatItem[];
+  /** Called when user clicks a threat badge on the canvas */
+  onThreatNodeClick?: (targetId: string) => void;
+  /** The currently highlighted target ID in the Threat Model panel */
+  activeThreatTargetId?: string | null;
 }
 
 export default function DiagramCanvas({
@@ -181,6 +188,9 @@ export default function DiagramCanvas({
   onRequestEdit,
   animateEdges = false,
   readOnly = false,
+  threatOverlays,
+  onThreatNodeClick,
+  activeThreatTargetId,
 }: DiagramCanvasProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState<NodeData>(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>(initialEdges);
@@ -909,6 +919,13 @@ export default function DiagramCanvas({
           pannable
           className="rounded-xl border border-slate-200 shadow-sm"
         />
+        {threatOverlays && threatOverlays.length > 0 && onThreatNodeClick && (
+          <ThreatOverlay
+            threats={threatOverlays}
+            onNodeClick={onThreatNodeClick}
+            activeTargetId={activeThreatTargetId}
+          />
+        )}
       </ReactFlow>
 
       {/* Snap-target highlight for line nodes */}

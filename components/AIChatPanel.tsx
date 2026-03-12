@@ -295,7 +295,7 @@ export default function AIChatPanel({
     ]);
     try {
       const threats = await onThreatAnalysis();
-      const summary = `Found **${threats.length}** threat${threats.length !== 1 ? 's' : ''}. Review in the **Threat Model panel** (⌘T) and save as a named model if you want to keep this analysis.`;
+      const summary = `Found **${threats.length}** threat${threats.length !== 1 ? 's' : ''}. Review in the **Threat Model panel** (⌘⇧M) and save as a named model if you want to keep this analysis.`;
       setMessages((prev) => {
         const updated = [...prev];
         updated[updated.length - 1] = { role: 'assistant', content: summary, threatResults: threats };

@@ -3,14 +3,19 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ShieldCheck, X, Loader2, Save, History,
-  AlertTriangle, ScanSearch,
+  AlertTriangle, ScanSearch, Plus,
 } from 'lucide-react';
 import ThreatResultCard from '@/components/ThreatResultCard';
 import ThreatHistoryPanel from '@/components/ThreatHistoryPanel';
 import {
   type ThreatItem,
+  type SavedThreat,
   type ThreatModelFull,
   type ThreatSeverity,
+  type StrideCategory,
+  apiUpdateThreat,
+  apiDeleteThreat,
+  apiCreateThreat,
 } from '@/lib/api';
 import { useTheme } from '@/lib/themeContext';
 
@@ -18,6 +23,7 @@ export interface ThreatModelInfo {
   name: string;
   version?: number;
   isSaved: boolean;
+  threatModelId?: string;
 }
 
 interface ThreatModelPanelProps {
@@ -28,12 +34,17 @@ interface ThreatModelPanelProps {
   projectId?: string;
   /** Called when user clicks a threat card — highlights node/edge on canvas */
   onHighlightTarget: (targetId: string) => void;
+  /** When the canvas badge is clicked, DiagramPage sets this to scroll the panel to that node's threats */
+  externalTargetId?: string | null;
+  onExternalTargetConsumed?: () => void;
   /** Opens AI Assistant panel so user can run analysis */
   onOpenAIAssistant: () => void;
   /** Save current transient threats as a named model */
   onSave: (name: string) => Promise<void>;
   /** Replace displayed threats with a loaded saved model */
   onLoadModel: (model: ThreatModelFull) => void;
+  /** Sync updated threats list back to parent (after CRUD ops on saved model) */
+  onThreatsChanged?: (threats: ThreatItem[]) => void;
   onClose: () => void;
 }
 
@@ -47,15 +58,36 @@ const SEVERITY_BADGE: Record<ThreatSeverity, string> = {
   INFO: 'bg-slate-400 text-white',
 };
 
+const STRIDE_OPTIONS: StrideCategory[] = [
+  'SPOOFING', 'TAMPERING', 'REPUDIATION', 'INFORMATION_DISCLOSURE', 'DENIAL_OF_SERVICE', 'ELEVATION_OF_PRIVILEGE',
+];
+
+const SEVERITY_OPTIONS: ThreatSeverity[] = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW', 'INFO'];
+
+function isSaved(t: ThreatItem): t is SavedThreat {
+  return 'id' in t;
+}
+
+const EMPTY_FORM = {
+  title: '',
+  description: '',
+  targetLabel: '',
+  strideCategory: 'SPOOFING' as StrideCategory,
+  severity: 'MEDIUM' as ThreatSeverity,
+};
+
 export default function ThreatModelPanel({
   currentLayerId,
   threats,
   modelInfo,
   projectId,
   onHighlightTarget,
+  externalTargetId,
+  onExternalTargetConsumed,
   onOpenAIAssistant,
   onSave,
   onLoadModel,
+  onThreatsChanged,
   onClose,
 }: ThreatModelPanelProps) {
   const { theme } = useTheme();
@@ -74,8 +106,13 @@ export default function ThreatModelPanel({
   const [showHistory, setShowHistory] = useState(false);
   const [saveName, setSaveName] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [addForm, setAddForm] = useState(EMPTY_FORM);
+  const [isAdding, setIsAdding] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
   const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
+
+  const threatModelId = modelInfo?.threatModelId;
 
   // Filter to current layer, sorted by severity
   const layerThreats = threats.filter((t) => t.layerId === currentLayerId);
@@ -83,9 +120,10 @@ export default function ThreatModelPanel({
     (a, b) => SEVERITY_ORDER.indexOf(a.severity) - SEVERITY_ORDER.indexOf(b.severity),
   );
 
-  // Severity summary counts
+  // Severity summary counts (exclude false positives)
+  const activeThreats = layerThreats.filter((t) => !isSaved(t) || t.status !== 'FALSE_POSITIVE');
   const severityCounts = SEVERITY_ORDER.reduce<Record<string, number>>((acc, sev) => {
-    const n = layerThreats.filter((t) => t.severity === sev).length;
+    const n = activeThreats.filter((t) => t.severity === sev).length;
     if (n > 0) acc[sev] = n;
     return acc;
   }, {});
@@ -93,11 +131,22 @@ export default function ThreatModelPanel({
   // Reset focused index when layer changes
   useEffect(() => { setFocusedIndex(-1); }, [currentLayerId]);
 
+  // When canvas badge clicked, scroll panel to the first threat for that node
+  useEffect(() => {
+    if (!externalTargetId) return;
+    const idx = sorted.findIndex((t) => t.targetId === externalTargetId);
+    if (idx >= 0) {
+      setFocusedIndex(idx);
+      cardRefs.current[idx]?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+    onExternalTargetConsumed?.();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [externalTargetId]);
+
   // Keyboard navigation — up/down arrows when panel is visible
   useEffect(() => {
     if (showHistory || sorted.length === 0) return;
     const handleKey = (e: KeyboardEvent) => {
-      // Don't steal keys from input fields
       if (document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA') return;
       if (e.key === 'ArrowDown') {
         e.preventDefault();
@@ -141,6 +190,45 @@ export default function ThreatModelPanel({
     setShowHistory(false);
   }, [onLoadModel]);
 
+  // ── CRUD handlers for saved threats ───────────────────────────────────────
+
+  const handleDismiss = async (t: SavedThreat) => {
+    if (!threatModelId) return;
+    const newStatus = t.status === 'FALSE_POSITIVE' ? 'IDENTIFIED' : 'FALSE_POSITIVE';
+    const updated = await apiUpdateThreat(threatModelId, t.id, { status: newStatus });
+    onThreatsChanged?.(threats.map((x) => (isSaved(x) && x.id === t.id ? updated : x)));
+  };
+
+  const handleDelete = async (t: SavedThreat) => {
+    if (!threatModelId) return;
+    await apiDeleteThreat(threatModelId, t.id);
+    onThreatsChanged?.(threats.filter((x) => !(isSaved(x) && x.id === t.id)));
+  };
+
+  const handleAddThreat = async () => {
+    if (!threatModelId || !addForm.title.trim()) return;
+    setIsAdding(true);
+    try {
+      const created = await apiCreateThreat(threatModelId, {
+        targetId: `user-${Date.now()}`,
+        targetType: 'node',
+        targetLabel: addForm.targetLabel || 'General',
+        layerId: currentLayerId,
+        strideCategory: addForm.strideCategory,
+        title: addForm.title,
+        description: addForm.description,
+        severity: addForm.severity,
+      });
+      onThreatsChanged?.([...threats, created]);
+      setAddForm(EMPTY_FORM);
+      setShowAddForm(false);
+    } finally {
+      setIsAdding(false);
+    }
+  };
+
+  const canEdit = modelInfo?.isSaved && !!threatModelId;
+
   return (
     <aside className="relative flex h-full w-[425px] flex-shrink-0 flex-col overflow-hidden border-l border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800">
 
@@ -172,6 +260,21 @@ export default function ThreatModelPanel({
             </div>
           </div>
 
+          {/* Add threat button (only for saved models) */}
+          {canEdit && (
+            <button
+              onClick={() => setShowAddForm((v) => !v)}
+              title="Add a threat manually"
+              className={`flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg transition-colors ${
+                showAddForm
+                  ? 'bg-red-600 text-white'
+                  : 'text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-500 dark:hover:bg-slate-700 dark:hover:text-slate-300'
+              }`}
+            >
+              <Plus size={15} />
+            </button>
+          )}
+
           {/* History button */}
           {projectId && (
             <button
@@ -185,7 +288,7 @@ export default function ThreatModelPanel({
 
           <button
             onClick={onClose}
-            title="Close Threat Model panel (⌘T)"
+            title="Close Threat Model panel (⌘⇧M)"
             className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg transition-colors text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-500 dark:hover:bg-slate-700 dark:hover:text-slate-300"
           >
             <X size={15} />
@@ -206,11 +309,73 @@ export default function ThreatModelPanel({
       {/* ── Main content ────────────────────────────────────────────────────── */}
       {!showHistory && (
         <>
+          {/* Inline "Add Threat" form */}
+          {showAddForm && canEdit && (
+            <div className="flex-shrink-0 border-b border-slate-200 px-4 py-3 space-y-2 bg-slate-50 dark:bg-slate-900/30 dark:border-slate-700">
+              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Add Threat</p>
+              <input
+                value={addForm.title}
+                onChange={(e) => setAddForm((f) => ({ ...f, title: e.target.value }))}
+                placeholder="Title *"
+                className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-900 outline-none placeholder-slate-400 focus:ring-1 focus:ring-red-400/30 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 dark:placeholder-slate-500"
+              />
+              <input
+                value={addForm.targetLabel}
+                onChange={(e) => setAddForm((f) => ({ ...f, targetLabel: e.target.value }))}
+                placeholder="Target node / component"
+                className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-900 outline-none placeholder-slate-400 focus:ring-1 focus:ring-red-400/30 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 dark:placeholder-slate-500"
+              />
+              <div className="flex gap-2">
+                <select
+                  value={addForm.strideCategory}
+                  onChange={(e) => setAddForm((f) => ({ ...f, strideCategory: e.target.value as StrideCategory }))}
+                  className="flex-1 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-800 outline-none dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
+                >
+                  {STRIDE_OPTIONS.map((s) => (
+                    <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>
+                  ))}
+                </select>
+                <select
+                  value={addForm.severity}
+                  onChange={(e) => setAddForm((f) => ({ ...f, severity: e.target.value as ThreatSeverity }))}
+                  className="flex-1 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-800 outline-none dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
+                >
+                  {SEVERITY_OPTIONS.map((s) => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+              </div>
+              <textarea
+                value={addForm.description}
+                onChange={(e) => setAddForm((f) => ({ ...f, description: e.target.value }))}
+                placeholder="Description"
+                rows={2}
+                className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-900 outline-none placeholder-slate-400 resize-none focus:ring-1 focus:ring-red-400/30 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 dark:placeholder-slate-500"
+              />
+              <div className="flex gap-2">
+                <button
+                  onClick={() => { setShowAddForm(false); setAddForm(EMPTY_FORM); }}
+                  className="flex-1 rounded-lg border border-slate-200 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-100 transition dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleAddThreat}
+                  disabled={isAdding || !addForm.title.trim()}
+                  className="flex flex-1 items-center justify-center gap-1 rounded-lg bg-red-600 py-1.5 text-sm font-medium text-white hover:bg-red-500 transition disabled:opacity-50"
+                >
+                  {isAdding ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />}
+                  Add
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Severity summary bar */}
           {layerThreats.length > 0 && (
             <div className="flex flex-shrink-0 items-center gap-2 border-b border-slate-200 px-4 py-2.5 dark:border-slate-700">
               <span className="text-sm font-medium text-slate-500 dark:text-slate-400">
-                {layerThreats.length} threat{layerThreats.length !== 1 ? 's' : ''}
+                {activeThreats.length} threat{activeThreats.length !== 1 ? 's' : ''}
               </span>
               {sorted.length > 0 && focusedIndex >= 0 && (
                 <span className="text-xs text-slate-400 dark:text-slate-500">
@@ -234,7 +399,6 @@ export default function ThreatModelPanel({
           {/* Threat list / empty states */}
           <div ref={listRef} className="flex-1 overflow-y-auto px-4 py-3">
             {threats.length === 0 ? (
-              /* No analysis has been run at all */
               <div className="flex flex-col items-center justify-center py-16 text-center gap-4">
                 <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 dark:bg-slate-700">
                   <ShieldCheck size={24} className="text-red-300 dark:text-red-500/60" />
@@ -252,7 +416,6 @@ export default function ThreatModelPanel({
                 </button>
               </div>
             ) : layerThreats.length === 0 ? (
-              /* Analysis exists but not for this layer */
               <div className="flex flex-col items-center justify-center py-12 text-center gap-3">
                 <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">No threats for this layer</p>
                 <p className="text-sm text-slate-500 dark:text-slate-400">Switch to a layer that has been analyzed, or run a new analysis.</p>
@@ -265,17 +428,18 @@ export default function ThreatModelPanel({
                 </button>
               </div>
             ) : (
-              /* Threats for current layer */
               <div className="space-y-2.5">
                 {sorted.map((t, i) => (
                   <div
-                    key={`${t.targetId}-${t.strideCategory}`}
+                    key={isSaved(t) ? t.id : `${t.targetId}-${t.strideCategory}-${i}`}
                     ref={(el) => { cardRefs.current[i] = el; }}
                   >
                     <ThreatResultCard
                       threat={t}
                       onClick={() => handleCardClick(t, i)}
                       isActive={focusedIndex === i}
+                      onDismiss={canEdit && isSaved(t) ? () => handleDismiss(t) : undefined}
+                      onDelete={canEdit && isSaved(t) ? () => handleDelete(t) : undefined}
                     />
                   </div>
                 ))}

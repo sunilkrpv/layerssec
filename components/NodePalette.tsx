@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type DragEvent } from 'react';
+import { useState, useRef, type DragEvent } from 'react';
 import { ChevronDown, ChevronRight, PanelLeftClose, PanelLeftOpen, Cloud, Square, NotebookPenIcon } from 'lucide-react';
 import { PALETTE_ITEMS } from '@/lib/nodeConfig';
 import type { NodeType } from '@/lib/types';
@@ -24,6 +24,8 @@ export default function NodePalette({ onDragStart, onAddNode }: NodePaletteProps
   const [panelOpen, setPanelOpen] = useState(true);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [openSection, setOpenSection] = useState<string | null>(null);
+  const [popoverTop, setPopoverTop] = useState(0);
+  const sectionBtnRefs = useRef<Record<string, HTMLButtonElement | null>>({});
 
   const toggle = (key: string) =>
     setCollapsed((prev) => {
@@ -46,10 +48,18 @@ export default function NodePalette({ onDragStart, onAddNode }: NodePaletteProps
 
         <div className="mt-2 flex flex-col items-center gap-1">
           {SECTIONS.map(({ key, label, icon: SectionIcon, items }) => (
-            <div key={key} className="relative">
+            <div key={key}>
               <button
+                ref={(el) => { sectionBtnRefs.current[key] = el; }}
                 title={label}
-                onClick={() => setOpenSection((p) => (p === key ? null : key))}
+                onClick={() => {
+                  const btn = sectionBtnRefs.current[key];
+                  if (btn) {
+                    const rect = btn.getBoundingClientRect();
+                    setPopoverTop(rect.top);
+                  }
+                  setOpenSection((p) => (p === key ? null : key));
+                }}
                 className={`flex h-8 w-8 items-center justify-center rounded-lg transition-colors ${
                   openSection === key
                     ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400'
@@ -58,33 +68,40 @@ export default function NodePalette({ onDragStart, onAddNode }: NodePaletteProps
               >
                 <SectionIcon size={16} />
               </button>
-
-              {openSection === key && (
-                <div className="absolute left-10 top-0 z-50 w-52 rounded-xl border border-slate-200 bg-white py-1 shadow-2xl dark:border-slate-700 dark:bg-slate-800">
-                  <div className="border-b border-slate-100 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:border-slate-700">
-                    {label}
-                  </div>
-                  {items.map((item) => {
-                    const Icon = item.icon;
-                    return (
-                      <div
-                        key={item.type}
-                        draggable
-                        onClick={() => { onAddNode(item.type); setOpenSection(null); }}
-                        onDragStart={(e) => { onDragStart(e, item.type); setOpenSection(null); }}
-                        className="flex cursor-pointer items-center gap-2.5 px-3 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-700"
-                        title={item.description}
-                      >
-                        <Icon size={14} className={item.color} />
-                        <span className="text-xs font-medium text-slate-800 dark:text-slate-200">{item.label}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
             </div>
           ))}
         </div>
+
+        {openSection && (() => {
+          const section = SECTIONS.find((s) => s.key === openSection);
+          if (!section) return null;
+          return (
+            <div
+              className="fixed z-[9999] w-52 rounded-xl border border-slate-200 bg-white py-1 shadow-2xl dark:border-slate-700 dark:bg-slate-800"
+              style={{ left: 40, top: popoverTop }}
+            >
+              <div className="border-b border-slate-100 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:border-slate-700">
+                {section.label}
+              </div>
+              {section.items.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <div
+                    key={item.type}
+                    draggable
+                    onClick={() => { onAddNode(item.type); setOpenSection(null); }}
+                    onDragStart={(e) => { onDragStart(e, item.type); setOpenSection(null); }}
+                    className="flex cursor-pointer items-center gap-2.5 px-3 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-700"
+                    title={item.description}
+                  >
+                    <Icon size={14} className={item.color} />
+                    <span className="text-xs font-medium text-slate-800 dark:text-slate-200">{item.label}</span>
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })()}
       </aside>
     );
   }

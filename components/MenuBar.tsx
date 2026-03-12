@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Share2, Minus, Sparkles, LogIn, LogOut, User, Sun, Moon, Monitor, Lock, Layers2, Layers, History, ShieldCheck } from 'lucide-react';
 import { useTheme } from '@/lib/themeContext';
 import type { Theme } from '@/lib/themeStore';
@@ -27,6 +28,8 @@ interface MenuBarProps {
   onSignOut?: () => void;
   /** Whether a cloud project (not local) is currently open */
   isCloudProject?: boolean;
+  /** Current cloud project ID (for threats dashboard link) */
+  projectId?: string;
   /** Whether the currently open diagram is read-only (published) */
   isReadOnly?: boolean;
   /** Called when user clicks Publish… */
@@ -143,9 +146,11 @@ export default function MenuBar({
   onSignIn,
   onSignOut,
   isCloudProject,
+  projectId,
   isReadOnly,
   onPublish,
 }: MenuBarProps) {
+  const router = useRouter();
   const [showAbout, setShowAbout] = useState(false);
   const jsonInputRef = useRef<HTMLInputElement>(null);
   const projectInputRef = useRef<HTMLInputElement>(null);
@@ -175,7 +180,7 @@ export default function MenuBar({
             <MenuItem onClick={onOpenFile} shortcut="⌘O">
               Open File…
             </MenuItem>
-            <MenuItem onClick={onSaveFile} disabled={!hasFileHandle} shortcut="⌘S">
+            <MenuItem onClick={onSaveFile} disabled={!hasFileHandle} shortcut="⌘⇧S">
               Save File
             </MenuItem>
             <MenuSeparator />
@@ -231,7 +236,7 @@ export default function MenuBar({
                 <span className="flex items-center gap-2">
                   <ShieldCheck size={13} className="text-red-500" />
                   Threat Model
-                  <span className="ml-auto text-[10px] text-slate-400">⌘T</span>
+                  <span className="ml-auto text-[10px] text-slate-400">⌘⇧M</span>
                 </span>
               </MenuItem>
             )}
@@ -240,6 +245,14 @@ export default function MenuBar({
                 <span className="flex items-center gap-2">
                   <History size={13} className="text-blue-500" />
                   AI History
+                </span>
+              </MenuItem>
+            )}
+            {projectId && projectId !== 'local' && (
+              <MenuItem onClick={() => router.push(`/projects/${projectId}/threats`)}>
+                <span className="flex items-center gap-2">
+                  <ShieldCheck size={13} className="text-red-500" />
+                  Threats Dashboard
                 </span>
               </MenuItem>
             )}

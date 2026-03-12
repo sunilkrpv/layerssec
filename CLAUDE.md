@@ -96,6 +96,37 @@ style={{ borderColor: data.borderColor || undefined, backgroundColor: data.fillC
 - `ChildLayerBadge` on nodes with drill-down layers
 - Assign/Reassign layer: right-click shape → assign orphaned or sibling-owned layer; 2-step confirm; `AssignableLayer` type
 
+### Secondary Page Top Bar Pattern
+All secondary pages (AI History, Threats Dashboard, etc.) **must** use this exact top bar pattern — do NOT use a sticky `div` with `max-w-7xl`:
+```tsx
+<div className="flex h-screen flex-col overflow-hidden bg-white dark:bg-gray-950">
+  <header className="flex h-9 flex-shrink-0 items-center border-b border-slate-200 bg-slate-50 px-3 dark:border-slate-700 dark:bg-slate-900">
+    {/* Logo */}
+    <div className="mr-4 flex items-center gap-1.5 pl-1">
+      <Layers size={14} className="text-blue-600" />
+      <span className="text-sm font-bold text-slate-800 dark:text-slate-100">Drafter</span>
+    </div>
+    {/* Back button */}
+    <button onClick={() => router.push(`/projects/${projectId}`)} className="flex items-center gap-1.5 rounded px-3 py-1 text-sm text-slate-700 hover:bg-slate-200 ...">
+      <ArrowLeft size={13} /> Back to diagram
+    </button>
+    <div className="mx-1 h-4 w-px bg-slate-200 dark:bg-slate-700" />
+    {/* Page context: icon + name */}
+    <div className="flex items-center gap-1.5">
+      <PageIcon size={12} className="text-accent-500" />
+      <span className="text-sm text-slate-600 dark:text-slate-300">{projectName} — Page Title</span>
+    </div>
+    {/* Right: action buttons | theme toggle | separator | user email + LogOut */}
+    <div className="ml-auto flex items-center gap-1"> ... </div>
+  </header>
+  {/* Scrollable content */}
+  <div className="flex-1 overflow-y-auto bg-slate-50 dark:bg-slate-900">
+    <div className="mx-auto max-w-7xl px-6 py-6"> ... </div>
+  </div>
+</div>
+```
+Key rules: `h-9` header, `bg-slate-50 dark:bg-slate-900` header bg, `h-4 w-px` separators, theme cycle button, user email + LogOut on right.
+
 ### AI Features
 - **Generation**: streaming Claude → nodes/edges via `/api/generate`
 - **Evaluation**: streaming architecture analysis via `/api/evaluate`; Q&A mode via `userQuestion` param
@@ -108,6 +139,13 @@ style={{ borderColor: data.borderColor || undefined, backgroundColor: data.fillC
   - Streaming: diagram JSON stripped from visible markdown live; `beforeunload` blocked while streaming
 - **`MiniDiagramPreview`**: shared read-only React Flow canvas (layer previews + chat bubbles)
 - **Contextual chat (RAG)**: AI History Page uses `apiContextualChatAsk` → `POST /api/ai/chat/contextual-ask`; backend gathers diagram info, nodes, versions + ChromaDB semantic memories before responding; `diagramId` (draft) passed from page state
+- **STRIDE Threat Modeling** (`/projects/:id/threats`):
+  - `ThreatModelPanel` (docked right, ⌘⇧M): transient AI results → save → load saved models; AI/User badge; inline Add Threat form; dismiss/delete per threat
+  - `ThreatHistoryPanel`: list + expand saved models; delete
+  - `ThreatOverlay`: React Flow `NodeToolbar` badges per node (count + severity color); bidirectional click highlighting with ThreatModelPanel
+  - `ThreatsDashboardPage`: full-page table (pagination 20/page), search + filter by severity/status/STRIDE, inline status dropdown, dismiss/delete/view-in-diagram actions, Add Threat modal with model picker
+  - `ThreatResultCard`: AI/User source badge, severity + STRIDE badges, action buttons (edit/dismiss/delete)
+  - Backend: `threat` module — `ThreatModel` (version-aware snapshot) + `Threat` (per node/edge); `IdentifiedBy` enum (AI/USER)
 
 ### File & Project Management
 - File System Access API: open/save/save-as project JSON; fallback browser download
