@@ -16,9 +16,10 @@ model User {
   avatarUrl      String?         @map("avatar_url")
   projects       Project[]
   aiInteractions AiInteraction[]
-  threatModels   ThreatModel[]
-  createdAt      DateTime        @default(now()) @map("created_at")
-  updatedAt      DateTime        @updatedAt @map("updated_at")
+  threatModels    ThreatModel[]
+  createdThreats  Threat[]        @relation("ThreatCreatedBy")
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
 
   @@map("users")
 }
@@ -105,6 +106,11 @@ enum DiagramType {
   SEQUENCE
 }
 
+enum IdentifiedBy {
+  AI
+  USER
+}
+
 enum StrideCategory {
   SPOOFING
   TAMPERING
@@ -164,10 +170,13 @@ model Threat {
   status          ThreatStatus   @default(IDENTIFIED)
   mitigationNotes String?        @db.Text @map("mitigation_notes")
   codeEvidence    Json?          @map("code_evidence")
+  identifiedBy    IdentifiedBy   @default(AI) @map("identified_by")
+  createdByUserId String?        @db.Uuid @map("created_by_user_id")
   createdAt       DateTime       @default(now()) @map("created_at")
   updatedAt       DateTime       @updatedAt @map("updated_at")
 
   threatModel     ThreatModel    @relation(fields: [threatModelId], references: [id], onDelete: Cascade)
+  createdByUser   User?          @relation("ThreatCreatedBy", fields: [createdByUserId], references: [id])
 
   @@index([threatModelId])
   @@map("threats")

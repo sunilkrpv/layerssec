@@ -1,16 +1,25 @@
 import { IsEnum, IsOptional, IsString } from 'class-validator';
-import { ThreatSeverity, ThreatStatus } from '@prisma/client';
+import { StrideCategory, ThreatSeverity, ThreatStatus } from '@prisma/client';
 
 export class UpdateThreatDto {
-  @IsOptional()
-  @IsEnum(ThreatStatus)
+  @IsOptional() @IsString()
+  title?: string;
+
+  @IsOptional() @IsString()
+  description?: string;
+
+  @IsOptional() @IsString()
+  targetLabel?: string;
+
+  @IsOptional() @IsEnum(StrideCategory)
+  strideCategory?: StrideCategory;
+
+  @IsOptional() @IsEnum(ThreatSeverity)
+  severity?: ThreatSeverity;
+
+  @IsOptional() @IsEnum(ThreatStatus)
   status?: ThreatStatus;
 
-  @IsOptional()
-  @IsString()
+  @IsOptional() @IsString()
   mitigationNotes?: string;
-
-  @IsOptional()
-  @IsEnum(ThreatSeverity)
-  severity?: ThreatSeverity;
 }

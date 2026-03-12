@@ -3,10 +3,11 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { ThreatStatus, ThreatSeverity } from '@prisma/client';
+import { IdentifiedBy, ThreatStatus, ThreatSeverity } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { SaveThreatModelDto } from './dto/save-threat-model.dto';
 import { UpdateThreatDto } from './dto/update-threat.dto';
+import { CreateThreatDto } from './dto/create-threat.dto';
 
 @Injectable()
 export class ThreatService {
@@ -41,6 +42,7 @@ export class ThreatService {
             title: t.title,
             description: t.description,
             severity: t.severity,
+            identifiedBy: IdentifiedBy.AI,
           })),
         });
       }
@@ -103,7 +105,88 @@ export class ThreatService {
     await this.prisma.threatModel.delete({ where: { id: threatModelId } });
   }
 
-  // ── Update a single threat's status / notes / severity ───────────────────
+  // ── Create a user-defined threat in an existing threat model ─────────────
+
+  async createThreat(threatModelId: string, userId: string, dto: CreateThreatDto) {
+    await this.verifyThreatModelOwnership(threatModelId, userId);
+
+    return this.prisma.threat.create({
+      data: {
+        threatModelId,
+        targetId: dto.targetId,
+        targetType: dto.targetType,
+        targetLabel: dto.targetLabel,
+        layerId: dto.layerId,
+        strideCategory: dto.strideCategory,
+        title: dto.title,
+        description: dto.description,
+        severity: dto.severity,
+        mitigationNotes: dto.mitigationNotes,
+        identifiedBy: IdentifiedBy.USER,
+        createdByUserId: userId,
+      },
+    });
+  }
+
+  // ── List threats for dashboard — paginated + filtered ────────────────────
+
+  async listProjectThreats(
+    projectId: string,
+    userId: string,
+    params: {
+      page: number;
+      limit: number;
+      search?: string;
+      severity?: string;
+      status?: string;
+      strideCategory?: string;
+    },
+  ) {
+    await this.verifyProjectOwnership(projectId, userId);
+
+    const where: Record<string, unknown> = { threatModel: { projectId } };
+    if (params.severity) where['severity'] = params.severity as ThreatSeverity;
+    if (params.status) where['status'] = params.status as ThreatStatus;
+    if (params.strideCategory) where['strideCategory'] = params.strideCategory;
+    if (params.search) {
+      where['OR'] = [
+        { title: { contains: params.search, mode: 'insensitive' } },
+        { description: { contains: params.search, mode: 'insensitive' } },
+        { targetLabel: { contains: params.search, mode: 'insensitive' } },
+      ];
+    }
+
+    const [data, total, allForSummary] = await Promise.all([
+      this.prisma.threat.findMany({
+        where,
+        orderBy: [{ severity: 'asc' }, { createdAt: 'desc' }],
+        skip: params.page * params.limit,
+        take: params.limit,
+        include: {
+          threatModel: {
+            select: { id: true, name: true, diagramVersion: true, savedAt: true, diagramId: true },
+          },
+        },
+      }),
+      this.prisma.threat.count({ where }),
+      // Summary always counts across all threats, ignoring current filters
+      this.prisma.threat.findMany({
+        where: { threatModel: { projectId } },
+        select: { severity: true, status: true },
+      }),
+    ]);
+
+    const summary = {
+      totalActive: allForSummary.filter((t) => t.status !== 'FALSE_POSITIVE').length,
+      mitigated: allForSummary.filter((t) => t.status === ThreatStatus.MITIGATED || t.status === ThreatStatus.ACCEPTED).length,
+      critical: allForSummary.filter((t) => t.severity === ThreatSeverity.CRITICAL && t.status !== 'FALSE_POSITIVE').length,
+      high: allForSummary.filter((t) => t.severity === ThreatSeverity.HIGH && t.status !== 'FALSE_POSITIVE').length,
+    };
+
+    return { data, total, page: params.page, limit: params.limit, summary };
+  }
+
+  // ── Update a single threat's fields ──────────────────────────────────────
 
   async updateThreat(
     threatModelId: string,
@@ -121,6 +204,10 @@ export class ThreatService {
     return this.prisma.threat.update({
       where: { id: threatId },
       data: {
+        ...(dto.title !== undefined && { title: dto.title }),
+        ...(dto.description !== undefined && { description: dto.description }),
+        ...(dto.targetLabel !== undefined && { targetLabel: dto.targetLabel }),
+        ...(dto.strideCategory !== undefined && { strideCategory: dto.strideCategory }),
         ...(dto.status !== undefined && { status: dto.status }),
         ...(dto.mitigationNotes !== undefined && { mitigationNotes: dto.mitigationNotes }),
         ...(dto.severity !== undefined && { severity: dto.severity }),
