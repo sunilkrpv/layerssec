@@ -32,6 +32,8 @@ NestJS REST API backend for Drafter. Handles authentication, project/diagram sto
 | `Diagram` | `id`, `name`, `type`, `canvasData` (Json), `status` (draft/published), `publishComment`, `publishedAt`, `projectId → Project`, `version` |
 | `AiInteraction` | `userId`, `diagramId?`, `prompt`, `response`, `tokensUsed`, `model` |
 | `ChatMessage` | `id`, `projectId → Project`, `userId → User`, `role` (user/assistant), `content`, `layerId?`, `layerName?`, `diagramData?` (Json), `createdAt` |
+| `ThreatModel` | `id`, `projectId → Project`, `diagramId`, `diagramVersion` (int), `snapshotData` (Json), `name`, `savedBy` (userId), `savedAt`; NOT @unique on diagramId (many per diagram) |
+| `Threat` | `id`, `threatModelId → ThreatModel`, `targetId`, `targetType`, `targetLabel`, `layerId?`, `strideCategory`, `title`, `description`, `severity` (CRITICAL/HIGH/MEDIUM/LOW/INFO), `status` (OPEN/IN_PROGRESS/MITIGATED/ACCEPTED/FALSE_POSITIVE), `mitigationNotes?`, `identifiedBy` (AI/USER), `createdByUserId?` |
 
 **Drafter mapping**: Each Drafter project = one NestJS `Project` + one NestJS `Diagram` (`canvasData` = `{ layers: LayerMap, navStack: string[] }`). `version` increments on every PATCH via `{ increment: 1 }`.
 
@@ -65,8 +67,21 @@ src/
       eval-system-prompt.ts         — EVAL_SYSTEM_PROMPT, QA_SYSTEM_PROMPT
       chat-system-prompt.ts         — CHAT_SYSTEM_PROMPT + buildLayerContextSystemPrompt(layerContext)
       contextual-system-prompt.ts   — buildContextualSystemPrompt(contextBlock) for RAG chat
+  threat/       ThreatModule — STRIDE threat model persistence + PDF report export (PRDs 2, 8)
+    threat.service.ts    — saveThreatModel, listThreatModels, getThreatModel, deleteThreatModel, createThreat, updateThreat, deleteThreat, listProjectThreats (paginated+filtered)
+    report.service.ts    — generateProjectReport(projectId, userId): Promise<Buffer>; PDFKit (CJS require); 3-page PDF: cover (score + stats grid), threat catalog (grouped by STRIDE), summary table
+    threat.controller.ts — all threat endpoints; route order matters: `projects/:id/threats/report` BEFORE `projects/:id/threats`
+    dto/                 — SaveThreatModelDto, UpdateThreatDto, CreateThreatDto
+    ai/prompts/threat-analysis-prompt.ts — STRIDE analysis prompt templates per node/edge type
   storage/      StorageModule — Supabase Storage (thumbnails)
 ```
+
+### PDFKit Usage (ReportService)
+- **Import**: Must use `const PDFDocument = require('pdfkit') as typeof import('pdfkit')` — PDFKit is CJS; `import default` resolves to `undefined` at NestJS runtime
+- **`bufferPages: true`**: Enables `switchToPage(i)` for post-build page numbers
+- **`doc.y` drift**: Every `.text()` call advances `doc.y` regardless of explicit x/y args. Fix: capture `const baseY = doc.y` before any text calls in a grid/table row, use `baseY + offset` for all positions, then explicitly set `doc.y = baseY + rowHeight` after
+- **Column layout**: No grid system — track x positions manually; column widths must sum exactly to usable page width (A4: 595pt − 50pt margin × 2 = 495pt)
+- **Response**: Use `@Res() res: Response` + `res.end(buffer)` — NestJS won't auto-serialize binary buffers
 
 ### LLM Provider Selection
 `AI_PROVIDER` env var controls provider at startup:
@@ -126,6 +141,17 @@ GET    /api/projects/:id/versions          — list published versions
 GET    /api/projects/:id/draft             — get current draft diagram
 POST   /api/projects/:id/checkout          — checkout a published version as new draft
 
+— Threat Modeling (PRDs 2, 3, 8) —
+POST   /api/projects/:projectId/threat-models          — save threat model snapshot { name?, diagramId, diagramVersion, snapshotData, threats[] }
+GET    /api/projects/:projectId/threat-models          — list saved threat models (summary: threatCount, severitySummary, mitigatedCount)
+GET    /api/projects/:projectId/threats/report         — PDF export (PDFKit); returns application/pdf binary
+GET    /api/projects/:projectId/threats                — paginated+filtered threats dashboard { page, limit, search, severity, status, strideCategory }
+GET    /api/threat-models/:threatModelId               — full threat model with all threats
+DELETE /api/threat-models/:threatModelId               — delete threat model
+POST   /api/threat-models/:threatModelId/threats       — create user threat { targetId, targetType, targetLabel, strideCategory, title, description, severity, mitigationNotes? }
+PATCH  /api/threat-models/:threatModelId/threats/:id   — update threat { title?, description?, status?, severity?, mitigationNotes?, ... }
+DELETE /api/threat-models/:threatModelId/threats/:id   — delete individual threat
+
 GET    /api/projects/:id/chat              — get chat history for project
 POST   /api/ai/chat/contextual-ask         — RAG-enhanced streaming chat; gathers diagram metadata + nodes + versions + semantic memories; used by AI History page
 POST   /api/ai/chat/ask                    — streaming chat with optional layerContext
@@ -134,6 +160,7 @@ POST   /api/ai/chat/generate               — generate diagram from prompt (non
 POST   /api/ai/generate                    — original diagram generation (legacy)
 POST   /api/ai/suggest                     — auto-suggest improvements
 POST   /api/ai/refine                      — refine existing diagram
+POST   /api/ai/threat-analysis             — PRD 3: streaming STRIDE analysis; returns structured threat cards per node/edge; NOT auto-persisted
 ```
 
 ---
