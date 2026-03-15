@@ -19,6 +19,7 @@ import ReactFlow, {
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 
+import ThreatOverlay from '@/components/ThreatOverlay';
 import type { NodeData, NodeType, GenerateResponse } from '@/lib/types';
 import { generateId, toReactFlowNodes, toReactFlowEdges, EDGE_MARKER } from '@/lib/diagramUtils';
 import { LINE_NODE_TYPES } from '@/lib/nodeConfig';
@@ -49,6 +50,7 @@ import ContainerNode from './nodes/ContainerNode';
 import ComponentNode from './nodes/ComponentNode';
 import CodeNode from './nodes/CodeNode';
 import TextNode from './nodes/TextNode';
+import TrustBoundaryNode from './nodes/TrustBoundaryNode';
 
 // ── Helper: recompute a line node's position/width to maintain endpoint attachments ──────────────
 function computeUpdatedLinePosition(
@@ -122,6 +124,7 @@ const NODE_TYPES = {
   component: ComponentNode,
   code: CodeNode,
   text: TextNode,
+  trustboundary: TrustBoundaryNode,
 };
 
 export type ExtendedRFInstance = ReactFlowInstance & {
@@ -139,6 +142,8 @@ export type ExtendedRFInstance = ReactFlowInstance & {
   pushHistoryNow: () => void;
   doCopy: () => void;
   doPaste: () => void;
+  /** Visually highlight a node or edge by id; pass null to clear. Auto-clears after 3s. */
+  highlightThreatTarget: (targetId: string | null) => void;
 };
 
 interface DiagramCanvasProps {
@@ -162,6 +167,12 @@ interface DiagramCanvasProps {
   animateEdges?: boolean;
   /** When true, canvas is view-only: nodes cannot be moved, connected, or edited */
   readOnly?: boolean;
+  /** Threats for the current layer — renders severity badges on affected nodes */
+  threatOverlays?: import('@/lib/api').ThreatItem[];
+  /** Called when user clicks a threat badge on the canvas */
+  onThreatNodeClick?: (targetId: string) => void;
+  /** The currently highlighted target ID in the Threat Model panel */
+  activeThreatTargetId?: string | null;
 }
 
 export default function DiagramCanvas({
@@ -177,6 +188,9 @@ export default function DiagramCanvas({
   onRequestEdit,
   animateEdges = false,
   readOnly = false,
+  threatOverlays,
+  onThreatNodeClick,
+  activeThreatTargetId,
 }: DiagramCanvasProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState<NodeData>(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>(initialEdges);
@@ -394,6 +408,7 @@ export default function DiagramCanvas({
           description: '',
           technology: '',
         },
+        ...(nodeType === 'trustboundary' && { style: { width: 400, height: 300 }, zIndex: -1 }),
       };
       setNodes((nds) => nds.concat(newNode));
       // Auto-enter edit mode for the dropped node
@@ -639,6 +654,7 @@ export default function DiagramCanvas({
             description: '',
             technology: '',
           },
+          ...(nodeType === 'trustboundary' && { style: { width: 400, height: 300 }, zIndex: -1 }),
         };
         setNodes((nds) => nds.concat(newNode));
         onRequestEditRef.current?.(newNode.id);
@@ -783,6 +799,40 @@ export default function DiagramCanvas({
         setEdges((eds) => [...eds, ...newEdges]);
       };
 
+      const highlightTimerRef: { current: ReturnType<typeof setTimeout> | null } = { current: null };
+
+      const applyHighlight = (targetId: string | null) => {
+        const addClass = (cls: string) =>
+          cls.includes('threat-highlighted') ? cls : `${cls} threat-highlighted`.trim();
+        const removeClass = (cls: string) =>
+          cls.replace(/\bthreat-highlighted\b/g, '').trim();
+
+        setNodes((nds) =>
+          nds.map((n) => ({
+            ...n,
+            className: targetId === n.id
+              ? addClass(n.className ?? '')
+              : removeClass(n.className ?? ''),
+          })),
+        );
+        setEdges((eds) =>
+          eds.map((e) => ({
+            ...e,
+            className: targetId === e.id
+              ? addClass(e.className ?? '')
+              : removeClass(e.className ?? ''),
+          })),
+        );
+      };
+
+      const highlightThreatTarget = (targetId: string | null) => {
+        if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current);
+        applyHighlight(targetId);
+        if (targetId) {
+          highlightTimerRef.current = setTimeout(() => applyHighlight(null), 3000);
+        }
+      };
+
       rfInstanceRef.current = Object.assign(instance, {
         loadDiagram,
         clearDiagram,
@@ -798,6 +848,7 @@ export default function DiagramCanvas({
         pushHistoryNow,
         doCopy,
         doPaste,
+        highlightThreatTarget,
       }) as ExtendedRFInstance;
     },
     // initialNodes.length is intentionally included so fitView fires on remount
@@ -868,6 +919,13 @@ export default function DiagramCanvas({
           pannable
           className="rounded-xl border border-slate-200 shadow-sm"
         />
+        {threatOverlays && threatOverlays.length > 0 && onThreatNodeClick && (
+          <ThreatOverlay
+            threats={threatOverlays}
+            onNodeClick={onThreatNodeClick}
+            activeTargetId={activeThreatTargetId}
+          />
+        )}
       </ReactFlow>
 
       {/* Snap-target highlight for line nodes */}

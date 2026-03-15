@@ -425,6 +425,210 @@ export async function apiChatAsk(
   }
 }
 
+// ─── Threat Models ────────────────────────────────────────────────────────────
+
+export type StrideCategory =
+  | 'SPOOFING'
+  | 'TAMPERING'
+  | 'REPUDIATION'
+  | 'INFORMATION_DISCLOSURE'
+  | 'DENIAL_OF_SERVICE'
+  | 'ELEVATION_OF_PRIVILEGE';
+
+export type ThreatSeverity = 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW' | 'INFO';
+export type ThreatStatus =
+  | 'IDENTIFIED'
+  | 'IN_PROGRESS'
+  | 'MITIGATED'
+  | 'ACCEPTED'
+  | 'FALSE_POSITIVE';
+
+export type IdentifiedBy = 'AI' | 'USER';
+
+export interface ThreatItem {
+  targetId: string;
+  targetType: string;
+  targetLabel: string;
+  layerId: string;
+  strideCategory: StrideCategory;
+  title: string;
+  description: string;
+  severity: ThreatSeverity;
+}
+
+export interface SavedThreat extends ThreatItem {
+  id: string;
+  threatModelId: string;
+  status: ThreatStatus;
+  mitigationNotes: string | null;
+  identifiedBy: IdentifiedBy;
+  createdByUserId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ProjectThreat extends SavedThreat {
+  threatModel: {
+    id: string;
+    name: string;
+    diagramVersion: number;
+    savedAt: string;
+    diagramId: string;
+  };
+}
+
+export interface ThreatModelSummary {
+  id: string;
+  name: string;
+  diagramVersion: number;
+  savedAt: string;
+  threatCount: number;
+  severitySummary: Record<string, number>;
+  mitigatedCount: number;
+}
+
+export interface ThreatModelFull {
+  id: string;
+  name: string;
+  projectId: string;
+  diagramId: string;
+  diagramVersion: number;
+  snapshotData: unknown;
+  savedAt: string;
+  threats: SavedThreat[];
+}
+
+/** Run STRIDE threat analysis on the current diagram layer — returns transient threats (not saved). */
+export function apiRunThreatAnalysis(payload: {
+  diagramId: string;
+  layerId: string;
+  layerName?: string;
+  nodes: unknown[];
+  edges: unknown[];
+  trustBoundaries?: unknown[];
+}): Promise<{ threats: ThreatItem[] }> {
+  return apiFetch<{ threats: ThreatItem[] }>('/api/ai/threat-analysis', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+/** Save a threat model snapshot explicitly to the backend. */
+export function apiSaveThreatModel(
+  projectId: string,
+  payload: {
+    name?: string;
+    diagramId: string;
+    diagramVersion: number;
+    snapshotData: unknown;
+    threats: ThreatItem[];
+  },
+): Promise<ThreatModelFull> {
+  return apiFetch<ThreatModelFull>(`/api/projects/${projectId}/threat-models`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+/** List all saved threat models for a project (summary only). */
+export function apiListThreatModels(projectId: string): Promise<ThreatModelSummary[]> {
+  return apiFetch<ThreatModelSummary[]>(`/api/projects/${projectId}/threat-models`);
+}
+
+/** Get a single saved threat model with all threats. */
+export function apiGetThreatModel(threatModelId: string): Promise<ThreatModelFull> {
+  return apiFetch<ThreatModelFull>(`/api/threat-models/${threatModelId}`);
+}
+
+/** Delete a saved threat model. */
+export function apiDeleteThreatModel(threatModelId: string): Promise<void> {
+  return apiFetch<void>(`/api/threat-models/${threatModelId}`, { method: 'DELETE' });
+}
+
+/** Create a user-defined threat within an existing threat model. */
+export function apiCreateThreat(
+  threatModelId: string,
+  payload: ThreatItem & { mitigationNotes?: string },
+): Promise<SavedThreat> {
+  return apiFetch<SavedThreat>(`/api/threat-models/${threatModelId}/threats`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+/** Delete a single threat from a saved model. */
+export function apiDeleteThreat(threatModelId: string, threatId: string): Promise<void> {
+  return apiFetch<void>(`/api/threat-models/${threatModelId}/threats/${threatId}`, { method: 'DELETE' });
+}
+
+/** Update fields on a single threat. */
+export function apiUpdateThreat(
+  threatModelId: string,
+  threatId: string,
+  payload: Partial<{
+    title: string;
+    description: string;
+    targetLabel: string;
+    strideCategory: StrideCategory;
+    severity: ThreatSeverity;
+    status: ThreatStatus;
+    mitigationNotes: string;
+  }>,
+): Promise<SavedThreat> {
+  return apiFetch<SavedThreat>(`/api/threat-models/${threatModelId}/threats/${threatId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  });
+}
+
+export interface ThreatsDashboardResult {
+  data: ProjectThreat[];
+  total: number;
+  page: number;
+  limit: number;
+  summary: { totalActive: number; mitigated: number; critical: number; high: number };
+}
+
+/** List threats for the dashboard — paginated and filtered by the backend. */
+export function apiListProjectThreats(
+  projectId: string,
+  params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    severity?: ThreatSeverity;
+    status?: ThreatStatus;
+    strideCategory?: StrideCategory;
+  },
+): Promise<ThreatsDashboardResult> {
+  const qs = new URLSearchParams();
+  if (params?.page !== undefined) qs.set('page', String(params.page));
+  if (params?.limit !== undefined) qs.set('limit', String(params.limit));
+  if (params?.search) qs.set('search', params.search);
+  if (params?.severity) qs.set('severity', params.severity);
+  if (params?.status) qs.set('status', params.status);
+  if (params?.strideCategory) qs.set('strideCategory', params.strideCategory);
+  const query = qs.toString();
+  return apiFetch<ThreatsDashboardResult>(`/api/projects/${projectId}/threats${query ? `?${query}` : ''}`);
+}
+
+/** Download threat model PDF report — triggers browser file download. */
+export async function apiExportThreatReport(projectId: string): Promise<void> {
+  const res = await fetchWithRefresh(`${BASE_URL}/api/projects/${projectId}/threats/report`, {
+    method: 'GET',
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `threat-report-${new Date().toISOString().slice(0, 10)}.pdf`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
 /** Streaming evaluate — streams text chunks and saves both messages to chat history server-side. */
 export async function apiChatEvaluate(
   payload: {

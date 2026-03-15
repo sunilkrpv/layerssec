@@ -102,6 +102,7 @@ export default function PropertiesPanel({ node, onClose, onUpdate, onDelete }: P
   const Icon = palette?.icon;
   const isLine = LINE_NODE_TYPES.has(node.type as string);
   const isText = node.type === 'text';
+  const isTrustBoundary = node.type === 'trustboundary';
   const [rotateByInput, setRotateByInput] = useState('');
 
   return (
@@ -170,6 +171,28 @@ export default function PropertiesPanel({ node, onClose, onUpdate, onDelete }: P
             className="w-full resize-none rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 placeholder-slate-300 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 dark:placeholder-slate-500 dark:focus:ring-blue-900/30"
           />
         </div>
+
+        {/* Trust Level (trustboundary nodes only) */}
+        {isTrustBoundary && (
+          <div className="space-y-2 rounded-lg border border-red-100 bg-red-50/50 p-3 dark:border-red-900/40 dark:bg-red-900/10">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-red-400">Trust Level</p>
+            <select
+              value={node.data.trustLevel ?? 'internal'}
+              onChange={(e) =>
+                onUpdate(node.id, {
+                  trustLevel: e.target.value as 'internal' | 'dmz' | 'external' | 'internet' | 'custom',
+                })
+              }
+              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
+            >
+              <option value="internal">Internal</option>
+              <option value="dmz">DMZ</option>
+              <option value="external">External</option>
+              <option value="internet">Internet</option>
+              <option value="custom">Custom</option>
+            </select>
+          </div>
+        )}
 
         {/* Colors */}
         <div className="space-y-3 rounded-lg border border-slate-100 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900/40">

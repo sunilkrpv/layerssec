@@ -127,9 +127,9 @@ export default function Toolbar({
                 isSaving
                   ? 'Saving…'
                   : hasCloudProject
-                    ? 'Save to cloud now (⌘S)'
+                    ? 'Save to cloud now (⌘⇧S)'
                     : hasFileHandle
-                      ? 'Save to file now (⌘S)'
+                      ? 'Save to file now (⌘⇧S)'
                       : 'Open a project file or cloud project first'
               }
               className="flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium text-slate-600 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40 dark:text-slate-300 dark:hover:bg-slate-700"

@@ -19,6 +19,7 @@ import ReassignLayerModal from '@/components/ReassignLayerModal';
 import DeleteLayerModal from '@/components/DeleteLayerModal';
 import AssignLayerModal from '@/components/AssignLayerModal';
 import AIChatPanel from '@/components/AIChatPanel';
+import ThreatModelPanel, { type ThreatModelInfo } from '@/components/ThreatModelPanel';
 import { Lock, ArrowRight } from 'lucide-react';
 import FileLoadPrompt from '@/components/FileLoadPrompt';
 import StartupModal from '@/components/StartupModal';
@@ -28,12 +29,13 @@ import PublishModal from '@/components/PublishModal';
 import type { AssignableLayer } from '@/components/AssignLayerModal';
 
 import type { NodeData, NodeType, GenerateResponse } from '@/lib/types';
-import type { UserProfile, Project, ChatMessage } from '@/lib/api';
+import type { UserProfile, Project, ChatMessage, ThreatItem, ThreatModelFull } from '@/lib/api';
 import {
   apiUpdateDiagram, apiCreateDiagram, apiGenerateDiagram,
   apiPublishDiagram, apiListProjectVersions, apiGetProjectDraft,
   apiGetDiagram, apiGetProject, apiCheckoutVersion, DraftExistsError,
   apiChatGenerate, apiChatEvaluate, apiGetChatHistory,
+  apiRunThreatAnalysis, apiSaveThreatModel,
 } from '@/lib/api';
 import { getStoredUser, clearTokens, isLoggedIn, isLocalMode, clearLocalMode } from '@/lib/authStore';
 import {
@@ -131,6 +133,7 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
   const navStackRef = useRef(navStack);
   const fileHandleRef = useRef<FileSystemFileHandle | null>(null);
   const autoSaveRef = useRef(true); // mirrors autoSave state for use inside callbacks
+  const saveFileRef = useRef<() => Promise<void>>(() => Promise.resolve()); // set after handleSaveFile is declared
   useEffect(() => { layersRef.current = layers; }, [layers]);
   useEffect(() => { navStackRef.current = navStack; }, [navStack]);
   useEffect(() => { fileHandleRef.current = fileHandle; }, [fileHandle]);
@@ -236,6 +239,14 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
       } else if (e.key === 'i') {
         e.preventDefault();
         setShowChatPanel((v) => !v);
+      } else if (e.key === 'M' && e.shiftKey) {
+        // Cmd+Shift+M — Threat Model panel (Cmd+T and Cmd+Shift+T are browser-reserved for tab management)
+        e.preventDefault();
+        setShowThreatModelPanel((v) => !v);
+      } else if (e.key === 'S' && e.shiftKey) {
+        // Cmd+Shift+S — Save (Cmd+S triggers browser save dialog)
+        e.preventDefault();
+        saveFileRef.current();
       }
     };
     document.addEventListener('keydown', handleKeyDown);
@@ -270,6 +281,14 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
   const [showChatPanel, setShowChatPanel] = useState(false);
   // Chat history loaded from backend for cloud projects
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
+
+  // Threat Model panel — hidden by default; toggle with Cmd+T
+  const [showThreatModelPanel, setShowThreatModelPanel] = useState(false);
+  // Accumulated threats from AI analysis runs, keyed by layerId
+  const [threatPanelThreats, setThreatPanelThreats] = useState<ThreatItem[]>([]);
+  const [threatModelInfo, setThreatModelInfo] = useState<ThreatModelInfo | null>(null);
+  // When user clicks a canvas threat badge → highlights that node in ThreatModelPanel
+  const [canvasBadgeTargetId, setCanvasBadgeTargetId] = useState<string | null>(null);
 
   // Right-click context menu
   const [contextMenu, setContextMenu] = useState<{
@@ -660,6 +679,7 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
       setIsSaving(false);
     }
   }, [fileHandle, buildProjectSnapshot]);
+  useEffect(() => { saveFileRef.current = handleSaveFile; }, [handleSaveFile]);
 
   // ── Auth handlers ─────────────────────────────────────────────────────────
 
@@ -863,6 +883,111 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
     },
     [currentLayerId, layers, projectId],
   );
+
+  // ── STRIDE Threat Analysis ────────────────────────────────────────────────
+
+  const handleThreatAnalysis = useCallback(async (): Promise<ThreatItem[]> => {
+    const nodes = (rfInstanceRef.current as ReactFlowInstance | null)?.getNodes() ?? [];
+    const edges = (rfInstanceRef.current as ReactFlowInstance | null)?.getEdges() ?? [];
+    const layer = layers[currentLayerId];
+
+    // Split trust boundary nodes from regular nodes
+    const trustBoundaries = nodes
+      .filter((n) => n.type === 'trustboundary')
+      .map((n) => ({ id: n.id, label: n.data?.label ?? 'Trust Boundary', trustLevel: n.data?.trustLevel ?? 'custom' }));
+
+    const regularNodes = nodes
+      .filter((n) => n.type !== 'trustboundary')
+      .map((n) => ({
+        id: n.id,
+        type: n.type ?? 'unknown',
+        label: n.data?.label ?? n.id,
+        technology: n.data?.technology,
+        description: n.data?.description,
+        trustLevel: n.data?.trustLevel,
+      }));
+
+    const serializedEdges = edges.map((e) => ({
+      id: e.id,
+      source: e.source,
+      target: e.target,
+      label: typeof e.label === 'string' ? e.label : undefined,
+    }));
+
+    const diagramId = backendDiagramIdRef.current ?? 'local';
+    const result = await apiRunThreatAnalysis({
+      diagramId,
+      layerId: currentLayerId,
+      layerName: layer?.name ?? 'Diagram',
+      nodes: regularNodes,
+      edges: serializedEdges,
+      trustBoundaries,
+    });
+
+    // Merge new threats for this layer into the panel (replace any prior run for this layer)
+    setThreatPanelThreats((prev) => [
+      ...prev.filter((t) => t.layerId !== currentLayerId),
+      ...result.threats,
+    ]);
+    setThreatModelInfo({ name: 'Current Analysis', isSaved: false });
+    setShowThreatModelPanel(true);
+
+    return result.threats;
+  }, [currentLayerId, layers]);
+
+  const handleSaveThreatModel = useCallback(
+    async (name: string, threats: ThreatItem[]) => {
+      if (projectId === 'local' || !backendDiagramIdRef.current) {
+        throw new Error('Sign in to save threat models');
+      }
+      const nodes = (rfInstanceRef.current as ReactFlowInstance | null)?.getNodes() ?? [];
+      const edges = (rfInstanceRef.current as ReactFlowInstance | null)?.getEdges() ?? [];
+      const layer = layers[currentLayerId];
+      const snapshotData = { nodes, edges, layerName: layer?.name };
+
+      await apiSaveThreatModel(projectId, {
+        name,
+        diagramId: backendDiagramIdRef.current,
+        diagramVersion: 1,
+        snapshotData,
+        threats,
+      });
+    },
+    [currentLayerId, layers, projectId],
+  );
+
+  /** Save all current transient threats as a named model (called from ThreatModelPanel) */
+  const handleSaveThreatModelFromPanel = useCallback(
+    async (name: string) => {
+      if (projectId === 'local' || !backendDiagramIdRef.current) {
+        throw new Error('Sign in to save threat models');
+      }
+      const nodes = (rfInstanceRef.current as ReactFlowInstance | null)?.getNodes() ?? [];
+      const edges = (rfInstanceRef.current as ReactFlowInstance | null)?.getEdges() ?? [];
+      const snapshotData = { nodes, edges };
+      const saved = await apiSaveThreatModel(projectId, {
+        name,
+        diagramId: backendDiagramIdRef.current,
+        diagramVersion: 1,
+        snapshotData,
+        threats: threatPanelThreats,
+      });
+      setThreatPanelThreats(saved.threats);
+      setThreatModelInfo({ name, isSaved: true, threatModelId: saved.id });
+    },
+    [projectId, threatPanelThreats],
+  );
+
+  /** Load a saved threat model into the panel */
+  const handleLoadModelToPanel = useCallback((model: ThreatModelFull) => {
+    setThreatPanelThreats(model.threats);
+    setThreatModelInfo({ name: model.name, version: model.diagramVersion, isSaved: true, threatModelId: model.id });
+  }, []);
+
+  /** Highlight a node or edge on the canvas by targetId */
+  const handleHighlightThreatTarget = useCallback((targetId: string) => {
+    (rfInstanceRef.current as ExtendedRFInstance | null)?.highlightThreatTarget(targetId);
+  }, []);
 
   // ── Layer navigation ──────────────────────────────────────────────────────
 
@@ -1527,6 +1652,7 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
             layersVisible={showLayersPanel}
             onToggleLayers={() => setShowLayersPanel((v) => !v)}
             onShowAI={() => setShowChatPanel(true)}
+            onShowThreatModel={projectId !== 'local' && !!user ? () => setShowThreatModelPanel((v) => !v) : undefined}
             onShowAIHistory={() => {
               if (projectId !== 'local' && isLoggedIn()) {
                 router.push(`/projects/${projectId}/ai-history`);
@@ -1536,6 +1662,7 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
             onSignIn={() => setShowAuthModal(true)}
             onSignOut={handleSignOut}
             isCloudProject={!!backendDiagramId && projectId !== 'local'}
+            projectId={projectId !== 'local' ? projectId : undefined}
             isReadOnly={isReadOnly}
             onPublish={() => setShowPublishModal(true)}
           />
@@ -1630,8 +1757,12 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
 
           {/* ── Main content area ────────────────────────────────────────── */}
           <div className="flex flex-1 overflow-hidden">
-            {/* Components palette hidden in read-only (published) view */}
-            {!isReadOnly && <NodePalette onDragStart={onPaletteDragStart} onAddNode={handleAddNode} />}
+            {/* Components palette — collapses smoothly when Threat Model panel opens */}
+            {!isReadOnly && (
+              <div className={`overflow-hidden transition-[max-width] duration-300 ease-in-out flex-shrink-0 ${showThreatModelPanel ? 'max-w-0' : 'max-w-[240px]'}`}>
+                <NodePalette onDragStart={onPaletteDragStart} onAddNode={handleAddNode} />
+              </div>
+            )}
 
             <DiagramCanvas
               key={`${currentLayerId}_${canvasLoadKey}`}
@@ -1647,6 +1778,12 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
               onRequestEdit={startEditing}
               animateEdges={animateEdges}
               readOnly={isReadOnly}
+              threatOverlays={showThreatModelPanel ? threatPanelThreats.filter((t) => t.layerId === currentLayerId) : undefined}
+              activeThreatTargetId={canvasBadgeTargetId}
+              onThreatNodeClick={(targetId) => {
+                handleHighlightThreatTarget(targetId);
+                setCanvasBadgeTargetId(targetId);
+              }}
             />
 
             {/* ── Right sidebar ─────────────────────────────────────────── */}
@@ -1682,12 +1819,33 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
               </div>
             )}
 
+            {/* ── Threat Model panel — docked right, cloud projects only ──────── */}
+            {showThreatModelPanel && !!user && projectId !== 'local' && (
+              <ThreatModelPanel
+                currentLayerId={currentLayerId}
+                threats={threatPanelThreats}
+                modelInfo={threatModelInfo}
+                projectId={projectId}
+                onHighlightTarget={handleHighlightThreatTarget}
+                externalTargetId={canvasBadgeTargetId}
+                onExternalTargetConsumed={() => setCanvasBadgeTargetId(null)}
+                onOpenAIAssistant={() => { setShowChatPanel(true); setShowThreatModelPanel(false); }}
+                onSave={handleSaveThreatModelFromPanel}
+                onLoadModel={handleLoadModelToPanel}
+                onThreatsChanged={setThreatPanelThreats}
+                onClose={() => setShowThreatModelPanel(false)}
+              />
+            )}
+
             {/* ── AI chat panel — docked right, only when signed in ─────────── */}
             {showChatPanel && !!user && (
               <AIChatPanel
                 onGenerate={handleGenerate}
                 onGenerateNewLayer={handleGenerateNewLayer}
                 onEvaluate={handleEvaluate}
+                onThreatAnalysis={projectId !== 'local' ? handleThreatAnalysis : undefined}
+                onSaveThreatModel={projectId !== 'local' ? handleSaveThreatModel : undefined}
+                projectId={projectId !== 'local' ? projectId : undefined}
                 isLoading={isGenerating}
                 status={generatingStatus}
                 onClose={() => setShowChatPanel(false)}

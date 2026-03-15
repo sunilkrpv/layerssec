@@ -25,6 +25,7 @@ import {
   RectangleCircle,
   PackageOpen,
   Type,
+  ShieldAlert,
 } from 'lucide-react';
 import type { NodeType } from './types';
 
@@ -295,6 +296,18 @@ export const PALETTE_ITEMS: PaletteItem[] = [
     bgColor: 'bg-red-50',
     borderColor: 'border-red-300',
     group: 'c4',
+  },
+
+  // ── Security ─────────────────────────────────────────────────────────────
+  {
+    type: 'trustboundary',
+    label: 'Trust Boundary',
+    description: 'Security zone: internal, DMZ, external, or internet',
+    icon: ShieldAlert,
+    color: 'text-red-700',
+    bgColor: 'bg-red-50',
+    borderColor: 'border-red-300',
+    group: 'shape',
   },
 
   // ── Text ─────────────────────────────────────────────────────────────────

@@ -73,7 +73,7 @@ style={{ borderColor: data.borderColor || undefined, backgroundColor: data.fillC
 ## Features
 
 ### Canvas & Nodes
-- 21 node types: 12 cloud service nodes + 9 shape nodes (rectangle, circle, ellipse, line, arrowline, dottedline, actor, cylinder, triangle)
+- 22 node types: 12 cloud service nodes + 9 shape nodes (rectangle, circle, ellipse, line, arrowline, dottedline, actor, cylinder, triangle) + 1 threat modeling node (trustboundary)
 - Node colors: `borderColor`, `fillColor` (incl. transparent `∅`), `textColor`; 9-swatch picker in PropertiesPanel
 - Node rotation: drag `RotateHandle` to rotate; snaps to 5°; undo-aware (`pushHistoryNow` at drag start)
 - Inline label editing: type-to-edit when single node selected; `EditableLabel` + CanvasContext
@@ -89,12 +89,50 @@ style={{ borderColor: data.borderColor || undefined, backgroundColor: data.fillC
 - Live attachment sync: when attached node moves, line position/width update in real-time (`attachedSource`/`attachedTarget` in NodeData)
 - Snap-to-shape on drop: endpoints snap to nearest shape boundary within 40px
 
+### Trust Boundary Node (PRD 1)
+- Node type: `trustboundary` — `components/nodes/TrustBoundaryNode.tsx`
+- Shield icon, dashed border, semi-transparent fill; resizable container (NodeResizer)
+- `trustLevel` prop: `Internal` | `DMZ` | `External` | `Internet` — changes badge color and border tint
+- Trust level selectable via PropertiesPanel dropdown; stored in `NodeData`
+- Designed as the DFD foundation for STRIDE: every edge crossing trust boundaries is a high-priority threat surface
+
 ### Layer Navigation
 - Drill-down: right-click node → create/navigate child layer; `_childLayerId` links node to its layer
 - Layer bar breadcrumbs, rebuilt from URL on deep-link load
 - Layers manager modal: inline name/description edit, navigate button
 - `ChildLayerBadge` on nodes with drill-down layers
 - Assign/Reassign layer: right-click shape → assign orphaned or sibling-owned layer; 2-step confirm; `AssignableLayer` type
+
+### Secondary Page Top Bar Pattern
+All secondary pages (AI History, Threats Dashboard, etc.) **must** use this exact top bar pattern — do NOT use a sticky `div` with `max-w-7xl`:
+```tsx
+<div className="flex h-screen flex-col overflow-hidden bg-white dark:bg-gray-950">
+  <header className="flex h-9 flex-shrink-0 items-center border-b border-slate-200 bg-slate-50 px-3 dark:border-slate-700 dark:bg-slate-900">
+    {/* Logo */}
+    <div className="mr-4 flex items-center gap-1.5 pl-1">
+      <Layers size={14} className="text-blue-600" />
+      <span className="text-sm font-bold text-slate-800 dark:text-slate-100">Drafter</span>
+    </div>
+    {/* Back button */}
+    <button onClick={() => router.push(`/projects/${projectId}`)} className="flex items-center gap-1.5 rounded px-3 py-1 text-sm text-slate-700 hover:bg-slate-200 ...">
+      <ArrowLeft size={13} /> Back to diagram
+    </button>
+    <div className="mx-1 h-4 w-px bg-slate-200 dark:bg-slate-700" />
+    {/* Page context: icon + name */}
+    <div className="flex items-center gap-1.5">
+      <PageIcon size={12} className="text-accent-500" />
+      <span className="text-sm text-slate-600 dark:text-slate-300">{projectName} — Page Title</span>
+    </div>
+    {/* Right: action buttons | theme toggle | separator | user email + LogOut */}
+    <div className="ml-auto flex items-center gap-1"> ... </div>
+  </header>
+  {/* Scrollable content */}
+  <div className="flex-1 overflow-y-auto bg-slate-50 dark:bg-slate-900">
+    <div className="mx-auto max-w-7xl px-6 py-6"> ... </div>
+  </div>
+</div>
+```
+Key rules: `h-9` header, `bg-slate-50 dark:bg-slate-900` header bg, `h-4 w-px` separators, theme cycle button, user email + LogOut on right.
 
 ### AI Features
 - **Generation**: streaming Claude → nodes/edges via `/api/generate`
@@ -108,6 +146,15 @@ style={{ borderColor: data.borderColor || undefined, backgroundColor: data.fillC
   - Streaming: diagram JSON stripped from visible markdown live; `beforeunload` blocked while streaming
 - **`MiniDiagramPreview`**: shared read-only React Flow canvas (layer previews + chat bubbles)
 - **Contextual chat (RAG)**: AI History Page uses `apiContextualChatAsk` → `POST /api/ai/chat/contextual-ask`; backend gathers diagram info, nodes, versions + ChromaDB semantic memories before responding; `diagramId` (draft) passed from page state
+- **STRIDE Threat Modeling** (`/projects/:id/threats`):
+  - **PRD 1 — Trust Boundary Node**: `TrustBoundaryNode` — DFD trust zone container; trust level badge (Internal/DMZ/External/Internet); edges crossing boundaries auto-elevated to high severity in analysis
+  - **PRD 3 — STRIDE AI Analysis Engine**: "Run Threat Analysis" button in `AIChatPanel` → streams structured threat cards via `/api/ai/threat-analysis`; Claude applies STRIDE per node/edge type with tailored questions; transient results shown immediately; "Save Threat Model" + name input appears after stream completes
+  - **PRD 4 — Threat Overlay View Mode**: ⌘⇧M toggles `ThreatModelPanel` (docked right); `ThreatOverlay` adds React Flow `NodeToolbar` severity badges per node (count + color: red/yellow/green); bidirectional click highlighting between overlay badges and panel
+  - `ThreatModelPanel`: transient AI results → save → load saved models; AI/User source badge; inline Add Threat form; dismiss/delete per threat; `ThreatHistoryPanel` lists + expands saved models
+  - `ThreatsDashboardPage` (`/projects/:id/threats`): full-page table (pagination 20/page), search + filter by severity/status/STRIDE, inline status dropdown, dismiss/delete/view-in-diagram actions, Add Threat modal with model picker
+  - `ThreatResultCard`: AI/User source badge, severity + STRIDE badges, action buttons (edit/dismiss/delete)
+  - **PRD 8 — Report Export**: "Export Report" button in `ThreatsDashboardPage` with `exportingReport` loading state → calls `apiExportThreatReport(projectId)` → backend streams PDF → browser download triggered via blob URL; `lib/api.ts → apiExportThreatReport`
+  - Backend: `threat` module — `ThreatModel` (version-aware snapshot) + `Threat` (per node/edge); `IdentifiedBy` enum (AI/USER); PDF via `ReportService` (PDFKit, pure-JS, no Java)
 
 ### File & Project Management
 - File System Access API: open/save/save-as project JSON; fallback browser download
@@ -169,7 +216,13 @@ style={{ borderColor: data.borderColor || undefined, backgroundColor: data.fillC
 | `components/nodes/ChildLayerBadge.tsx` | Badge on nodes with child layers |
 | `components/nodes/RotateHandle.tsx` | Drag-to-rotate handle |
 | `components/nodes/LineEndpointHandle.tsx` | Draggable endpoint dots for line nodes |
-| `components/nodes/*.tsx` | 21 node types (12 cloud + 9 shape) |
+| `components/nodes/TrustBoundaryNode.tsx` | PRD 1 — Trust Boundary container node; `trustLevel` prop → badge color + border tint |
+| `components/nodes/*.tsx` | 22 node types (12 cloud + 9 shape + trustboundary) |
+| `components/ThreatModelPanel.tsx` | PRD 3/4 — docked right panel; transient AI threats → save; load history; ⌘⇧M toggle |
+| `components/ThreatHistoryPanel.tsx` | PRD 3 — list + expand saved threat models; delete |
+| `components/ThreatOverlay.tsx` | PRD 4 — NodeToolbar severity badges per node; bidirectional highlighting |
+| `components/ThreatResultCard.tsx` | PRD 3/4 — AI/User badge, severity + STRIDE badges, edit/dismiss/delete |
+| `components/ThreatsDashboardPage.tsx` | PRD 4/8 — full-page threats table; Export Report button with loading state |
 | `app/api/generate/route.ts` | Streaming Claude diagram generation |
 | `app/api/evaluate/route.ts` | Streaming Claude diagram evaluation |
 | `app/api/ai/chat/ask/route.ts` | Streaming Claude chat for AI History page |
