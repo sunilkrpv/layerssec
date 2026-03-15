@@ -77,7 +77,7 @@ export class LlmService {
    */
   async invoke(systemPrompt: string, userMessage: string): Promise<LlmResponse> {
 
-    this.logger.debug(`system-prompt — ${systemPrompt}`);
+    this.logger.debug(`system-prompt ${this.modelName} — ${systemPrompt}`);
     this.logger.debug(`user-message — ${userMessage}`);
     
     const response = await this.llm.invoke([

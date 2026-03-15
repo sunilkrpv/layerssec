@@ -10,6 +10,7 @@ import { ChatGenerateDto } from './dto/chat-generate.dto';
 import { ChatEvaluateDto } from './dto/chat-evaluate.dto';
 import { ChatAskDto } from './dto/chat-ask.dto';
 import { ContextualAskDto } from './dto/contextual-ask.dto';
+import { ThreatAnalysisDto } from './dto/threat-analysis.dto';
 
 @Controller('ai')
 @UseGuards(JwtAuthGuard)
@@ -52,6 +53,11 @@ export class AiController {
     @Res() res: Response,
   ) {
     return this.ai.chatAsk(userId, dto, res);
+  }
+
+  @Post('threat-analysis')
+  threatAnalysis(@CurrentUser('id') userId: string, @Body() dto: ThreatAnalysisDto) {
+    return this.ai.threatAnalysis(userId, dto);
   }
 
   @Post('chat/contextual-ask')
