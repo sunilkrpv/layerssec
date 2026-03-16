@@ -1,15 +1,17 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   ShieldCheck, ArrowLeft, Loader2, AlertCircle,
   Search, Filter, Bot, User, Trash2, ShieldOff,
   ExternalLink, Plus, Layers, Sun, Moon, Monitor, LogOut, X, FileText,
+  Sparkles, Clock,
 } from 'lucide-react';
 import {
   apiListProjectThreats, apiUpdateThreat, apiDeleteThreat,
   apiCreateThreat, apiListThreatModels, apiGetProject, apiExportThreatReport,
+  apiChatAsk,
   type ProjectThreat, type ThreatSeverity, type StrideCategory,
   type ThreatStatus, type ThreatModelSummary, type ThreatItem,
 } from '@/lib/api';
@@ -39,6 +41,37 @@ const STRIDE_LABEL: Record<StrideCategory, string> = {
 
 const STRIDE_OPTIONS = Object.keys(STRIDE_LABEL) as StrideCategory[];
 
+const STRIDE_FULL_LABEL: Record<StrideCategory, string> = {
+  SPOOFING:               'Spoofing',
+  TAMPERING:              'Tampering',
+  REPUDIATION:            'Repudiation',
+  INFORMATION_DISCLOSURE: 'Information Disclosure',
+  DENIAL_OF_SERVICE:      'Denial of Service',
+  ELEVATION_OF_PRIVILEGE: 'Elevation of Privilege',
+};
+
+const STRIDE_BADGE_CLS: Record<StrideCategory, string> = {
+  SPOOFING:               'text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-900/30 border-purple-200 dark:border-purple-700',
+  TAMPERING:              'text-orange-700 dark:text-orange-300 bg-orange-50 dark:bg-orange-900/30 border-orange-200 dark:border-orange-700',
+  REPUDIATION:            'text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30 border-blue-200 dark:border-blue-700',
+  INFORMATION_DISCLOSURE: 'text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-900/30 border-rose-200 dark:border-rose-700',
+  DENIAL_OF_SERVICE:      'text-yellow-700 dark:text-yellow-300 bg-yellow-50 dark:bg-yellow-900/30 border-yellow-200 dark:border-yellow-700',
+  ELEVATION_OF_PRIVILEGE: 'text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-900/30 border-red-200 dark:border-red-700',
+};
+
+// RGB values for heat map cell backgrounds (dynamic opacity)
+const SEVERITY_COLOR_RGB: Record<ThreatSeverity, string> = {
+  CRITICAL: '220, 38, 38',
+  HIGH:     '234, 88, 12',
+  MEDIUM:   '202, 138, 4',
+  LOW:      '22, 163, 74',
+  INFO:     '100, 116, 139',
+};
+
+const SEV_SHORT: Record<ThreatSeverity, string> = {
+  CRITICAL: 'CRIT', HIGH: 'HIGH', MEDIUM: 'MED', LOW: 'LOW', INFO: 'INFO',
+};
+
 const STATUS_BADGE: Record<ThreatStatus, { label: string; cls: string }> = {
   IDENTIFIED:    { label: 'Identified',    cls: 'text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-700 border-slate-300 dark:border-slate-600' },
   IN_PROGRESS:   { label: 'In Progress',   cls: 'text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30 border-blue-300 dark:border-blue-700' },
@@ -58,6 +91,511 @@ function formatDate(iso: string): string {
   if (diffDays === 1) return 'Yesterday';
   if (diffDays < 7) return `${diffDays}d ago`;
   return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+// ── STRIDE Risk Heat Map ──────────────────────────────────────────────────────
+
+interface HeatMapProps {
+  threats: ProjectThreat[];
+  activeStride: StrideCategory | 'ALL';
+  activeSeverity: ThreatSeverity | 'ALL';
+  onCellClick: (stride: StrideCategory, sev: ThreatSeverity) => void;
+}
+
+function StrideHeatMap({ threats, activeStride, activeSeverity, onCellClick }: HeatMapProps) {
+  const matrix = useMemo(() => {
+    const counts: Partial<Record<StrideCategory, Partial<Record<ThreatSeverity, number>>>> = {};
+    for (const t of threats) {
+      if (t.status === 'FALSE_POSITIVE') continue;
+      if (!counts[t.strideCategory]) counts[t.strideCategory] = {};
+      counts[t.strideCategory]![t.severity] = (counts[t.strideCategory]![t.severity] ?? 0) + 1;
+    }
+    return counts;
+  }, [threats]);
+
+  const maxCount = useMemo(() => {
+    let max = 1;
+    for (const s of STRIDE_OPTIONS)
+      for (const v of SEVERITY_OPTIONS) {
+        const c = matrix[s]?.[v] ?? 0;
+        if (c > max) max = c;
+      }
+    return max;
+  }, [matrix]);
+
+  const totalShown = useMemo(
+    () => threats.filter((t) => t.status !== 'FALSE_POSITIVE').length,
+    [threats],
+  );
+
+  return (
+    <div className="flex h-full flex-col rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800">
+      {/* Header */}
+      <div className="mb-3 flex items-center gap-2">
+        <ShieldCheck size={13} className="text-red-500 flex-shrink-0" />
+        <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">STRIDE Risk Matrix</span>
+        <span className="ml-auto text-[10px] text-slate-400 dark:text-slate-500">
+          {totalShown} active · click to filter
+        </span>
+      </div>
+
+      {/* Severity column headers */}
+      <div className="mb-1 grid grid-cols-[100px_repeat(5,1fr)] gap-1">
+        <div />
+        {SEVERITY_OPTIONS.map((sev) => (
+          <div key={sev} className={`text-center text-[10px] font-bold uppercase tracking-wide ${
+            sev === 'CRITICAL' ? 'text-red-600 dark:text-red-400' :
+            sev === 'HIGH'     ? 'text-orange-500 dark:text-orange-400' :
+            sev === 'MEDIUM'   ? 'text-yellow-600 dark:text-yellow-400' :
+            sev === 'LOW'      ? 'text-green-600 dark:text-green-400' :
+                                 'text-slate-500 dark:text-slate-400'
+          }`}>
+            {SEV_SHORT[sev]}
+          </div>
+        ))}
+      </div>
+
+      {/* STRIDE rows */}
+      <div className="flex flex-col gap-1">
+        {STRIDE_OPTIONS.map((stride) => (
+          <div key={stride} className="grid grid-cols-[100px_repeat(5,1fr)] gap-1 items-center">
+            {/* Row label */}
+            <div className="truncate pr-1 text-[11px] font-medium text-slate-600 dark:text-slate-400">
+              {STRIDE_LABEL[stride]}
+            </div>
+            {/* Cells */}
+            {SEVERITY_OPTIONS.map((sev) => {
+              const count = matrix[stride]?.[sev] ?? 0;
+              const isActive = activeStride === stride && activeSeverity === sev;
+              const opacity = count === 0 ? 0 : Math.min(0.12 + (count / maxCount) * 0.78, 0.9);
+              const textDark = opacity > 0.45;
+              return (
+                <button
+                  key={sev}
+                  disabled={count === 0}
+                  onClick={() => onCellClick(stride, sev)}
+                  title={count > 0 ? `${count} ${STRIDE_LABEL[stride]} / ${sev}` : undefined}
+                  style={count > 0 ? { backgroundColor: `rgba(${SEVERITY_COLOR_RGB[sev]}, ${opacity})` } : undefined}
+                  className={`flex h-8 items-center justify-center rounded text-xs font-bold tabular-nums transition-all ${
+                    count === 0
+                      ? 'cursor-default border border-dashed border-slate-200 text-slate-300 dark:border-slate-700 dark:text-slate-700'
+                      : isActive
+                        ? 'cursor-pointer shadow ring-2 ring-inset ring-slate-700 dark:ring-slate-200'
+                        : 'cursor-pointer hover:ring-2 hover:ring-inset hover:ring-slate-400 hover:shadow'
+                  }`}
+                >
+                  {count > 0
+                    ? <span className={textDark ? 'text-white' : 'text-slate-800 dark:text-slate-200'}>{count}</span>
+                    : <span>—</span>}
+                </button>
+              );
+            })}
+          </div>
+        ))}
+      </div>
+
+      {/* Active filter hint */}
+      {(activeStride !== 'ALL' || activeSeverity !== 'ALL') && (
+        <p className="mt-3 text-center text-[10px] text-indigo-500 dark:text-indigo-400">
+          Filtering: {activeSeverity !== 'ALL' ? activeSeverity : 'all'} × {activeStride !== 'ALL' ? STRIDE_LABEL[activeStride] : 'all STRIDE'}
+          {' · '}
+          <button
+            onClick={() => { onCellClick(activeStride as StrideCategory, activeSeverity as ThreatSeverity); }}
+            className="underline hover:no-underline"
+          >
+            clear
+          </button>
+        </p>
+      )}
+    </div>
+  );
+}
+
+// ── Threat Detail Sidesheet ───────────────────────────────────────────────────
+
+interface ThreatDetailSheetProps {
+  threat: ProjectThreat;
+  projectId: string;
+  showAcceptanceWarning?: boolean;
+  onClose: () => void;
+  onUpdate: (updated: ProjectThreat) => void;
+  onDelete: (id: string) => void;
+}
+
+function ThreatDetailSidesheet({ threat, projectId, showAcceptanceWarning, onClose, onUpdate, onDelete }: ThreatDetailSheetProps) {
+  const [pendingNotes, setPendingNotes] = useState(threat.mitigationNotes ?? '');
+  const [savingField, setSavingField] = useState<string | null>(null);
+  const [notesSaved, setNotesSaved] = useState(false);
+  const [acceptanceError, setAcceptanceError] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [aiText, setAiText] = useState('');
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState('');
+  const aiAbortRef = useRef(false);
+  const notesRef = useRef<HTMLTextAreaElement>(null);
+
+  // Sync when a different row is selected
+  useEffect(() => {
+    setPendingNotes(threat.mitigationNotes ?? '');
+    setAiText('');
+    setAiError('');
+    setAcceptanceError(false);
+    setConfirmDelete(false);
+    setNotesSaved(false);
+    aiAbortRef.current = true;
+    setTimeout(() => { aiAbortRef.current = false; }, 50);
+  }, [threat.id]);
+
+  // When opened via acceptance gate, focus + scroll to notes textarea
+  useEffect(() => {
+    if (showAcceptanceWarning) {
+      setAcceptanceError(true);
+      setTimeout(() => {
+        notesRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        notesRef.current?.focus();
+      }, 100);
+    }
+  }, [showAcceptanceWarning, threat.id]);
+
+  const notesDirty = pendingNotes !== (threat.mitigationNotes ?? '');
+
+  const handleStatusChange = async (newStatus: ThreatStatus) => {
+    if (threat.status === newStatus || savingField) return;
+    // Feature 3: hard block ACCEPTED without notes
+    if (newStatus === 'ACCEPTED' && !pendingNotes.trim()) {
+      setAcceptanceError(true);
+      notesRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      notesRef.current?.focus();
+      return;
+    }
+    setSavingField('status');
+    try {
+      const updated = await apiUpdateThreat(threat.threatModel.id, threat.id, { status: newStatus });
+      onUpdate({ ...threat, ...updated });
+      if (newStatus !== 'ACCEPTED') setAcceptanceError(false);
+    } finally {
+      setSavingField(null);
+    }
+  };
+
+  const handleSeverityChange = async (newSeverity: ThreatSeverity) => {
+    if (threat.severity === newSeverity || savingField) return;
+    setSavingField('severity');
+    try {
+      const updated = await apiUpdateThreat(threat.threatModel.id, threat.id, { severity: newSeverity });
+      onUpdate({ ...threat, ...updated });
+    } finally {
+      setSavingField(null);
+    }
+  };
+
+  const handleSaveNotes = async () => {
+    setSavingField('notes');
+    try {
+      const updated = await apiUpdateThreat(threat.threatModel.id, threat.id, { mitigationNotes: pendingNotes });
+      onUpdate({ ...threat, ...updated });
+      setNotesSaved(true);
+      setTimeout(() => setNotesSaved(false), 2000);
+    } finally {
+      setSavingField(null);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!confirmDelete) { setConfirmDelete(true); return; }
+    setDeleting(true);
+    try {
+      await apiDeleteThreat(threat.threatModel.id, threat.id);
+      onDelete(threat.id);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const handleGetAiAdvice = async () => {
+    setAiText('');
+    setAiError('');
+    setAiLoading(true);
+    aiAbortRef.current = false;
+    try {
+      await apiChatAsk(
+        {
+          message: `You are a security expert reviewing identified threats for a software system.
+
+Provide specific, actionable mitigation recommendations for this threat:
+
+**Title**: ${threat.title}
+**STRIDE Category**: ${STRIDE_FULL_LABEL[threat.strideCategory]}
+**Target Component**: ${threat.targetLabel}
+**Severity**: ${threat.severity}
+**Description**: ${threat.description}
+
+Provide:
+1. Concrete implementation controls (specific code patterns, libraries, or configuration steps)
+2. How to verify the mitigation is effective
+3. Relevant security standard controls this satisfies (e.g., OWASP, ISO 27001 A-controls, SOC2 CC)
+
+Be concise and developer-actionable. Avoid generic advice.`,
+          projectId,
+        },
+        (chunk) => {
+          if (!aiAbortRef.current) setAiText((prev) => prev + chunk);
+        },
+      );
+    } catch (e) {
+      if (!aiAbortRef.current) setAiError((e as Error).message || 'Failed to get AI advice');
+    } finally {
+      if (!aiAbortRef.current) setAiLoading(false);
+    }
+  };
+
+  const isDismissed = threat.status === 'FALSE_POSITIVE';
+  const ageInDays = Math.floor((Date.now() - new Date(threat.createdAt).getTime()) / 86_400_000);
+  const isStale = threat.status === 'IDENTIFIED' && ageInDays > 0;
+
+  return (
+    <div className="fixed right-0 top-9 bottom-0 z-40 flex w-[440px] flex-col border-l border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900 transition-transform">
+      {/* Header */}
+      <div className="flex h-14 flex-shrink-0 items-center gap-3 border-b border-slate-200 px-4 dark:border-slate-700">
+        <div className="flex min-w-0 flex-1 flex-col gap-1">
+          <span className="truncate text-sm font-semibold leading-tight text-slate-900 dark:text-slate-100">{threat.title}</span>
+          <div className="flex items-center gap-1.5">
+            <span className={`inline-flex items-center rounded border px-1.5 py-0 text-[10px] font-bold uppercase tracking-wide ${SEVERITY_BADGE[threat.severity]}`}>
+              {threat.severity}
+            </span>
+            <span className={`inline-flex items-center rounded border px-1.5 py-0 text-[10px] font-medium ${STRIDE_BADGE_CLS[threat.strideCategory]}`}>
+              {STRIDE_FULL_LABEL[threat.strideCategory]}
+            </span>
+          </div>
+        </div>
+        <button
+          onClick={onClose}
+          className="flex-shrink-0 rounded-lg p-1 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+        >
+          <X size={15} />
+        </button>
+      </div>
+
+      {/* Scrollable body */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="space-y-5 p-4">
+
+          {/* Target + meta chips */}
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            <span className="font-medium text-slate-700 dark:text-slate-300">{threat.targetLabel}</span>
+            <span className="text-slate-300 dark:text-slate-600">·</span>
+            <span className={`inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] font-medium ${
+              threat.identifiedBy === 'AI'
+                ? 'text-indigo-600 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-900/40 border-indigo-200 dark:border-indigo-700'
+                : 'text-teal-600 dark:text-teal-300 bg-teal-50 dark:bg-teal-900/40 border-teal-200 dark:border-teal-700'
+            }`}>
+              {threat.identifiedBy === 'AI' ? <Bot size={9} /> : <User size={9} />}
+              {threat.identifiedBy === 'AI' ? 'AI' : 'User'}
+            </span>
+            {isStale && (
+              <span className={`inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] font-medium ${
+                ageInDays > 30
+                  ? 'text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-700'
+                  : ageInDays > 14
+                    ? 'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-700'
+                    : 'text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-600'
+              }`} title={`Open for ${ageInDays} days`}>
+                <Clock size={9} />
+                {ageInDays}d open
+              </span>
+            )}
+          </div>
+
+          {/* Description */}
+          <div>
+            <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">Description</p>
+            <p className="text-sm leading-relaxed text-slate-700 dark:text-slate-300">{threat.description}</p>
+          </div>
+
+          {/* Status */}
+          <div>
+            <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">Status</p>
+            <div className="flex flex-wrap gap-1.5">
+              {STATUS_OPTIONS.map((s) => (
+                <button
+                  key={s}
+                  disabled={!!savingField}
+                  onClick={() => handleStatusChange(s)}
+                  className={`rounded-md border px-2.5 py-1 text-xs font-medium transition-all ${
+                    threat.status === s
+                      ? STATUS_BADGE[s].cls + ' ring-1 ring-inset ring-current/40'
+                      : 'border-slate-200 dark:border-slate-600 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/50'
+                  } disabled:cursor-not-allowed disabled:opacity-60`}
+                >
+                  {savingField === 'status' && threat.status === s
+                    ? <Loader2 size={11} className="animate-spin inline mr-1" />
+                    : null}
+                  {STATUS_BADGE[s].label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Severity */}
+          <div>
+            <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">Severity</p>
+            <div className="flex flex-wrap gap-1.5">
+              {SEVERITY_OPTIONS.map((s) => (
+                <button
+                  key={s}
+                  disabled={!!savingField}
+                  onClick={() => handleSeverityChange(s)}
+                  className={`rounded-md border px-2.5 py-1 text-xs font-bold uppercase tracking-wide transition-all ${
+                    threat.severity === s
+                      ? SEVERITY_BADGE[s] + ' ring-1 ring-inset ring-current/40'
+                      : 'border-slate-200 dark:border-slate-600 text-slate-400 dark:text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-700/50'
+                  } disabled:cursor-not-allowed disabled:opacity-60`}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Mitigation Notes */}
+          <div>
+            <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">Mitigation Notes</p>
+            {acceptanceError && (
+              <div className="mb-2 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 dark:border-amber-700/50 dark:bg-amber-900/20">
+                <AlertCircle size={13} className="mt-0.5 flex-shrink-0 text-amber-600 dark:text-amber-400" />
+                <p className="text-xs text-amber-700 dark:text-amber-300">
+                  <span className="font-semibold">Acceptance rationale required.</span> Document why this risk is accepted before changing status to Accepted.
+                </p>
+              </div>
+            )}
+            <textarea
+              ref={notesRef}
+              value={pendingNotes}
+              onChange={(e) => { setPendingNotes(e.target.value); setNotesSaved(false); if (e.target.value.trim()) setAcceptanceError(false); }}
+              placeholder="Document your mitigation plan, code changes made, or acceptance rationale…"
+              rows={4}
+              className={`w-full resize-none rounded-lg border px-3 py-2 text-sm text-slate-900 outline-none placeholder-slate-400 focus:ring-1 dark:text-slate-100 dark:placeholder-slate-500 ${
+                acceptanceError
+                  ? 'border-amber-400 bg-amber-50/30 focus:border-amber-400 focus:ring-amber-300/30 dark:border-amber-600 dark:bg-amber-900/10'
+                  : 'border-slate-200 bg-slate-50 focus:border-red-400/50 focus:ring-red-400/30 dark:border-slate-600 dark:bg-slate-800'
+              }`}
+            />
+            {notesDirty && (
+              <div className="mt-1.5 flex items-center justify-end gap-2">
+                <button
+                  onClick={() => setPendingNotes(threat.mitigationNotes ?? '')}
+                  className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+                >
+                  Discard
+                </button>
+                <button
+                  onClick={handleSaveNotes}
+                  disabled={savingField === 'notes'}
+                  className="flex items-center gap-1 rounded-lg bg-slate-800 dark:bg-slate-100 px-3 py-1 text-xs font-medium text-white dark:text-slate-900 hover:bg-slate-700 dark:hover:bg-white transition disabled:opacity-50"
+                >
+                  {savingField === 'notes' ? <Loader2 size={11} className="animate-spin" /> : null}
+                  Save Notes
+                </button>
+              </div>
+            )}
+            {notesSaved && !notesDirty && (
+              <p className="mt-1 text-right text-xs text-green-600 dark:text-green-400">Saved</p>
+            )}
+          </div>
+
+          {/* AI Mitigation Advice */}
+          <div className="rounded-xl border border-indigo-100 dark:border-indigo-800/40 bg-indigo-50/50 dark:bg-indigo-950/30 p-3.5">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-1.5">
+                <Sparkles size={13} className="text-indigo-500" />
+                <p className="text-xs font-semibold text-indigo-700 dark:text-indigo-300">AI Mitigation Advice</p>
+              </div>
+              {aiLoading ? (
+                <span className="flex items-center gap-1 text-[11px] text-indigo-500">
+                  <Loader2 size={11} className="animate-spin" /> Generating…
+                </span>
+              ) : (
+                <button
+                  onClick={handleGetAiAdvice}
+                  className="flex items-center gap-1 rounded-md bg-indigo-600 px-2.5 py-1 text-[11px] font-medium text-white hover:bg-indigo-500 transition"
+                >
+                  <Sparkles size={10} />
+                  {aiText ? 'Regenerate' : 'Get advice'}
+                </button>
+              )}
+            </div>
+            {!aiText && !aiLoading && !aiError && (
+              <p className="text-xs text-indigo-400/80 dark:text-indigo-500/70">
+                Ask AI for code-level mitigations, security patterns, and compliance controls for this specific threat.
+              </p>
+            )}
+            {aiError && <p className="text-xs text-red-600 dark:text-red-400">{aiError}</p>}
+            {aiText && (
+              <div className="mt-1 text-xs leading-relaxed text-slate-700 dark:text-slate-300 whitespace-pre-wrap">
+                {aiText}
+              </div>
+            )}
+          </div>
+
+          {/* Metadata */}
+          <div className="rounded-lg border border-slate-100 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-800/40 p-3 space-y-2 text-xs text-slate-500 dark:text-slate-400">
+            <div className="flex items-center justify-between">
+              <span>Model</span>
+              <span className="font-medium text-slate-700 dark:text-slate-300 truncate max-w-[220px] text-right">
+                {threat.threatModel.name} · v{threat.threatModel.diagramVersion}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span>Layer</span>
+              <a
+                href={`/projects/${projectId}?currLayer=${threat.layerId}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="font-mono text-[10px] text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1"
+              >
+                {threat.layerId.slice(-8)} <ExternalLink size={9} />
+              </a>
+            </div>
+            <div className="flex items-center justify-between">
+              <span>Identified</span>
+              <span>{formatDate(threat.createdAt)}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span>Last updated</span>
+              <span>{formatDate(threat.updatedAt)}</span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      {/* Footer actions */}
+      <div className="flex flex-shrink-0 items-center justify-between border-t border-slate-200 px-4 py-3 dark:border-slate-700">
+        <button
+          onClick={handleDelete}
+          disabled={deleting}
+          className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition ${
+            confirmDelete
+              ? 'bg-red-600 text-white hover:bg-red-500'
+              : 'text-slate-500 hover:bg-red-50 hover:text-red-600 dark:text-slate-400 dark:hover:bg-red-900/20 dark:hover:text-red-400'
+          } disabled:opacity-50`}
+        >
+          {deleting ? <Loader2 size={11} className="animate-spin" /> : <Trash2 size={11} />}
+          {confirmDelete ? 'Confirm Delete' : 'Delete'}
+        </button>
+        <button
+          onClick={() => handleStatusChange(isDismissed ? 'IDENTIFIED' : 'FALSE_POSITIVE')}
+          disabled={!!savingField}
+          className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-slate-500 hover:bg-amber-50 hover:text-amber-600 dark:text-slate-400 dark:hover:bg-amber-900/20 dark:hover:text-amber-400 transition disabled:opacity-50"
+        >
+          <ShieldOff size={11} />
+          {isDismissed ? 'Re-open' : 'Dismiss as False Positive'}
+        </button>
+      </div>
+    </div>
+  );
 }
 
 // ── Add Threat Modal ──────────────────────────────────────────────────────────
@@ -245,6 +783,9 @@ export default function ThreatsDashboardPage({ projectId }: Props) {
   const [page, setPage] = useState(0);
   const [showAddModal, setShowAddModal] = useState(false);
   const [exportingReport, setExportingReport] = useState(false);
+  const [selectedThreat, setSelectedThreat] = useState<ProjectThreat | null>(null);
+  const [heatMapThreats, setHeatMapThreats] = useState<ProjectThreat[]>([]);
+  const [acceptanceRequiredId, setAcceptanceRequiredId] = useState<string | null>(null);
 
   // Debounce search input by 400ms
   useEffect(() => {
@@ -260,6 +801,13 @@ export default function ThreatsDashboardPage({ projectId }: Props) {
     Promise.all([apiListThreatModels(projectId), apiGetProject(projectId)])
       .then(([m, p]) => { setThreatModels(m); setProjectName(p.name); })
       .catch((e) => setError(e.message || 'Failed to load project'));
+  }, [projectId]);
+
+  // Fetch all threats once for the heat map (unfiltered, unpaginated)
+  useEffect(() => {
+    apiListProjectThreats(projectId, { limit: 1000 })
+      .then((r) => setHeatMapThreats(r.data))
+      .catch(() => {});
   }, [projectId]);
 
   // Fetch threats from backend whenever page or filters change
@@ -284,14 +832,22 @@ export default function ThreatsDashboardPage({ projectId }: Props) {
   const totalPages = Math.ceil(total / PAGE_LIMIT);
 
   const handleStatusChange = async (t: ProjectThreat, newStatus: ThreatStatus) => {
+    // Feature 3: hard block ACCEPTED without mitigation notes
+    if (newStatus === 'ACCEPTED' && !t.mitigationNotes?.trim()) {
+      setSelectedThreat(t);
+      setAcceptanceRequiredId(t.id);
+      return;
+    }
     setUpdatingId(t.id);
     try {
       await apiUpdateThreat(t.threatModel.id, t.id, { status: newStatus });
-      // Re-fetch current page so filters stay consistent
+      const patch = { ...t, status: newStatus };
       setResult((prev) => prev
-        ? { ...prev, data: prev.data.map((x) => x.id === t.id ? { ...x, status: newStatus } : x) }
+        ? { ...prev, data: prev.data.map((x) => x.id === t.id ? patch : x) }
         : prev,
       );
+      setSelectedThreat((prev) => prev?.id === t.id ? patch : prev);
+      setHeatMapThreats((prev) => prev.map((x) => x.id === t.id ? patch : x));
     } finally {
       setUpdatingId(null);
     }
@@ -310,8 +866,38 @@ export default function ThreatsDashboardPage({ projectId }: Props) {
         ? { ...prev, data: prev.data.filter((x) => x.id !== t.id), total: prev.total - 1 }
         : prev,
       );
+      setSelectedThreat((prev) => prev?.id === t.id ? null : prev);
+      setHeatMapThreats((prev) => prev.filter((x) => x.id !== t.id));
     } finally {
       setUpdatingId(null);
+    }
+  };
+
+  const handleSidesheetUpdate = (updated: ProjectThreat) => {
+    setResult((prev) => prev
+      ? { ...prev, data: prev.data.map((x) => x.id === updated.id ? updated : x) }
+      : prev,
+    );
+    setSelectedThreat(updated);
+    setHeatMapThreats((prev) => prev.map((x) => x.id === updated.id ? updated : x));
+  };
+
+  const handleSidesheetDelete = (id: string) => {
+    setResult((prev) => prev
+      ? { ...prev, data: prev.data.filter((x) => x.id !== id), total: prev.total - 1 }
+      : prev,
+    );
+    setSelectedThreat(null);
+    setHeatMapThreats((prev) => prev.filter((x) => x.id !== id));
+  };
+
+  const handleHeatMapCellClick = (stride: StrideCategory, sev: ThreatSeverity) => {
+    if (filterStride === stride && filterSeverity === sev) {
+      setFilterStride('ALL');
+      setFilterSeverity('ALL');
+    } else {
+      setFilterStride(stride);
+      setFilterSeverity(sev);
     }
   };
 
@@ -422,6 +1008,14 @@ export default function ThreatsDashboardPage({ projectId }: Props) {
             ))}
           </div>
 
+          {/* STRIDE Risk Matrix — full width */}
+          <StrideHeatMap
+            threats={heatMapThreats}
+            activeStride={filterStride}
+            activeSeverity={filterSeverity}
+            onCellClick={handleHeatMapCellClick}
+          />
+
           {/* Filters */}
           <div className="flex flex-wrap items-center gap-2">
             <div className="relative flex-1 min-w-[180px]">
@@ -471,7 +1065,8 @@ export default function ThreatsDashboardPage({ projectId }: Props) {
             </span>
           </div>
 
-          {/* Table / states */}
+          {/* Threats Table — full width */}
+          <div className="space-y-4">
           {loading ? (
             <div className="flex items-center justify-center py-24">
               <Loader2 size={24} className="animate-spin text-slate-400" />
@@ -520,14 +1115,25 @@ export default function ThreatsDashboardPage({ projectId }: Props) {
                     {threats.map((t) => {
                       const statusInfo = STATUS_BADGE[t.status];
                       const isDismissed = t.status === 'FALSE_POSITIVE';
+                      const isSelected = selectedThreat?.id === t.id;
                       return (
                         <tr
                           key={t.id}
-                          className={`group transition-colors hover:bg-slate-50 dark:hover:bg-slate-700/30 ${isDismissed ? 'opacity-50' : ''}`}
+                          onClick={() => setSelectedThreat(isSelected ? null : t)}
+                          className={`group cursor-pointer transition-colors ${
+                            isSelected
+                              ? 'bg-indigo-50 dark:bg-indigo-900/20'
+                              : 'hover:bg-slate-50 dark:hover:bg-slate-700/30'
+                          } ${isDismissed ? 'opacity-50' : ''}`}
                         >
-                          <td className="px-4 py-3 max-w-[220px]">
-                            <p className="font-medium text-slate-900 dark:text-slate-100 truncate">{t.title}</p>
-                            <p className="text-xs text-slate-400 dark:text-slate-500 truncate mt-0.5">{t.description}</p>
+                          <td className="max-w-[220px] py-3 pl-3 pr-4">
+                            <div className="flex items-start gap-2">
+                              <div className={`mt-1 h-3.5 w-0.5 flex-shrink-0 rounded-full transition-colors ${isSelected ? 'bg-indigo-500' : 'bg-transparent group-hover:bg-slate-300 dark:group-hover:bg-slate-600'}`} />
+                              <div className="min-w-0">
+                                <p className="font-medium text-slate-900 dark:text-slate-100 truncate">{t.title}</p>
+                                <p className="text-xs text-slate-400 dark:text-slate-500 truncate mt-0.5">{t.description}</p>
+                              </div>
+                            </div>
                           </td>
                           <td className="px-4 py-3 hidden sm:table-cell">
                             <span className="text-slate-600 dark:text-slate-300 text-xs">{t.targetLabel}</span>
@@ -540,7 +1146,7 @@ export default function ThreatsDashboardPage({ projectId }: Props) {
                           <td className="px-4 py-3 hidden md:table-cell">
                             <span className="text-xs text-slate-500 dark:text-slate-400">{STRIDE_LABEL[t.strideCategory]}</span>
                           </td>
-                          <td className="px-4 py-3">
+                          <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                             {updatingId === t.id ? (
                               <Loader2 size={14} className="animate-spin text-slate-400" />
                             ) : (
@@ -583,7 +1189,7 @@ export default function ThreatsDashboardPage({ projectId }: Props) {
                               {t.identifiedBy === 'AI' ? 'AI' : 'User'}
                             </span>
                           </td>
-                          <td className="px-3 py-3">
+                          <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
                             <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                               <button
                                 onClick={() => handleDismiss(t)}
@@ -653,6 +1259,7 @@ export default function ThreatsDashboardPage({ projectId }: Props) {
               )}
             </>
           )}
+          </div>{/* end threats table */}
         </div>
       </div>
 
@@ -662,10 +1269,20 @@ export default function ThreatsDashboardPage({ projectId }: Props) {
           models={threatModels}
           onClose={() => setShowAddModal(false)}
           onCreated={() => {
-            // Re-fetch page 0 to show the new threat
             setPage(0);
             setShowAddModal(false);
           }}
+        />
+      )}
+
+      {selectedThreat && (
+        <ThreatDetailSidesheet
+          threat={selectedThreat}
+          projectId={projectId}
+          showAcceptanceWarning={acceptanceRequiredId === selectedThreat.id}
+          onClose={() => { setSelectedThreat(null); setAcceptanceRequiredId(null); }}
+          onUpdate={handleSidesheetUpdate}
+          onDelete={handleSidesheetDelete}
         />
       )}
     </div>

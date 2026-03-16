@@ -1651,18 +1651,10 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
             onOpenDiff={() => router.push('/diff')}
             layersVisible={showLayersPanel}
             onToggleLayers={() => setShowLayersPanel((v) => !v)}
-            onShowAI={() => setShowChatPanel(true)}
-            onShowThreatModel={projectId !== 'local' && !!user ? () => setShowThreatModelPanel((v) => !v) : undefined}
-            onShowAIHistory={() => {
-              if (projectId !== 'local' && isLoggedIn()) {
-                router.push(`/projects/${projectId}/ai-history`);
-              }
-            }}
             userEmail={user?.email ?? null}
             onSignIn={() => setShowAuthModal(true)}
             onSignOut={handleSignOut}
             isCloudProject={!!backendDiagramId && projectId !== 'local'}
-            projectId={projectId !== 'local' ? projectId : undefined}
             isReadOnly={isReadOnly}
             onPublish={() => setShowPublishModal(true)}
           />
@@ -1683,6 +1675,13 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
             onCopy={() => rfInstanceRef.current?.doCopy()}
             onPaste={() => rfInstanceRef.current?.doPaste()}
             isReadOnly={isReadOnly}
+            onOpenThreatModel={projectId !== 'local' && !!user ? () => setShowThreatModelPanel((v) => !v) : undefined}
+            onOpenThreatDashboard={projectId !== 'local' ? () => router.push(`/projects/${projectId}/threats`) : undefined}
+            onShowAI={() => setShowChatPanel(true)}
+            onShowAIHistory={projectId !== 'local' && isLoggedIn() ? () => router.push(`/projects/${projectId}/ai-history`) : undefined}
+            isCloudProject={!!backendDiagramId && projectId !== 'local'}
+            onPublish={() => setShowPublishModal(true)}
+            onOpenDiff={() => router.push('/diff')}
           />
 
           {/* ── Layer breadcrumb bar ─────────────────────────────────────── */}
@@ -1760,7 +1759,12 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
             {/* Components palette — collapses smoothly when Threat Model panel opens */}
             {!isReadOnly && (
               <div className={`overflow-hidden transition-[max-width] duration-300 ease-in-out flex-shrink-0 ${showThreatModelPanel ? 'max-w-0' : 'max-w-[240px]'}`}>
-                <NodePalette onDragStart={onPaletteDragStart} onAddNode={handleAddNode} />
+                <NodePalette
+                  onDragStart={onPaletteDragStart}
+                  onAddNode={handleAddNode}
+                  onOpenThreatModel={projectId !== 'local' && !!user ? () => setShowThreatModelPanel((v) => !v) : undefined}
+                  onOpenThreatDashboard={projectId !== 'local' ? () => router.push(`/projects/${projectId}/threats`) : undefined}
+                />
               </div>
             )}
 

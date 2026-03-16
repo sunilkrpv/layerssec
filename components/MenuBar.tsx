@@ -1,8 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { Share2, Minus, Sparkles, LogIn, LogOut, User, Sun, Moon, Monitor, Lock, Layers2, Layers, History, ShieldCheck } from 'lucide-react';
+import { Minus, LogIn, LogOut, User, Sun, Moon, Monitor, Lock, Layers } from 'lucide-react';
 import { useTheme } from '@/lib/themeContext';
 import type { Theme } from '@/lib/themeStore';
 
@@ -19,17 +18,12 @@ interface MenuBarProps {
   onOpenDiff: () => void;
   layersVisible: boolean;
   onToggleLayers: () => void;
-  onShowAI: () => void;
-  onShowAIHistory?: () => void;
-  onShowThreatModel?: () => void;
   /** Logged-in user email; null/undefined = not logged in */
   userEmail?: string | null;
   onSignIn?: () => void;
   onSignOut?: () => void;
   /** Whether a cloud project (not local) is currently open */
   isCloudProject?: boolean;
-  /** Current cloud project ID (for threats dashboard link) */
-  projectId?: string;
   /** Whether the currently open diagram is read-only (published) */
   isReadOnly?: boolean;
   /** Called when user clicks Publish… */
@@ -139,18 +133,13 @@ export default function MenuBar({
   onOpenDiff,
   layersVisible,
   onToggleLayers,
-  onShowAI,
-  onShowAIHistory,
-  onShowThreatModel,
   userEmail,
   onSignIn,
   onSignOut,
   isCloudProject,
-  projectId,
   isReadOnly,
   onPublish,
 }: MenuBarProps) {
-  const router = useRouter();
   const [showAbout, setShowAbout] = useState(false);
   const jsonInputRef = useRef<HTMLInputElement>(null);
   const projectInputRef = useRef<HTMLInputElement>(null);
@@ -221,41 +210,6 @@ export default function MenuBar({
             <MenuItem onClick={() => {}} disabled>
               Fit View
             </MenuItem>
-          </Dropdown>
-
-          <Dropdown label="AI">
-            <MenuItem onClick={onShowAI}>
-              <span className="flex items-center gap-2">
-                <Sparkles size={13} className="text-blue-500" />
-                Open AI Assistant
-                <span className="ml-auto text-[10px] text-slate-400">⌘I</span>
-              </span>
-            </MenuItem>
-            {onShowThreatModel && (
-              <MenuItem onClick={onShowThreatModel}>
-                <span className="flex items-center gap-2">
-                  <ShieldCheck size={13} className="text-red-500" />
-                  Threat Model
-                  <span className="ml-auto text-[10px] text-slate-400">⌘⇧M</span>
-                </span>
-              </MenuItem>
-            )}
-            {onShowAIHistory && (
-              <MenuItem onClick={onShowAIHistory}>
-                <span className="flex items-center gap-2">
-                  <History size={13} className="text-blue-500" />
-                  AI History
-                </span>
-              </MenuItem>
-            )}
-            {projectId && projectId !== 'local' && (
-              <MenuItem onClick={() => router.push(`/projects/${projectId}/threats`)}>
-                <span className="flex items-center gap-2">
-                  <ShieldCheck size={13} className="text-red-500" />
-                  Threats Dashboard
-                </span>
-              </MenuItem>
-            )}
           </Dropdown>
 
           <button
