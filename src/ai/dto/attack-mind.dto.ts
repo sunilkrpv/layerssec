@@ -1,4 +1,4 @@
-import { IsString, IsBoolean, IsOptional, IsObject } from 'class-validator';
+import { IsString, IsBoolean, IsOptional, IsObject, IsArray } from 'class-validator';
 
 export class AttackMindDto {
   @IsString()
@@ -21,9 +21,7 @@ export class AttackMindDto {
 }
 
 export class SaveAttackSimulationDto {
-  @IsString()
-  projectId: string;
-
+  // projectId comes from the URL param — not required in body
   @IsString()
   diagramId: string;
 
@@ -35,5 +33,6 @@ export class SaveAttackSimulationDto {
   entryPointId?: string;
 
   /** Serialized array of AttackPath objects */
+  @IsArray()
   paths: unknown[];
 }
