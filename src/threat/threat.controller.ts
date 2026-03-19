@@ -21,6 +21,7 @@ import { ReportService } from './report.service';
 import { SaveThreatModelDto } from './dto/save-threat-model.dto';
 import { UpdateThreatDto } from './dto/update-threat.dto';
 import { CreateThreatDto } from './dto/create-threat.dto';
+import { SaveAttackSimulationDto } from '../ai/dto/attack-mind.dto';
 
 @Controller()
 @UseGuards(JwtAuthGuard)
@@ -139,5 +140,48 @@ export class ThreatController {
     @CurrentUser('id') userId: string,
   ) {
     return this.threat.deleteThreat(threatModelId, threatId, userId);
+  }
+
+  // ── Posture Score History ────────────────────────────────────────────────
+
+  // GET /api/projects/:projectId/posture-score/history
+  @Get('projects/:projectId/posture-score/history')
+  listPostureHistory(
+    @Param('projectId', ParseUUIDPipe) projectId: string,
+    @CurrentUser('id') userId: string,
+  ) {
+    return this.threat.listPostureHistory(projectId, userId);
+  }
+
+  // ── Attack Simulations ───────────────────────────────────────────────────
+
+  // POST /api/projects/:projectId/attack-simulations
+  @Post('projects/:projectId/attack-simulations')
+  @HttpCode(HttpStatus.CREATED)
+  saveAttackSimulation(
+    @Param('projectId', ParseUUIDPipe) projectId: string,
+    @CurrentUser('id') userId: string,
+    @Body() dto: SaveAttackSimulationDto,
+  ) {
+    return this.threat.saveAttackSimulation(projectId, userId, dto);
+  }
+
+  // GET /api/projects/:projectId/attack-simulations
+  @Get('projects/:projectId/attack-simulations')
+  listAttackSimulations(
+    @Param('projectId', ParseUUIDPipe) projectId: string,
+    @CurrentUser('id') userId: string,
+  ) {
+    return this.threat.listAttackSimulations(projectId, userId);
+  }
+
+  // DELETE /api/attack-simulations/:id
+  @Delete('attack-simulations/:id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  deleteAttackSimulation(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser('id') userId: string,
+  ) {
+    return this.threat.deleteAttackSimulation(id, userId);
   }
 }
