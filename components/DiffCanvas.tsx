@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useEffect } from 'react';
-import ReactFlow, { Background, Controls, ReactFlowProvider, useReactFlow } from 'reactflow';
+import ReactFlow, { Background, Controls, ReactFlowProvider, useReactFlow, Handle, Position } from 'reactflow';
 import type { Node, Edge } from 'reactflow';
 import 'reactflow/dist/style.css';
 import type { NodeDiff, EdgeDiff, DiffStatus } from '@/lib/diffEngine';
@@ -44,6 +44,10 @@ function DiffNode({ data }: { data: DiffNodeData }) {
     <div
       className={`relative min-w-[120px] max-w-[220px] rounded-lg border-2 px-3 py-2 shadow-sm ${STATUS_RING[data.status]}`}
     >
+      <Handle type="target" position={Position.Left} className="!h-2 !w-2 !border-slate-300 !bg-slate-200" />
+      <Handle type="target" position={Position.Top} className="!h-2 !w-2 !border-slate-300 !bg-slate-200" />
+      <Handle type="source" position={Position.Right} className="!h-2 !w-2 !border-slate-300 !bg-slate-200" />
+      <Handle type="source" position={Position.Bottom} className="!h-2 !w-2 !border-slate-300 !bg-slate-200" />
       {data.status !== 'unchanged' && (
         <span
           className={`absolute -right-2 -top-2 flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold ${STATUS_BADGE[data.status]}`}
@@ -140,7 +144,9 @@ export default function DiffCanvas({ nodeDiffs, edgeDiffs, side, title, filename
 
     const edges: Edge[] = edgeDiffs
       .map((d) => (side === 'left' ? d.left : d.right))
-      .filter((e): e is Edge => e != null);
+      .filter((e): e is Edge => e != null)
+      // Strip original handle IDs — DiffNode uses generic handles (Left/Right/Top/Bottom)
+      .map(({ sourceHandle: _sh, targetHandle: _th, ...e }) => e);
 
     return { nodes, edges };
   }, [nodeDiffs, edgeDiffs, side]);

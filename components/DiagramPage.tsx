@@ -26,6 +26,7 @@ import StartupModal from '@/components/StartupModal';
 import AuthModal from '@/components/AuthModal';
 import ProjectsModal from '@/components/ProjectsModal';
 import PublishModal from '@/components/PublishModal';
+import VersionCompareSheet from '@/components/VersionCompareSheet';
 import type { AssignableLayer } from '@/components/AssignLayerModal';
 
 import type { NodeData, NodeType, GenerateResponse } from '@/lib/types';
@@ -166,6 +167,8 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
 
   const [showPublishModal, setShowPublishModal] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
+  const [showCheckoutConfirm, setShowCheckoutConfirm] = useState(false);
+  const [showVersionCompare, setShowVersionCompare] = useState(false);
   /** Number of published versions in the current project (used to compute next version number). */
   const [publishedVersionCount, setPublishedVersionCount] = useState(0);
 
@@ -1651,18 +1654,10 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
             onOpenDiff={() => router.push('/diff')}
             layersVisible={showLayersPanel}
             onToggleLayers={() => setShowLayersPanel((v) => !v)}
-            onShowAI={() => setShowChatPanel(true)}
-            onShowThreatModel={projectId !== 'local' && !!user ? () => setShowThreatModelPanel((v) => !v) : undefined}
-            onShowAIHistory={() => {
-              if (projectId !== 'local' && isLoggedIn()) {
-                router.push(`/projects/${projectId}/ai-history`);
-              }
-            }}
             userEmail={user?.email ?? null}
             onSignIn={() => setShowAuthModal(true)}
             onSignOut={handleSignOut}
             isCloudProject={!!backendDiagramId && projectId !== 'local'}
-            projectId={projectId !== 'local' ? projectId : undefined}
             isReadOnly={isReadOnly}
             onPublish={() => setShowPublishModal(true)}
           />
@@ -1683,6 +1678,13 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
             onCopy={() => rfInstanceRef.current?.doCopy()}
             onPaste={() => rfInstanceRef.current?.doPaste()}
             isReadOnly={isReadOnly}
+            onOpenThreatModel={projectId !== 'local' && !!user ? () => setShowThreatModelPanel((v) => !v) : undefined}
+            onOpenThreatDashboard={projectId !== 'local' ? () => router.push(`/projects/${projectId}/threats`) : undefined}
+            onShowAI={() => setShowChatPanel(true)}
+            onShowAIHistory={projectId !== 'local' && isLoggedIn() ? () => router.push(`/projects/${projectId}/ai-history`) : undefined}
+            isCloudProject={!!backendDiagramId && projectId !== 'local'}
+            onPublish={() => setShowPublishModal(true)}
+            onOpenDiff={projectId !== 'local' ? () => setShowVersionCompare(true) : undefined}
           />
 
           {/* ── Layer breadcrumb bar ─────────────────────────────────────── */}
@@ -1746,7 +1748,7 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
               </div>
               {/* CTA */}
               <button
-                onClick={handleCheckoutFromEditor}
+                onClick={() => setShowCheckoutConfirm(true)}
                 className="relative ml-auto flex items-center gap-1.5 rounded-lg bg-white/10 px-3 py-1.5 text-xs font-semibold text-white ring-1 ring-white/20 backdrop-blur-sm transition hover:bg-white/20"
               >
                 Check Out to Edit
@@ -1760,7 +1762,12 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
             {/* Components palette — collapses smoothly when Threat Model panel opens */}
             {!isReadOnly && (
               <div className={`overflow-hidden transition-[max-width] duration-300 ease-in-out flex-shrink-0 ${showThreatModelPanel ? 'max-w-0' : 'max-w-[240px]'}`}>
-                <NodePalette onDragStart={onPaletteDragStart} onAddNode={handleAddNode} />
+                <NodePalette
+                  onDragStart={onPaletteDragStart}
+                  onAddNode={handleAddNode}
+                  onOpenThreatModel={projectId !== 'local' && !!user ? () => setShowThreatModelPanel((v) => !v) : undefined}
+                  onOpenThreatDashboard={projectId !== 'local' ? () => router.push(`/projects/${projectId}/threats`) : undefined}
+                />
               </div>
             )}
 
@@ -1959,6 +1966,49 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
             onCreate={handleCreateCloudProject}
             onClose={() => setShowProjectsModal(false)}
           />
+        )}
+
+        {/* ── Version compare sheet ────────────────────────────────────────── */}
+        {showVersionCompare && projectId !== 'local' && (
+          <VersionCompareSheet
+            projectId={projectId}
+            onClose={() => setShowVersionCompare(false)}
+          />
+        )}
+
+        {/* ── Check Out confirmation modal ─────────────────────────────────── */}
+        {showCheckoutConfirm && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
+            onClick={() => setShowCheckoutConfirm(false)}
+          >
+            <div
+              className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-700 dark:bg-slate-800"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h2 className="text-base font-semibold text-slate-900 dark:text-slate-100">Check Out to Edit?</h2>
+              <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+                Checking out creates a new <strong>draft</strong> based on this published version. The published version remains intact and read-only — your draft will need to be re-published when ready.
+              </p>
+              <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+                Only one draft can exist at a time. If a draft already exists, you will be prompted to open it instead.
+              </p>
+              <div className="mt-5 flex justify-end gap-2">
+                <button
+                  onClick={() => setShowCheckoutConfirm(false)}
+                  className="rounded-lg px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => { setShowCheckoutConfirm(false); handleCheckoutFromEditor(); }}
+                  className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+                >
+                  Check Out
+                </button>
+              </div>
+            </div>
+          </div>
         )}
 
         {/* ── Publish modal ────────────────────────────────────────────────── */}
