@@ -1,9 +1,9 @@
 'use client';
 
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Sword, X, Loader2, Save, ChevronDown, ChevronRight, Zap,
-  AlertTriangle, Flag, Target, Shield, Eye, Trash2,
+  AlertTriangle, Flag, Target, Shield, Eye, Trash2, Play, Clock,
 } from 'lucide-react';
 import {
   type AttackMindResult,
@@ -52,54 +52,56 @@ function PathCard({ path, index, activeStepKey, onStepHover, onNodeHighlight, is
   const [open, setOpen] = useState(index === 0);
 
   return (
-    <div className={`rounded-lg border transition-colors ${isSelected ? 'border-indigo-400 dark:border-indigo-500' : 'border-slate-200 dark:border-slate-700'}`}>
+    <div className={`rounded-xl border transition-colors ${isSelected ? 'border-indigo-400 dark:border-indigo-500' : 'border-slate-200 dark:border-slate-700'}`}>
       {/* Path header */}
       <button
         onClick={() => { setOpen((v) => !v); onSelect(); }}
-        className="flex w-full items-start gap-2 p-2.5 text-left"
+        className="flex w-full items-start gap-3 p-3.5 text-left"
       >
-        <span className={`mt-0.5 shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold ${SEVERITY_COLORS[path.severity] ?? SEVERITY_COLORS.MEDIUM}`}>
+        <span className={`mt-0.5 shrink-0 rounded-md px-2 py-1 text-xs font-bold ${SEVERITY_COLORS[path.severity] ?? SEVERITY_COLORS.MEDIUM}`}>
           {path.severity}
         </span>
         <div className="flex-1 min-w-0">
-          <p className="text-xs font-semibold text-slate-800 dark:text-slate-100 leading-tight">{path.title}</p>
-          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+          <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 leading-snug">{path.title}</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
             Entry: <span className="text-slate-600 dark:text-slate-300">{path.entryPointLabel}</span>
             {' · '}
             <span className={`font-medium ${LIKELIHOOD_COLORS[path.likelihood]}`}>{path.likelihood} likelihood</span>
           </p>
         </div>
-        {open ? <ChevronDown size={13} className="shrink-0 text-slate-400 mt-1" /> : <ChevronRight size={13} className="shrink-0 text-slate-400 mt-1" />}
+        {open
+          ? <ChevronDown size={15} className="shrink-0 text-slate-400 mt-1" />
+          : <ChevronRight size={15} className="shrink-0 text-slate-400 mt-1" />}
       </button>
 
       {open && (
-        <div className="border-t border-slate-100 dark:border-slate-700/60 px-2.5 pb-2.5 pt-2 flex flex-col gap-3">
+        <div className="border-t border-slate-100 dark:border-slate-700/60 px-3.5 pb-3.5 pt-3 flex flex-col gap-4">
           {/* Summary */}
-          <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">{path.summary}</p>
+          <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">{path.summary}</p>
 
           {/* Kill chain steps */}
           <div>
-            <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400">Kill Chain</p>
-            <div className="flex flex-col gap-1">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">Kill Chain</p>
+            <div className="flex flex-col gap-1.5">
               {path.steps.map((step) => {
                 const key = `${path.pathId}-step-${step.stepNumber}`;
                 const isActive = activeStepKey === key;
                 return (
                   <div
                     key={step.stepNumber}
-                    className={`rounded-md px-2 py-1.5 cursor-pointer transition-colors ${isActive ? 'bg-indigo-50 dark:bg-indigo-900/30 ring-1 ring-indigo-300 dark:ring-indigo-600' : 'hover:bg-slate-50 dark:hover:bg-slate-700/40'}`}
+                    className={`rounded-lg px-3 py-2 cursor-pointer transition-colors ${isActive ? 'bg-indigo-50 dark:bg-indigo-900/30 ring-1 ring-indigo-300 dark:ring-indigo-600' : 'hover:bg-slate-50 dark:hover:bg-slate-700/40'}`}
                     onMouseEnter={() => { onStepHover(key); onNodeHighlight(step.nodeIds); }}
                     onMouseLeave={() => { onStepHover(null); onNodeHighlight([]); }}
                   >
-                    <div className="flex items-center gap-1.5">
-                      <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-slate-200 dark:bg-slate-700 text-[10px] font-bold text-slate-700 dark:text-slate-300">
+                    <div className="flex items-center gap-2">
+                      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-slate-200 dark:bg-slate-700 text-xs font-bold text-slate-700 dark:text-slate-300">
                         {step.stepNumber}
                       </span>
-                      <span className="flex-1 text-[11px] font-medium text-slate-700 dark:text-slate-200 truncate">{step.action}</span>
-                      <span className={`h-2 w-2 shrink-0 rounded-full ${STEP_LIKELIHOOD_DOT[step.successLikelihood]}`} title={`${step.successLikelihood} success likelihood`} />
+                      <span className="flex-1 text-sm font-medium text-slate-700 dark:text-slate-200 truncate">{step.action}</span>
+                      <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${STEP_LIKELIHOOD_DOT[step.successLikelihood]}`} title={`${step.successLikelihood} success likelihood`} />
                     </div>
-                    <p className="mt-1 text-[10px] text-slate-500 dark:text-slate-400 font-mono">{step.attackTechnique}</p>
-                    <p className="mt-0.5 text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">{step.description}</p>
+                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400 font-mono pl-7">{step.attackTechnique}</p>
+                    <p className="mt-1 text-sm text-slate-600 dark:text-slate-300 leading-relaxed pl-7">{step.description}</p>
                   </div>
                 );
               })}
@@ -108,9 +110,9 @@ function PathCard({ path, index, activeStepKey, onStepHover, onNodeHighlight, is
 
           {/* Crown jewels */}
           {path.crownJewelNodeIds.length > 0 && (
-            <div className="flex items-start gap-1.5">
-              <Target size={12} className="mt-0.5 shrink-0 text-red-500" />
-              <p className="text-[11px] text-slate-600 dark:text-slate-300">
+            <div className="flex items-start gap-2">
+              <Target size={14} className="mt-0.5 shrink-0 text-red-500" />
+              <p className="text-sm text-slate-600 dark:text-slate-300">
                 <span className="font-semibold text-red-500">Crown jewels:</span>{' '}
                 {path.crownJewelNodeIds.join(', ')}
               </p>
@@ -120,14 +122,14 @@ function PathCard({ path, index, activeStepKey, onStepHover, onNodeHighlight, is
           {/* Mitigations */}
           {path.mitigations.length > 0 && (
             <div>
-              <div className="flex items-center gap-1 mb-1">
-                <Shield size={11} className="text-green-500" />
-                <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Mitigations</p>
+              <div className="flex items-center gap-1.5 mb-1.5">
+                <Shield size={13} className="text-green-500" />
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Mitigations</p>
               </div>
-              <ul className="flex flex-col gap-0.5">
+              <ul className="flex flex-col gap-1">
                 {path.mitigations.map((m, i) => (
-                  <li key={i} className="text-[11px] text-slate-600 dark:text-slate-300 flex items-start gap-1.5">
-                    <span className="mt-0.5 text-green-500">•</span>
+                  <li key={i} className="text-sm text-slate-600 dark:text-slate-300 flex items-start gap-2">
+                    <span className="mt-0.5 text-green-500 shrink-0">•</span>
                     {m}
                   </li>
                 ))}
@@ -152,36 +154,49 @@ function SavedSimulationsList({
   onDelete: (id: string) => void;
 }) {
   if (simulations.length === 0) {
-    return <p className="text-xs text-slate-400 italic p-3">No saved simulations yet</p>;
+    return (
+      <div className="flex flex-col items-center gap-3 py-12 px-6 text-center">
+        <Sword size={28} className="text-slate-300 dark:text-slate-600" />
+        <p className="text-sm text-slate-400">No saved simulations yet. Run and save your first simulation.</p>
+      </div>
+    );
   }
 
   return (
-    <div className="flex flex-col divide-y divide-slate-100 dark:divide-slate-700/60">
+    <div className="flex flex-col divide-y divide-slate-100 dark:divide-slate-700/60 py-1">
       {simulations.map((sim) => {
         const paths = sim.paths as AttackPath[];
         const critCount = paths.filter((p) => p.severity === 'CRITICAL').length;
+        const highCount = paths.filter((p) => p.severity === 'HIGH').length;
         return (
-          <div key={sim.id} className="flex items-center gap-2 px-3 py-2 hover:bg-slate-50 dark:hover:bg-slate-700/40">
+          <div key={sim.id} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-700/40">
+            {/* Icon */}
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-red-50 dark:bg-red-900/20">
+              <Sword size={15} className="text-red-500" />
+            </div>
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-medium text-slate-700 dark:text-slate-200 truncate">{sim.name}</p>
-              <p className="text-[10px] text-slate-400">
-                {new Date(sim.createdAt).toLocaleDateString()} · {paths.length} paths
-                {critCount > 0 && <span className="ml-1 text-red-500 font-semibold">{critCount} CRITICAL</span>}
-              </p>
+              <p className="text-sm font-medium text-slate-700 dark:text-slate-200 truncate">{sim.name}</p>
+              <div className="flex items-center gap-2 mt-0.5">
+                <Clock size={11} className="text-slate-400" />
+                <span className="text-xs text-slate-400">{new Date(sim.createdAt).toLocaleDateString()}</span>
+                <span className="text-xs text-slate-400">· {paths.length} paths</span>
+                {critCount > 0 && <span className="text-xs text-red-500 font-semibold">{critCount} CRITICAL</span>}
+                {highCount > 0 && <span className="text-xs text-orange-500 font-semibold">{highCount} HIGH</span>}
+              </div>
             </div>
             <button
               onClick={() => onLoad(sim)}
-              title="Load"
-              className="rounded p-1 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-slate-100 dark:hover:bg-slate-700"
+              title="Load simulation"
+              className="rounded-lg p-1.5 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-slate-100 dark:hover:bg-slate-700"
             >
-              <Eye size={13} />
+              <Eye size={15} />
             </button>
             <button
               onClick={() => onDelete(sim.id)}
               title="Delete"
-              className="rounded p-1 text-slate-400 hover:text-red-500 hover:bg-slate-100 dark:hover:bg-slate-700"
+              className="rounded-lg p-1.5 text-slate-400 hover:text-red-500 hover:bg-slate-100 dark:hover:bg-slate-700"
             >
-              <Trash2 size={13} />
+              <Trash2 size={15} />
             </button>
           </div>
         );
@@ -208,6 +223,8 @@ interface AttackMindPanelProps {
   onClose: () => void;
 }
 
+type Tab = 'simulation' | 'history';
+
 export default function AttackMindPanel({
   projectId,
   diagramId,
@@ -219,6 +236,7 @@ export default function AttackMindPanel({
   const { theme } = useTheme();
   const isDark = theme === 'dark';
 
+  const [activeTab, setActiveTab] = useState<Tab>('simulation');
   const [result, setResult] = useState<AttackMindResult | null>(null);
   const [streaming, setStreaming] = useState(false);
   const [rawBuffer, setRawBuffer] = useState('');
@@ -232,11 +250,11 @@ export default function AttackMindPanel({
   const [showSave, setShowSave] = useState(false);
   const [saveName, setSaveName] = useState('');
   const [saving, setSaving] = useState(false);
+  const [savedSuccess, setSavedSuccess] = useState(false);
 
   // History
-  const [showHistory, setShowHistory] = useState(false);
   const [simulations, setSimulations] = useState<AttackSimulation[]>([]);
-  const [loadingHistory, setLoadingHistory] = useState(false);
+  const [loadingHistory, setLoadingHistory] = useState(true);
 
   const abortRef = useRef<AbortController | null>(null);
 
@@ -252,6 +270,9 @@ export default function AttackMindPanel({
     }
   }, [projectId]);
 
+  // Load history on mount
+  useEffect(() => { loadHistory(); }, [loadHistory]);
+
   const handleRun = useCallback(async () => {
     abortRef.current?.abort();
     abortRef.current = new AbortController();
@@ -260,6 +281,8 @@ export default function AttackMindPanel({
     setRawBuffer('');
     setError(null);
     setShowSave(false);
+    setSavedSuccess(false);
+    setActiveTab('simulation');
 
     let accumulated = '';
     try {
@@ -276,7 +299,6 @@ export default function AttackMindPanel({
           setRawBuffer(accumulated);
         },
       );
-      // Parse final JSON
       const parsed = JSON.parse(accumulated) as AttackMindResult;
       setResult(parsed);
       setShowSave(true);
@@ -303,6 +325,7 @@ export default function AttackMindPanel({
         paths: result.paths,
       });
       setShowSave(false);
+      setSavedSuccess(true);
       loadHistory();
     } catch {
       // ignore
@@ -313,7 +336,7 @@ export default function AttackMindPanel({
 
   const handleLoadSim = useCallback((sim: AttackSimulation) => {
     setResult({ entryPointAnalysis: '', paths: sim.paths as AttackPath[] });
-    setShowHistory(false);
+    setActiveTab('simulation');
     setShowSave(false);
   }, []);
 
@@ -334,172 +357,206 @@ export default function AttackMindPanel({
     });
   }, [onHighlightChange, activeStepKey, selectedPathId]);
 
-  const handleShowHistory = useCallback(() => {
-    setShowHistory((v) => {
-      if (!v) loadHistory();
-      return !v;
-    });
-  }, [loadHistory]);
+  // ── Footer controls (always visible) ─────────────────────────────────────
+  const Footer = (
+    <div className={`shrink-0 border-t px-4 py-3 flex flex-col gap-2.5 ${isDark ? 'border-slate-700 bg-slate-800' : 'border-slate-200 bg-slate-50'}`}>
+      {/* Entry point input */}
+      <div className="flex items-center gap-2.5">
+        <label className="text-sm text-slate-500 shrink-0 w-24">Entry node ID</label>
+        <input
+          value={entryNodeId}
+          onChange={(e) => setEntryNodeId(e.target.value)}
+          placeholder="optional — auto-detected"
+          className={`flex-1 min-w-0 rounded-lg border px-3 py-1.5 text-sm ${isDark ? 'border-slate-600 bg-slate-700 text-slate-100 placeholder:text-slate-500' : 'border-slate-300 bg-white text-slate-800 placeholder:text-slate-400'}`}
+        />
+      </div>
+      {/* Extended thinking toggle */}
+      <label className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400 cursor-pointer select-none">
+        <input
+          type="checkbox"
+          checked={useExtended}
+          onChange={(e) => setUseExtended(e.target.checked)}
+          className="rounded accent-purple-500"
+        />
+        <Zap size={13} className="text-purple-500" />
+        Use extended thinking (deep red-team analysis)
+      </label>
+      {/* Run button */}
+      <button
+        onClick={handleRun}
+        disabled={streaming}
+        className="flex items-center justify-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50 transition-colors"
+      >
+        {streaming ? <Loader2 size={15} className="animate-spin" /> : <Play size={15} />}
+        {streaming ? 'Simulating…' : result ? 'Re-run Simulation' : 'Run Simulation'}
+      </button>
+    </div>
+  );
 
   return (
     <div
       className={`flex h-full flex-col border-l ${isDark ? 'border-slate-700 bg-slate-900 text-slate-100' : 'border-slate-200 bg-white text-slate-900'}`}
-      style={{ width: 360 }}
+      style={{ width: 460 }}
     >
-      {/* Header */}
-      <div className={`flex h-9 shrink-0 items-center gap-2 border-b px-3 ${isDark ? 'border-slate-700 bg-slate-800' : 'border-slate-200 bg-slate-50'}`}>
-        <Sword size={14} className="text-red-500" />
+      {/* ── Header ── */}
+      <div className={`flex h-10 shrink-0 items-center gap-2.5 border-b px-4 ${isDark ? 'border-slate-700 bg-slate-800' : 'border-slate-200 bg-slate-50'}`}>
+        <Sword size={15} className="text-red-500" />
         <span className="flex-1 text-sm font-semibold">Attack Mind Simulator</span>
-        <button
-          onClick={handleShowHistory}
-          title="Saved simulations"
-          className={`rounded p-1 hover:bg-slate-200 dark:hover:bg-slate-700 ${showHistory ? 'text-indigo-500' : 'text-slate-400'}`}
-        >
-          <Flag size={14} />
-        </button>
         <button onClick={onClose} className="rounded p-1 text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700">
-          <X size={14} />
+          <X size={15} />
         </button>
       </div>
 
-      {/* Scrollable content */}
-      <div className="flex-1 overflow-y-auto">
+      {/* ── Tabs ── */}
+      <div className={`flex shrink-0 border-b ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+        {(['simulation', 'history'] as Tab[]).map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={`flex flex-1 items-center justify-center gap-1.5 py-2 text-sm font-medium transition-colors border-b-2 ${
+              activeTab === tab
+                ? 'border-red-500 text-red-600 dark:text-red-400'
+                : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+            }`}
+          >
+            {tab === 'simulation' ? <Sword size={13} /> : <Flag size={13} />}
+            {tab === 'simulation' ? 'Simulation' : `Saved${simulations.length > 0 ? ` (${simulations.length})` : ''}`}
+          </button>
+        ))}
+      </div>
 
-        {/* ── History list ── */}
-        {showHistory && (
-          <div className="border-b border-slate-200 dark:border-slate-700">
-            <p className="px-3 pt-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400">Saved Simulations</p>
-            {loadingHistory ? (
-              <div className="flex justify-center py-4"><Loader2 size={16} className="animate-spin text-slate-400" /></div>
-            ) : (
-              <SavedSimulationsList
-                simulations={simulations}
-                onLoad={handleLoadSim}
-                onDelete={handleDeleteSim}
-              />
-            )}
-          </div>
-        )}
+      {/* ── Simulation Tab ── */}
+      {activeTab === 'simulation' && (
+        <>
+          <div className="flex-1 overflow-y-auto">
 
-        {/* ── Streaming progress indicator ── */}
-        {streaming && (
-          <div className="flex flex-col items-center gap-3 py-10 px-4">
-            <div className="relative">
-              <Loader2 size={32} className="animate-spin text-red-500" />
-              <Sword size={14} className="absolute inset-0 m-auto text-red-600" />
-            </div>
-            <p className="text-xs text-slate-500 text-center">
-              {useExtended ? 'Deep red-team analysis in progress…' : 'Simulating attack paths…'}
-            </p>
-            {rawBuffer.length > 0 && (
-              <p className="text-[10px] text-slate-400 font-mono">{rawBuffer.length} bytes received</p>
-            )}
-          </div>
-        )}
-
-        {/* ── Error ── */}
-        {!streaming && error && (
-          <div className="m-3 rounded-lg border border-red-200 bg-red-50 p-3 dark:border-red-800 dark:bg-red-900/20">
-            <div className="flex items-center gap-2">
-              <AlertTriangle size={14} className="text-red-500 shrink-0" />
-              <p className="text-xs text-red-600 dark:text-red-400">{error}</p>
-            </div>
-          </div>
-        )}
-
-        {/* ── Results ── */}
-        {!streaming && result && (
-          <div className="p-3 flex flex-col gap-3">
-            {result.entryPointAnalysis && (
-              <div className="rounded-md bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-2.5">
-                <div className="flex items-center gap-1.5 mb-1">
-                  <AlertTriangle size={11} className="text-red-500 shrink-0" />
-                  <span className="text-[10px] font-semibold uppercase tracking-wide text-red-500">Entry Point Analysis</span>
+            {/* Streaming indicator */}
+            {streaming && (
+              <div className="flex flex-col items-center gap-4 py-16 px-6">
+                <div className="relative">
+                  <Loader2 size={40} className="animate-spin text-red-500" />
+                  <Sword size={18} className="absolute inset-0 m-auto text-red-600" />
                 </div>
-                <p className="text-[11px] text-slate-700 dark:text-slate-300 leading-relaxed">{result.entryPointAnalysis}</p>
+                <div className="text-center">
+                  <p className="text-sm font-medium text-slate-600 dark:text-slate-300">
+                    {useExtended ? 'Deep red-team analysis in progress…' : 'Simulating attack paths…'}
+                  </p>
+                  <p className="mt-1 text-xs text-slate-400">This may take 20–40 seconds</p>
+                </div>
+                {rawBuffer.length > 0 && (
+                  <p className="text-xs text-slate-400 font-mono">{rawBuffer.length} bytes received</p>
+                )}
               </div>
             )}
 
-            <div className="flex flex-col gap-2">
-              {result.paths.map((path, i) => (
-                <PathCard
-                  key={path.pathId}
-                  path={path}
-                  index={i}
-                  activeStepKey={activeStepKey}
-                  onStepHover={handleStepHover}
-                  onNodeHighlight={handleNodeHighlight}
-                  isSelected={selectedPathId === path.pathId}
-                  onSelect={() => setSelectedPathId(path.pathId)}
+            {/* Error */}
+            {!streaming && error && (
+              <div className="m-4 rounded-xl border border-red-200 bg-red-50 p-4 dark:border-red-800 dark:bg-red-900/20">
+                <div className="flex items-start gap-3">
+                  <AlertTriangle size={16} className="text-red-500 shrink-0 mt-0.5" />
+                  <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+                </div>
+              </div>
+            )}
+
+            {/* Results */}
+            {!streaming && result && (
+              <div className="p-4 flex flex-col gap-4">
+                {/* Save success banner */}
+                {savedSuccess && (
+                  <div className="flex items-center gap-2 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 px-3 py-2">
+                    <Flag size={13} className="text-green-500 shrink-0" />
+                    <span className="text-sm text-green-700 dark:text-green-300 flex-1">Simulation saved successfully.</span>
+                    <button onClick={() => setActiveTab('history')} className="text-xs text-indigo-500 hover:text-indigo-600 font-medium shrink-0">View →</button>
+                  </div>
+                )}
+
+                {result.entryPointAnalysis && (
+                  <div className="rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-3.5">
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <AlertTriangle size={13} className="text-red-500 shrink-0" />
+                      <span className="text-xs font-semibold uppercase tracking-wide text-red-500">Entry Point Analysis</span>
+                    </div>
+                    <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">{result.entryPointAnalysis}</p>
+                  </div>
+                )}
+
+                <div className="flex flex-col gap-2.5">
+                  {result.paths.map((path, i) => (
+                    <PathCard
+                      key={path.pathId}
+                      path={path}
+                      index={i}
+                      activeStepKey={activeStepKey}
+                      onStepHover={handleStepHover}
+                      onNodeHighlight={handleNodeHighlight}
+                      isSelected={selectedPathId === path.pathId}
+                      onSelect={() => setSelectedPathId(path.pathId)}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Empty state */}
+            {!streaming && !result && !error && (
+              <div className="flex flex-col items-center gap-3 py-16 px-6 text-center">
+                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-red-50 dark:bg-red-900/20">
+                  <Sword size={32} className="text-red-300 dark:text-red-600" />
+                </div>
+                <div>
+                  <p className="text-base font-semibold text-slate-700 dark:text-slate-200">Attack Mind Simulator</p>
+                  <p className="mt-1.5 text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+                    AI red-teams your architecture, discovering realistic kill chains and attack paths an adversary could exploit.
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Save bar */}
+          {showSave && !streaming && (
+            <div className={`shrink-0 border-t px-4 py-3 flex flex-col gap-2 ${isDark ? 'border-slate-700 bg-slate-800' : 'border-slate-200 bg-slate-50'}`}>
+              <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Save this simulation</p>
+              <div className="flex gap-2">
+                <input
+                  value={saveName}
+                  onChange={(e) => setSaveName(e.target.value)}
+                  placeholder="Simulation name…"
+                  className={`flex-1 min-w-0 rounded-lg border px-3 py-1.5 text-sm ${isDark ? 'border-slate-600 bg-slate-700 text-slate-100 placeholder:text-slate-500' : 'border-slate-300 bg-white text-slate-800 placeholder:text-slate-400'}`}
                 />
-              ))}
+                <button
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50 shrink-0"
+                >
+                  {saving ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />}
+                  Save
+                </button>
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* ── Empty state ── */}
-        {!streaming && !result && !error && (
-          <div className="flex flex-col items-center gap-2 py-10 px-4 text-center">
-            <Sword size={28} className="text-slate-300 dark:text-slate-600" />
-            <p className="text-xs text-slate-500">Run a simulation to discover attack paths through your architecture.</p>
-          </div>
-        )}
-      </div>
-
-      {/* ── Save bar ── */}
-      {showSave && !streaming && (
-        <div className={`shrink-0 border-t px-3 py-2 flex flex-col gap-1.5 ${isDark ? 'border-slate-700 bg-slate-800' : 'border-slate-200 bg-slate-50'}`}>
-          <p className="text-[11px] text-slate-500 font-medium">Save this simulation</p>
-          <div className="flex gap-2">
-            <input
-              value={saveName}
-              onChange={(e) => setSaveName(e.target.value)}
-              placeholder="Simulation name…"
-              className={`flex-1 min-w-0 rounded border px-2 py-1 text-xs ${isDark ? 'border-slate-600 bg-slate-700 text-slate-100 placeholder:text-slate-500' : 'border-slate-300 bg-white text-slate-800 placeholder:text-slate-400'}`}
-            />
-            <button
-              onClick={handleSave}
-              disabled={saving}
-              className="flex items-center gap-1 rounded bg-indigo-600 px-2 py-1 text-xs text-white hover:bg-indigo-700 disabled:opacity-50 shrink-0"
-            >
-              {saving ? <Loader2 size={11} className="animate-spin" /> : <Save size={11} />}
-              Save
-            </button>
-          </div>
-        </div>
+          {Footer}
+        </>
       )}
 
-      {/* ── Footer controls ── */}
-      <div className={`shrink-0 border-t px-3 py-2 flex flex-col gap-2 ${isDark ? 'border-slate-700 bg-slate-800' : 'border-slate-200 bg-slate-50'}`}>
-        {/* Entry point override */}
-        <div className="flex items-center gap-2">
-          <label className="text-[11px] text-slate-500 shrink-0">Entry node ID</label>
-          <input
-            value={entryNodeId}
-            onChange={(e) => setEntryNodeId(e.target.value)}
-            placeholder="optional"
-            className={`flex-1 min-w-0 rounded border px-2 py-1 text-xs ${isDark ? 'border-slate-600 bg-slate-700 text-slate-100 placeholder:text-slate-500' : 'border-slate-300 bg-white text-slate-800 placeholder:text-slate-400'}`}
-          />
+      {/* ── History Tab ── */}
+      {activeTab === 'history' && (
+        <div className="flex-1 overflow-y-auto">
+          {loadingHistory ? (
+            <div className="flex justify-center py-12">
+              <Loader2 size={20} className="animate-spin text-slate-400" />
+            </div>
+          ) : (
+            <SavedSimulationsList
+              simulations={simulations}
+              onLoad={handleLoadSim}
+              onDelete={handleDeleteSim}
+            />
+          )}
         </div>
-        <label className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 cursor-pointer select-none">
-          <input
-            type="checkbox"
-            checked={useExtended}
-            onChange={(e) => setUseExtended(e.target.checked)}
-            className="rounded accent-purple-500"
-          />
-          <Zap size={11} className="text-purple-500" />
-          Use extended thinking
-        </label>
-        <button
-          onClick={handleRun}
-          disabled={streaming}
-          className="flex items-center justify-center gap-1.5 rounded-md bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-700 disabled:opacity-50 transition-colors"
-        >
-          {streaming ? <Loader2 size={13} className="animate-spin" /> : <Sword size={13} />}
-          {streaming ? 'Simulating…' : result ? 'Re-run Simulation' : 'Run Simulation'}
-        </button>
-      </div>
+      )}
     </div>
   );
 }

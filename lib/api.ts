@@ -683,6 +683,8 @@ export interface PostureScoreHistoryItem {
   diagramVersion: number;
   score: number;
   dimensions: PostureScoreDimension[];
+  deductions: PostureDeduction[];
+  additions: PostureAddition[];
   summary: string;
   topRecs: string[];
   layerScores: Record<string, LayerPostureScore> | null;

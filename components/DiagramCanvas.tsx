@@ -22,7 +22,7 @@ import 'reactflow/dist/style.css';
 import ThreatOverlay from '@/components/ThreatOverlay';
 import AttackPathOverlay, { type AttackHighlightMap } from '@/components/AttackPathOverlay';
 import type { NodeData, NodeType, GenerateResponse } from '@/lib/types';
-import { generateId, toReactFlowNodes, toReactFlowEdges, EDGE_MARKER } from '@/lib/diagramUtils';
+import { generateId, toReactFlowNodes, toReactFlowEdges, remapAiDiagramIds, EDGE_MARKER } from '@/lib/diagramUtils';
 import { LINE_NODE_TYPES } from '@/lib/nodeConfig';
 
 import ServiceNode from './nodes/ServiceNode';
@@ -611,8 +611,9 @@ export default function DiagramCanvas({
 
       const loadDiagram = (diagram: GenerateResponse) => {
         pushHistoryRef.current();
-        const newNodes = toReactFlowNodes(diagram.nodes) as Node<NodeData>[];
-        const newEdges = toReactFlowEdges(diagram.edges);
+        const { nodes: remapped, edges: remappedEdges } = remapAiDiagramIds(diagram.nodes, diagram.edges);
+        const newNodes = toReactFlowNodes(remapped) as Node<NodeData>[];
+        const newEdges = toReactFlowEdges(remappedEdges);
         setNodes(newNodes);
         setEdges(newEdges);
         onLayerSaveRef.current(newNodes, newEdges);
