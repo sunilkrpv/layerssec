@@ -6,7 +6,7 @@ import {
   ZoomIn, ZoomOut, Maximize2, Trash2, Save, Clock,
   Zap, Loader2, FolderOpen, Copy, ClipboardPaste,
   ShieldAlert, ShieldCheck, LayoutDashboard, ChevronDown,
-  Sparkles, History, Lock, GitCompareArrows,
+  Sparkles, History, Lock, GitCompareArrows, Sword,
 } from 'lucide-react';
 
 interface ToolbarProps {
@@ -39,6 +39,12 @@ interface ToolbarProps {
   onOpenThreatModel?: () => void;
   /** Navigate to Threats Dashboard */
   onOpenThreatDashboard?: () => void;
+  /** Open Security Posture Score panel */
+  onOpenPostureScore?: () => void;
+  /** Latest computed posture score (0-100) to show as a badge */
+  postureScore?: number | null;
+  /** Open Attack Mind Simulator panel */
+  onOpenAttackMind?: () => void;
   /** Open AI Assistant panel */
   onShowAI?: () => void;
   /** Open AI History page */
@@ -117,6 +123,9 @@ export default function Toolbar({
   isReadOnly = false,
   onOpenThreatModel,
   onOpenThreatDashboard,
+  onOpenPostureScore,
+  postureScore,
+  onOpenAttackMind,
   onShowAI,
   onShowAIHistory,
   isCloudProject,
@@ -126,6 +135,12 @@ export default function Toolbar({
   const { zoomIn, zoomOut, fitView } = useReactFlow();
   const [threatMenuOpen, setThreatMenuOpen] = useState(false);
   const threatBtnRef = useRef<HTMLButtonElement>(null);
+  const postureScoreColor =
+    postureScore == null ? '' :
+    postureScore >= 80 ? 'bg-green-500' :
+    postureScore >= 60 ? 'bg-amber-400' :
+    postureScore >= 40 ? 'bg-orange-500' :
+    'bg-red-500';
   const [aiMenuOpen, setAiMenuOpen] = useState(false);
   const aiBtnRef = useRef<HTMLButtonElement>(null);
 
@@ -153,7 +168,7 @@ export default function Toolbar({
     return () => document.removeEventListener('mousedown', handler);
   }, [aiMenuOpen]);
 
-  const showThreatBtn = onOpenThreatModel || onOpenThreatDashboard;
+  const showThreatBtn = onOpenThreatModel || onOpenThreatDashboard || onOpenPostureScore || onOpenAttackMind;
 
   return (
     <div className="flex h-10 flex-shrink-0 items-center gap-1.5 border-b border-slate-200 bg-white px-3 dark:border-slate-700 dark:bg-slate-900">
@@ -316,6 +331,11 @@ export default function Toolbar({
               >
                 <ShieldAlert size={14} />
                 <span>Threat Model</span>
+                {postureScore != null && (
+                  <span className={`ml-0.5 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-bold text-white ${postureScoreColor}`}>
+                    {postureScore}
+                  </span>
+                )}
                 <ChevronDown size={11} className={`transition-transform ${threatMenuOpen ? 'rotate-180' : ''}`} />
               </button>
             </BtnGroup>
@@ -343,6 +363,40 @@ export default function Toolbar({
                     <div>
                       <p className="text-xs font-medium text-slate-800 dark:text-slate-200">Dashboard</p>
                       <p className="text-[10px] text-slate-400 dark:text-slate-500">Full threat management</p>
+                    </div>
+                  </button>
+                )}
+                {(onOpenPostureScore || onOpenAttackMind) && (onOpenThreatModel || onOpenThreatDashboard) && (
+                  <div className="my-1 h-px bg-slate-100 dark:bg-slate-700" />
+                )}
+                {onOpenPostureScore && (
+                  <button
+                    onClick={() => { onOpenPostureScore(); setThreatMenuOpen(false); }}
+                    className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm hover:bg-slate-50 dark:hover:bg-slate-700/50"
+                  >
+                    <ShieldCheck size={14} className="flex-shrink-0 text-indigo-500" />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="text-xs font-medium text-slate-800 dark:text-slate-200">Posture Score</p>
+                        {postureScore != null && (
+                          <span className={`flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-bold text-white ${postureScoreColor}`}>
+                            {postureScore}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[10px] text-slate-400 dark:text-slate-500">Security health assessment</p>
+                    </div>
+                  </button>
+                )}
+                {onOpenAttackMind && (
+                  <button
+                    onClick={() => { onOpenAttackMind(); setThreatMenuOpen(false); }}
+                    className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm hover:bg-slate-50 dark:hover:bg-slate-700/50"
+                  >
+                    <Sword size={14} className="flex-shrink-0 text-red-500" />
+                    <div>
+                      <p className="text-xs font-medium text-slate-800 dark:text-slate-200">Attack Mind</p>
+                      <p className="text-[10px] text-slate-400 dark:text-slate-500">Red-team attack simulation</p>
                     </div>
                   </button>
                 )}

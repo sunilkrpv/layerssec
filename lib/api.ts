@@ -629,6 +629,181 @@ export async function apiExportThreatReport(projectId: string): Promise<void> {
   URL.revokeObjectURL(url);
 }
 
+// ── Posture Score ─────────────────────────────────────────────────────────
+
+export interface PostureScoreDimension {
+  name: string;
+  score: number;
+  maxScore: number;
+}
+
+export interface PostureDeduction {
+  reason: string;
+  points: number;
+  severity?: string;
+  dimension?: string;
+}
+
+export interface PostureAddition {
+  reason: string;
+  points: number;
+  dimension?: string;
+}
+
+/** Per-layer breakdown stored inside PostureScoreResult.layerScores */
+export interface LayerPostureScore {
+  layerId: string;
+  layerName: string;
+  score: number;
+  dimensions: PostureScoreDimension[];
+  deductions: PostureDeduction[];
+  additions: PostureAddition[];
+}
+
+export interface PostureScoreResult {
+  id: string;
+  projectId: string;
+  diagramId: string;
+  diagramVersion: number;
+  /** Weighted aggregate score across all layers */
+  score: number;
+  dimensions: PostureScoreDimension[];
+  deductions: PostureDeduction[];
+  additions: PostureAddition[];
+  summary: string;
+  topRecs: string[];
+  /** Per-layer breakdown — null for records created before this feature */
+  layerScores: Record<string, LayerPostureScore> | null;
+  useExtended: boolean;
+  analyzedAt: string;
+}
+
+export interface PostureScoreHistoryItem {
+  id: string;
+  diagramVersion: number;
+  score: number;
+  dimensions: PostureScoreDimension[];
+  summary: string;
+  topRecs: string[];
+  layerScores: Record<string, LayerPostureScore> | null;
+  useExtended: boolean;
+  analyzedAt: string;
+}
+
+/** Compute + persist a security posture score for a cloud project diagram. */
+export function apiComputePostureScore(payload: {
+  projectId: string;
+  diagramId: string;
+  diagramVersion: number;
+  layers: Record<string, unknown>;
+  useExtendedThinking?: boolean;
+}): Promise<PostureScoreResult> {
+  return apiFetch<PostureScoreResult>('/api/ai/posture-score', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+/** List historical posture score snapshots for a project. */
+export function apiGetPostureScoreHistory(projectId: string): Promise<PostureScoreHistoryItem[]> {
+  return apiFetch<PostureScoreHistoryItem[]>(`/api/projects/${projectId}/posture-score/history`);
+}
+
+// ── Attack Mind ───────────────────────────────────────────────────────────
+
+export interface AttackStep {
+  stepNumber: number;
+  nodeIds: string[];
+  edgeIds: string[];
+  action: string;
+  attackTechnique: string;
+  description: string;
+  successLikelihood: 'HIGH' | 'MEDIUM' | 'LOW';
+}
+
+export interface AttackPath {
+  pathId: string;
+  title: string;
+  severity: 'CRITICAL' | 'HIGH' | 'MEDIUM';
+  likelihood: 'HIGH' | 'MEDIUM' | 'LOW';
+  entryPointNodeId: string;
+  entryPointLabel: string;
+  steps: AttackStep[];
+  crownJewelNodeIds: string[];
+  summary: string;
+  mitigations: string[];
+}
+
+export interface AttackMindResult {
+  entryPointAnalysis: string;
+  paths: AttackPath[];
+}
+
+export interface AttackSimulation {
+  id: string;
+  name: string;
+  diagramId: string;
+  entryPointId: string | null;
+  paths: AttackPath[];
+  savedBy: string;
+  createdAt: string;
+}
+
+/** Stream a red-team attack simulation — calls onChunk with accumulated JSON text. */
+export async function apiRunAttackMind(
+  payload: {
+    projectId: string;
+    diagramId: string;
+    layers: Record<string, unknown>;
+    entryPointNodeId?: string;
+    useExtendedThinking?: boolean;
+  },
+  onChunk: (chunk: string) => void,
+): Promise<void> {
+  const res = await fetchWithRefresh(`${BASE_URL}/api/ai/attack-mind`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const reader = res.body?.getReader();
+  if (!reader) throw new Error('No response stream');
+  const decoder = new TextDecoder();
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    onChunk(decoder.decode(value, { stream: true }));
+  }
+}
+
+/** Persist an attack simulation result as a named snapshot. */
+export function apiSaveAttackSimulation(payload: {
+  projectId: string;
+  diagramId: string;
+  name: string;
+  entryPointId?: string;
+  paths: AttackPath[];
+}): Promise<AttackSimulation> {
+  return apiFetch<AttackSimulation>(`/api/projects/${payload.projectId}/attack-simulations`, {
+    method: 'POST',
+    body: JSON.stringify({
+      diagramId: payload.diagramId,
+      name: payload.name,
+      entryPointId: payload.entryPointId,
+      paths: payload.paths,
+    }),
+  });
+}
+
+/** List saved attack simulations for a project. */
+export function apiListAttackSimulations(projectId: string): Promise<AttackSimulation[]> {
+  return apiFetch<AttackSimulation[]>(`/api/projects/${projectId}/attack-simulations`);
+}
+
+/** Delete a saved attack simulation. */
+export function apiDeleteAttackSimulation(simulationId: string): Promise<void> {
+  return apiFetch<void>(`/api/attack-simulations/${simulationId}`, { method: 'DELETE' });
+}
+
 /** Streaming evaluate — streams text chunks and saves both messages to chat history server-side. */
 export async function apiChatEvaluate(
   payload: {

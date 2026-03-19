@@ -20,6 +20,9 @@ import DeleteLayerModal from '@/components/DeleteLayerModal';
 import AssignLayerModal from '@/components/AssignLayerModal';
 import AIChatPanel from '@/components/AIChatPanel';
 import ThreatModelPanel, { type ThreatModelInfo } from '@/components/ThreatModelPanel';
+import PostureScorePanel from '@/components/PostureScorePanel';
+import AttackMindPanel, { type AttackMindHighlight } from '@/components/AttackMindPanel';
+import { type AttackHighlightMap } from '@/components/AttackPathOverlay';
 import { Lock, ArrowRight } from 'lucide-react';
 import FileLoadPrompt from '@/components/FileLoadPrompt';
 import StartupModal from '@/components/StartupModal';
@@ -292,6 +295,15 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
   const [threatModelInfo, setThreatModelInfo] = useState<ThreatModelInfo | null>(null);
   // When user clicks a canvas threat badge → highlights that node in ThreatModelPanel
   const [canvasBadgeTargetId, setCanvasBadgeTargetId] = useState<string | null>(null);
+
+  // Security Posture Score panel
+  const [showPosturePanel, setShowPosturePanel] = useState(false);
+  const [latestPostureScore, setLatestPostureScore] = useState<number | null>(null);
+
+  // Attack Mind Simulator panel
+  const [showAttackMindPanel, setShowAttackMindPanel] = useState(false);
+  const [attackMindEntryNodeId, setAttackMindEntryNodeId] = useState<string | null>(null);
+  const [attackHighlightMap, setAttackHighlightMap] = useState<AttackHighlightMap>({});
 
   // Right-click context menu
   const [contextMenu, setContextMenu] = useState<{
@@ -992,6 +1004,30 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
     (rfInstanceRef.current as ExtendedRFInstance | null)?.highlightThreatTarget(targetId);
   }, []);
 
+  /** Handle Attack Mind step hover — update canvas highlight map */
+  const handleAttackHighlightChange = useCallback((highlight: AttackMindHighlight) => {
+    if (highlight.nodeIds.length === 0) {
+      setAttackHighlightMap({});
+      return;
+    }
+    const map: AttackHighlightMap = {};
+    // Build step number from stepKey: `pathId-step-N`
+    const stepNum = highlight.stepKey ? parseInt(highlight.stepKey.split('-step-')[1] ?? '0', 10) : 1;
+    for (const nodeId of highlight.nodeIds) {
+      map[nodeId] = [stepNum];
+    }
+    setAttackHighlightMap(map);
+  }, []);
+
+  /** Open Attack Mind panel pre-seeded with a specific entry node */
+  const handleSimulateAttackFromNode = useCallback((nodeId: string) => {
+    setAttackMindEntryNodeId(nodeId);
+    setShowAttackMindPanel(true);
+    setShowPosturePanel(false);
+    setShowThreatModelPanel(false);
+    setContextMenu(null);
+  }, []);
+
   // ── Layer navigation ──────────────────────────────────────────────────────
 
   const navigateTo = useCallback(
@@ -1680,6 +1716,9 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
             isReadOnly={isReadOnly}
             onOpenThreatModel={projectId !== 'local' && !!user ? () => setShowThreatModelPanel((v) => !v) : undefined}
             onOpenThreatDashboard={projectId !== 'local' ? () => router.push(`/projects/${projectId}/threats`) : undefined}
+            onOpenPostureScore={projectId !== 'local' && !!user ? () => { setShowPosturePanel((v) => !v); setShowAttackMindPanel(false); } : undefined}
+            postureScore={latestPostureScore}
+            onOpenAttackMind={projectId !== 'local' && !!user ? () => { setShowAttackMindPanel((v) => !v); setShowPosturePanel(false); } : undefined}
             onShowAI={() => setShowChatPanel(true)}
             onShowAIHistory={projectId !== 'local' && isLoggedIn() ? () => router.push(`/projects/${projectId}/ai-history`) : undefined}
             isCloudProject={!!backendDiagramId && projectId !== 'local'}
@@ -1791,6 +1830,7 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
                 handleHighlightThreatTarget(targetId);
                 setCanvasBadgeTargetId(targetId);
               }}
+              attackHighlightMap={showAttackMindPanel ? attackHighlightMap : undefined}
             />
 
             {/* ── Right sidebar ─────────────────────────────────────────── */}
@@ -1844,6 +1884,31 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
               />
             )}
 
+            {/* ── Security Posture Score panel — cloud projects only ────────── */}
+            {showPosturePanel && !!user && projectId !== 'local' && backendDiagramId && (
+              <PostureScorePanel
+                projectId={projectId}
+                diagramId={backendDiagramId}
+                diagramVersion={1}
+                layers={buildProjectSnapshot().layers as Record<string, unknown>}
+                currentLayerId={currentLayerId}
+                onScoreComputed={(score) => setLatestPostureScore(score)}
+                onClose={() => setShowPosturePanel(false)}
+              />
+            )}
+
+            {/* ── Attack Mind Simulator panel — cloud projects only ─────────── */}
+            {showAttackMindPanel && !!user && projectId !== 'local' && backendDiagramId && (
+              <AttackMindPanel
+                projectId={projectId}
+                diagramId={backendDiagramId}
+                layers={buildProjectSnapshot().layers as Record<string, unknown>}
+                initialEntryNodeId={attackMindEntryNodeId}
+                onHighlightChange={handleAttackHighlightChange}
+                onClose={() => { setShowAttackMindPanel(false); setAttackHighlightMap({}); setAttackMindEntryNodeId(null); }}
+              />
+            )}
+
             {/* ── AI chat panel — docked right, only when signed in ─────────── */}
             {showChatPanel && !!user && (
               <AIChatPanel
@@ -1885,6 +1950,7 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
             onReassignLayer={handleReassignLayer}
             hasAssignableOrphans={contextMenu.hasAssignableOrphans}
             onAssignLayer={handleAssignLayer}
+            onSimulateAttack={projectId !== 'local' && !!user ? () => handleSimulateAttackFromNode(contextMenu.node.id) : undefined}
           />
         )}
 

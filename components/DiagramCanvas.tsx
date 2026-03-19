@@ -20,6 +20,7 @@ import ReactFlow, {
 import 'reactflow/dist/style.css';
 
 import ThreatOverlay from '@/components/ThreatOverlay';
+import AttackPathOverlay, { type AttackHighlightMap } from '@/components/AttackPathOverlay';
 import type { NodeData, NodeType, GenerateResponse } from '@/lib/types';
 import { generateId, toReactFlowNodes, toReactFlowEdges, EDGE_MARKER } from '@/lib/diagramUtils';
 import { LINE_NODE_TYPES } from '@/lib/nodeConfig';
@@ -173,6 +174,8 @@ interface DiagramCanvasProps {
   onThreatNodeClick?: (targetId: string) => void;
   /** The currently highlighted target ID in the Threat Model panel */
   activeThreatTargetId?: string | null;
+  /** Node IDs → step numbers highlighted by Attack Mind hover */
+  attackHighlightMap?: AttackHighlightMap;
 }
 
 export default function DiagramCanvas({
@@ -191,6 +194,7 @@ export default function DiagramCanvas({
   threatOverlays,
   onThreatNodeClick,
   activeThreatTargetId,
+  attackHighlightMap,
 }: DiagramCanvasProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState<NodeData>(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>(initialEdges);
@@ -925,6 +929,9 @@ export default function DiagramCanvas({
             onNodeClick={onThreatNodeClick}
             activeTargetId={activeThreatTargetId}
           />
+        )}
+        {attackHighlightMap && Object.keys(attackHighlightMap).length > 0 && (
+          <AttackPathOverlay highlightMap={attackHighlightMap} />
         )}
       </ReactFlow>
 

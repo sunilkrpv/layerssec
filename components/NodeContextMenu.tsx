@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { GitBranch, Trash2, FolderOpen, ArrowUpToLine, ArrowDownToLine, Group, Ungroup, ArrowRightLeft, Link } from 'lucide-react';
+import { GitBranch, Trash2, FolderOpen, ArrowUpToLine, ArrowDownToLine, Group, Ungroup, ArrowRightLeft, Link, Sword } from 'lucide-react';
 
 interface NodeContextMenuProps {
   x: number;
@@ -29,6 +29,8 @@ interface NodeContextMenuProps {
   onAssignLayer?: () => void;
   /** True when there are unattached layers available to assign */
   hasAssignableOrphans?: boolean;
+  /** Called when user wants to simulate an attack starting from this node */
+  onSimulateAttack?: () => void;
 }
 
 export default function NodeContextMenu({
@@ -50,6 +52,7 @@ export default function NodeContextMenu({
   hasReassignableTargets,
   onAssignLayer,
   hasAssignableOrphans,
+  onSimulateAttack,
 }: NodeContextMenuProps) {
   const ref = useRef<HTMLDivElement>(null);
 
@@ -147,6 +150,19 @@ export default function NodeContextMenu({
         <ArrowDownToLine size={14} />
         Send to Back
       </button>
+
+      {onSimulateAttack && (
+        <>
+          <div className="my-1 h-px bg-slate-100 dark:bg-slate-700" />
+          <button
+            onClick={onSimulateAttack}
+            className="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-red-600 transition-colors hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
+          >
+            <Sword size={14} />
+            Simulate Attack from here
+          </button>
+        </>
+      )}
 
       <div className="my-1 h-px bg-slate-100 dark:bg-slate-700" />
 
