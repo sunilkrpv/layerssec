@@ -33,7 +33,8 @@
       "Bash(psql -h localhost -p 5432 -U postgres -c \"SELECT 1\" drafter)",
       "Bash(DATABASE_URL=\"postgresql://postgres:postgres@localhost:5432/drafter?schema=public\" DIRECT_URL=\"postgresql://postgres:postgres@localhost:5432/drafter?schema=public\" npx prisma migrate dev --name add_threat_identified_by)",
       "Bash(psql -h localhost -p 5432 -U postgres drafter -c \"SELECT pid, query, state FROM pg_stat_activity WHERE query LIKE ''%advisory%'' OR state = ''idle in transaction'';\")",
-      "Bash(psql -h localhost -p 5432 -U postgres drafter -c \"SELECT pg_terminate_backend\\(13823\\); SELECT pg_terminate_backend\\(13904\\);\")"
+      "Bash(psql -h localhost -p 5432 -U postgres drafter -c \"SELECT pg_terminate_backend\\(13823\\); SELECT pg_terminate_backend\\(13904\\);\")",
+      "WebSearch"
     ],
     "additionalDirectories": [
       "/Users/sunil/Development/github/drafter/.next/types/app/projects/[projectId]/threats/report"
