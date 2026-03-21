@@ -28,6 +28,8 @@ export class LlmService {
   private readonly llm: ChatAnthropic | ChatOllama;
   /** Used for stream()/streamConversation() — no JSON constraint so markdown works */
   private readonly llmText: ChatAnthropic | ChatOllama;
+  /** Anthropic-only: used for invokeWithThinking() — extended thinking enabled */
+  private readonly llmThinking: ChatAnthropic | null = null;
 
   readonly provider: LlmProvider;
   readonly modelName: string;
@@ -67,8 +69,50 @@ export class LlmService {
       // Anthropic has no JSON-only constraint, same instance works for both
       this.llmText = this.llm;
 
+      // Extended thinking instance: temperature must be 1 per Anthropic API spec
+      this.llmThinking = new ChatAnthropic({
+        apiKey: config.get<string>('ANTHROPIC_API_KEY'),
+        model: this.modelName,
+        // Extended thinking requires a higher token budget; maxTokens must be >= budget_tokens
+        maxTokens: 16000,
+        temperature: 1,
+        thinking: { type: 'enabled', budget_tokens: 10000 },
+      });
+
       this.logger.log(`LLM provider: Anthropic — ${this.modelName}`);
     }
+  }
+
+  /**
+   * Send a system + user message pair using Claude extended thinking.
+   * Falls back to regular invoke() for Ollama (no extended thinking support).
+   * budgetTokens controls how much the model is allowed to "think" before responding.
+   */
+  async invokeWithThinking(systemPrompt: string, userMessage: string): Promise<LlmResponse> {
+    if (this.provider !== 'anthropic' || !this.llmThinking) {
+      this.logger.warn('Extended thinking requested but provider is not Anthropic — falling back to standard invoke');
+      return this.invoke(systemPrompt, userMessage);
+    }
+
+    this.logger.debug(`invokeWithThinking — ${this.modelName}`);
+    this.logger.debug(`system-prompt — ${systemPrompt}`);
+    this.logger.debug(`user-message — ${userMessage}`);
+
+    const response = await this.llmThinking!.invoke([
+      new SystemMessage(systemPrompt),
+      new HumanMessage(userMessage),
+    ]);
+
+    // extractText filters out thinking blocks (type='thinking') — only 'text' blocks pass through
+    const content = this.extractText(response.content);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const usage = (response as any).usage_metadata as { total_tokens?: number } | undefined;
+    const tokensUsed = usage?.total_tokens ?? 0;
+
+    this.logger.debug(`invokeWithThinking response: ${content.slice(0, 200)}…`);
+    this.logger.debug(`invokeWithThinking tokens used: ${tokensUsed}`);
+
+    return { content, tokensUsed };
   }
 
   /**

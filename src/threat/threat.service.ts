@@ -8,6 +8,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { SaveThreatModelDto } from './dto/save-threat-model.dto';
 import { UpdateThreatDto } from './dto/update-threat.dto';
 import { CreateThreatDto } from './dto/create-threat.dto';
+import { SaveAttackSimulationDto } from '../ai/dto/attack-mind.dto';
 
 @Injectable()
 export class ThreatService {
@@ -226,6 +227,76 @@ export class ThreatService {
     }
 
     await this.prisma.threat.delete({ where: { id: threatId } });
+  }
+
+  // ── Posture Score History ─────────────────────────────────────────────────
+
+  async listPostureHistory(projectId: string, userId: string) {
+    await this.verifyProjectOwnership(projectId, userId);
+
+    return this.prisma.postureScore.findMany({
+      where: { projectId },
+      orderBy: { analyzedAt: 'desc' },
+      select: {
+        id: true,
+        diagramVersion: true,
+        score: true,
+        dimensions: true,
+        deductions: true,
+        additions: true,
+        summary: true,
+        topRecs: true,
+        layerScores: true,
+        useExtended: true,
+        analyzedAt: true,
+      },
+    });
+  }
+
+  // ── Attack Simulations ────────────────────────────────────────────────────
+
+  async saveAttackSimulation(projectId: string, userId: string, dto: SaveAttackSimulationDto) {
+    await this.verifyProjectOwnership(projectId, userId);
+
+    return this.prisma.attackSimulation.create({
+      data: {
+        projectId,
+        diagramId: dto.diagramId,
+        name: dto.name,
+        entryPointId: dto.entryPointId,
+        paths: dto.paths as unknown as import('@prisma/client').Prisma.InputJsonValue,
+        savedBy: userId,
+      },
+    });
+  }
+
+  async listAttackSimulations(projectId: string, userId: string) {
+    await this.verifyProjectOwnership(projectId, userId);
+
+    return this.prisma.attackSimulation.findMany({
+      where: { projectId },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        name: true,
+        diagramId: true,
+        entryPointId: true,
+        paths: true,
+        savedBy: true,
+        createdAt: true,
+      },
+    });
+  }
+
+  async deleteAttackSimulation(simulationId: string, userId: string) {
+    const sim = await this.prisma.attackSimulation.findUnique({
+      where: { id: simulationId },
+      include: { project: { select: { ownerId: true } } },
+    });
+    if (!sim) throw new NotFoundException('Attack simulation not found');
+    if (sim.project.ownerId !== userId) throw new ForbiddenException();
+
+    await this.prisma.attackSimulation.delete({ where: { id: simulationId } });
   }
 
   // ── Helpers ───────────────────────────────────────────────────────────────

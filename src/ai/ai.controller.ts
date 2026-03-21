@@ -11,6 +11,8 @@ import { ChatEvaluateDto } from './dto/chat-evaluate.dto';
 import { ChatAskDto } from './dto/chat-ask.dto';
 import { ContextualAskDto } from './dto/contextual-ask.dto';
 import { ThreatAnalysisDto } from './dto/threat-analysis.dto';
+import { PostureScoreDto } from './dto/posture-score.dto';
+import { AttackMindDto } from './dto/attack-mind.dto';
 
 @Controller('ai')
 @UseGuards(JwtAuthGuard)
@@ -58,6 +60,26 @@ export class AiController {
   @Post('threat-analysis')
   threatAnalysis(@CurrentUser('id') userId: string, @Body() dto: ThreatAnalysisDto) {
     return this.ai.threatAnalysis(userId, dto);
+  }
+
+  // ── Security Posture Score ───────────────────────────────────────────────
+
+  /** Compute + persist a security posture score for a cloud project diagram. */
+  @Post('posture-score')
+  postureScore(@CurrentUser('id') userId: string, @Body() dto: PostureScoreDto) {
+    return this.ai.postureScore(userId, dto);
+  }
+
+  // ── Attack Mind Simulator ────────────────────────────────────────────────
+
+  /** Stream a red-team attack simulation for a cloud project diagram. */
+  @Post('attack-mind')
+  attackMind(
+    @CurrentUser('id') userId: string,
+    @Body() dto: AttackMindDto,
+    @Res() res: Response,
+  ) {
+    return this.ai.attackMind(userId, dto, res);
   }
 
   @Post('chat/contextual-ask')

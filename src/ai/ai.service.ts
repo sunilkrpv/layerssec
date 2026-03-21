@@ -11,7 +11,11 @@ import { EVAL_SYSTEM_PROMPT, QA_SYSTEM_PROMPT } from './prompts/eval-system-prom
 import { CHAT_SYSTEM_PROMPT, buildLayerContextSystemPrompt } from './prompts/chat-system-prompt';
 import { buildContextualSystemPrompt } from './prompts/contextual-system-prompt';
 import { THREAT_ANALYSIS_SYSTEM_PROMPT, buildThreatAnalysisPrompt } from './prompts/threat-analysis-prompt';
+import { POSTURE_SCORE_SYSTEM_PROMPT, buildPostureScorePrompt, normalizePostureResult } from './prompts/posture-score-prompt';
+import { ATTACK_MIND_SYSTEM_PROMPT, buildAttackMindPrompt } from './prompts/attack-mind-prompt';
 import { ThreatAnalysisDto } from './dto/threat-analysis.dto';
+import { PostureScoreDto } from './dto/posture-score.dto';
+import { AttackMindDto } from './dto/attack-mind.dto';
 import { ChatService } from '../chat/chat.service';
 import { RagContextService } from '../rag/rag-context.service';
 import { RagIndexingService } from '../rag/rag-indexing.service';
@@ -329,6 +333,89 @@ export class AiService {
     }));
 
     return { threats };
+  }
+
+  // ── Security Posture Score ───────────────────────────────────────────────
+
+  async postureScore(userId: string, dto: PostureScoreDto) {
+    const userMessage = buildPostureScorePrompt({ layers: dto.layers as Parameters<typeof buildPostureScorePrompt>[0]['layers'] });
+
+    this.logger.log(`[PostureScore] projectId=${dto.projectId} diagramId=${dto.diagramId} extended=${dto.useExtendedThinking ?? false}`);
+    this.logger.debug(`[PostureScore] user message length: ${userMessage.length} chars`);
+
+    const startTime = Date.now();
+    const { content, tokensUsed } = dto.useExtendedThinking
+      ? await this.llm.invokeWithThinking(POSTURE_SCORE_SYSTEM_PROMPT, userMessage)
+      : await this.llm.invoke(POSTURE_SCORE_SYSTEM_PROMPT, userMessage);
+
+    const durationMs = Date.now() - startTime;
+    this.logger.log(`[PostureScore] completed in ${durationMs}ms, tokens=${tokensUsed}`);
+
+    const raw = content.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
+    const normalized = normalizePostureResult(JSON.parse(raw) as Record<string, unknown>);
+    const { aggregate, layerScores } = normalized;
+
+    this.logger.debug(`[PostureScore] layers scored: ${Object.keys(layerScores).join(', ')}`);
+
+    // Persist to DB
+    const saved = await this.prisma.postureScore.create({
+      data: {
+        projectId: dto.projectId,
+        diagramId: dto.diagramId,
+        diagramVersion: dto.diagramVersion,
+        score: aggregate.score,
+        dimensions: aggregate.dimensions as unknown as import('@prisma/client').Prisma.InputJsonValue,
+        deductions: aggregate.deductions as unknown as import('@prisma/client').Prisma.InputJsonValue,
+        additions: aggregate.additions as unknown as import('@prisma/client').Prisma.InputJsonValue,
+        summary: aggregate.summary,
+        topRecs: aggregate.topRecs as unknown as import('@prisma/client').Prisma.InputJsonValue,
+        layerScores: layerScores as unknown as import('@prisma/client').Prisma.InputJsonValue,
+        computedBy: userId,
+        useExtended: dto.useExtendedThinking ?? false,
+      },
+    });
+
+    this.logger.log(`[PostureScore] saved id=${saved.id} score=${saved.score}`);
+    return saved;
+  }
+
+  // ── Attack Mind Simulator ────────────────────────────────────────────────
+
+  async attackMind(_userId: string, dto: AttackMindDto, res: import('express').Response) {
+    const userMessage = buildAttackMindPrompt({
+      layers: dto.layers as Parameters<typeof buildAttackMindPrompt>[0]['layers'],
+      entryPointNodeId: dto.entryPointNodeId,
+    });
+
+    this.logger.log(`[AttackMind] projectId=${dto.projectId} diagramId=${dto.diagramId} entryPoint=${dto.entryPointNodeId ?? 'auto'} extended=${dto.useExtendedThinking ?? false}`);
+    this.logger.debug(`[AttackMind] user message length: ${userMessage.length} chars`);
+
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    res.setHeader('Transfer-Encoding', 'chunked');
+    res.setHeader('Cache-Control', 'no-cache');
+
+    const startTime = Date.now();
+    let fullResponse = '';
+
+    try {
+      if (dto.useExtendedThinking) {
+        // Extended thinking: single blocking call (thinking happens server-side), then stream the result
+        this.logger.log('[AttackMind] using extended thinking — blocking invoke');
+        const { content, tokensUsed } = await this.llm.invokeWithThinking(ATTACK_MIND_SYSTEM_PROMPT, userMessage);
+        fullResponse = content;
+        res.write(content);
+        this.logger.log(`[AttackMind] extended thinking completed in ${Date.now() - startTime}ms, tokens=${tokensUsed}`);
+      } else {
+        for await (const chunk of this.llm.stream(ATTACK_MIND_SYSTEM_PROMPT, userMessage)) {
+          res.write(chunk);
+          fullResponse += chunk;
+        }
+        this.logger.log(`[AttackMind] standard stream completed in ${Date.now() - startTime}ms`);
+      }
+    } finally {
+      this.logger.debug(`[AttackMind] response length: ${fullResponse.length} chars`);
+      res.end();
+    }
   }
 
   private async callAi(
