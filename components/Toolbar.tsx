@@ -1,10 +1,9 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { useReactFlow } from 'reactflow';
 import {
-  ZoomIn, ZoomOut, Maximize2, Trash2, Save, Clock,
-  Zap, Loader2, FolderOpen, Copy, ClipboardPaste,
+  Trash2, Save, Clock,
+  Loader2, FolderOpen, Copy, ClipboardPaste,
   ShieldAlert, ShieldCheck, LayoutDashboard, ChevronDown,
   Sparkles, History, Lock, GitCompareArrows, Sword,
 } from 'lucide-react';
@@ -24,9 +23,6 @@ interface ToolbarProps {
   isSaving: boolean;
   /** ISO string of last auto-save time, or null */
   lastSaved: Date | null;
-  /** Whether edge/line animations are enabled */
-  animateEdges: boolean;
-  onToggleAnimateEdges: () => void;
   /** Navigate to My Projects page (shown only when provided) */
   onMyProjects?: () => void;
   /** Copy selected canvas nodes */
@@ -115,8 +111,6 @@ export default function Toolbar({
   onSaveFile,
   isSaving,
   lastSaved,
-  animateEdges,
-  onToggleAnimateEdges,
   onMyProjects,
   onCopy,
   onPaste,
@@ -132,7 +126,6 @@ export default function Toolbar({
   onPublish,
   onOpenDiff,
 }: ToolbarProps) {
-  const { zoomIn, zoomOut, fitView } = useReactFlow();
   const [threatMenuOpen, setThreatMenuOpen] = useState(false);
   const threatBtnRef = useRef<HTMLButtonElement>(null);
   const postureScoreColor =
@@ -278,37 +271,6 @@ export default function Toolbar({
             <ToolBtn onClick={onClear} title="Clear canvas" danger>
               <Trash2 size={16} />
             </ToolBtn>
-          </>
-        )}
-      </BtnGroup>
-
-      <Divider />
-
-      {/* ── Zoom controls (+ Animate in editing mode) ─────────────────────── */}
-      <BtnGroup>
-        <ToolBtn onClick={() => zoomIn()} title="Zoom In">
-          <ZoomIn size={16} />
-        </ToolBtn>
-        <ToolBtn onClick={() => zoomOut()} title="Zoom Out">
-          <ZoomOut size={16} />
-        </ToolBtn>
-        <ToolBtn onClick={() => fitView({ padding: 0.15 })} title="Fit View">
-          <Maximize2 size={16} />
-        </ToolBtn>
-        {!isReadOnly && (
-          <>
-            <div className="mx-0.5 h-5 w-px bg-slate-200 dark:bg-slate-600" />
-            <button
-              onClick={onToggleAnimateEdges}
-              title={animateEdges ? 'Animations ON — click to disable' : 'Animations OFF — click to enable'}
-              className={`flex h-8 w-8 items-center justify-center rounded-lg transition-colors ${
-                animateEdges
-                  ? 'bg-violet-100 text-violet-600 dark:bg-violet-900/30 dark:text-violet-400'
-                  : 'text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:text-slate-500 dark:hover:bg-slate-700 dark:hover:text-slate-300'
-              }`}
-            >
-              <Zap size={16} />
-            </button>
           </>
         )}
       </BtnGroup>

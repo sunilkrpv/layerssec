@@ -78,6 +78,11 @@ body,
   background: #0f172a;
 }
 
+.dark .react-flow__selection {
+  background: rgba(99, 179, 237, 0.1);
+  border: 1.5px dashed #63b3ed;
+}
+
 /* ── Dotted-line node animation ─────────────────────────────────────────── */
 @keyframes moveDash {
   from { background-position: 0 0; }

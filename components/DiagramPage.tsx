@@ -14,6 +14,7 @@ import Toolbar from '@/components/Toolbar';
 import LayerBar from '@/components/LayerBar';
 import LayersPanel from '@/components/LayersPanel';
 import NodeContextMenu from '@/components/NodeContextMenu';
+import PaneContextMenu from '@/components/PaneContextMenu';
 import DrillDownModal from '@/components/DrillDownModal';
 import ReassignLayerModal from '@/components/ReassignLayerModal';
 import DeleteLayerModal from '@/components/DeleteLayerModal';
@@ -314,6 +315,7 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
     hasReassignableTargets: boolean;
     hasAssignableOrphans: boolean;
   } | null>(null);
+  const [paneContextMenu, setPaneContextMenu] = useState<{ x: number; y: number } | null>(null);
 
   // Drill-down naming modal
   const [drillTarget, setDrillTarget] = useState<Node<NodeData> | null>(null);
@@ -1266,6 +1268,10 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
     [layers, currentLayerId],
   );
 
+  const handlePaneContextMenu = useCallback((event: React.MouseEvent) => {
+    setPaneContextMenu({ x: event.clientX, y: event.clientY });
+  }, []);
+
   const handleDrillDown = useCallback(() => {
     const node = contextMenu?.node;
     if (!node) return;
@@ -1708,8 +1714,6 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
             onSaveFile={handleSaveFile}
             isSaving={isSaving}
             lastSaved={lastSaved}
-            animateEdges={animateEdges}
-            onToggleAnimateEdges={() => setAnimateEdges((v) => !v)}
             onMyProjects={() => router.push('/projects')}
             onCopy={() => rfInstanceRef.current?.doCopy()}
             onPaste={() => rfInstanceRef.current?.doPaste()}
@@ -1816,6 +1820,7 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
               initialEdges={currentLayer?.edges ?? []}
               onLayerSave={handleLayerSave}
               onNodeContextMenu={handleNodeContextMenu}
+              onPaneContextMenu={handlePaneContextMenu}
               onNodeSelect={handleNodeSelect}
               onEdgeSelect={handleEdgeSelect}
               rfInstanceRef={rfInstanceRef}
@@ -1928,6 +1933,17 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
             )}
           </div>
         </div>
+
+        {/* ── Pane context menu (canvas right-click) ──────────────────────── */}
+        {paneContextMenu && (
+          <PaneContextMenu
+            x={paneContextMenu.x}
+            y={paneContextMenu.y}
+            animateEdges={animateEdges}
+            onToggleAnimateEdges={() => setAnimateEdges((v) => !v)}
+            onClose={() => setPaneContextMenu(null)}
+          />
+        )}
 
         {/* ── Context menu ────────────────────────────────────────────────── */}
         {contextMenu && (

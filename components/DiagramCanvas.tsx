@@ -7,6 +7,7 @@ import ReactFlow, {
   type Connection,
   type ReactFlowInstance,
   addEdge,
+  reconnectEdge,
   useNodesState,
   useEdgesState,
   useReactFlow,
@@ -162,6 +163,8 @@ interface DiagramCanvasProps {
   onLayerSave: (nodes: Node<NodeData>[], edges: Edge[]) => void;
   /** Called on right-click so the parent can show a context menu */
   onNodeContextMenu: (event: React.MouseEvent, node: Node<NodeData>) => void;
+  /** Called on right-click on the canvas pane (not on a node) */
+  onPaneContextMenu?: (event: React.MouseEvent) => void;
   /** Called when a node should enter label-edit mode (click-to-add or keypress-to-edit) */
   onRequestEdit?: (nodeId: string, initialChar?: string) => void;
   /** Whether edge/line animations are enabled */
@@ -188,6 +191,7 @@ export default function DiagramCanvas({
   initialEdges,
   onLayerSave,
   onNodeContextMenu,
+  onPaneContextMenu,
   onRequestEdit,
   animateEdges = false,
   readOnly = false,
@@ -370,6 +374,45 @@ export default function DiagramCanvas({
     return () => document.removeEventListener('keydown', handleKeyDown);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const edgeReconnectSuccessful = useRef(false);
+  const edgeReconnectDragged = useRef(false);
+  const edgeReconnectStartPos = useRef<{ x: number; y: number } | null>(null);
+
+  const onReconnectStart = useCallback((_: React.MouseEvent, __: Edge) => {
+    edgeReconnectSuccessful.current = false;
+    edgeReconnectDragged.current = false;
+    edgeReconnectStartPos.current = { x: _.clientX, y: _.clientY };
+    pushHistoryRef.current();
+  }, []);
+
+  const onReconnect = useCallback(
+    (oldEdge: Edge, newConnection: Connection) => {
+      edgeReconnectSuccessful.current = true;
+      setEdges((els) => reconnectEdge(oldEdge, newConnection, els));
+    },
+    [setEdges],
+  );
+
+  const onReconnectEnd = useCallback(
+    (event: unknown, edge: Edge) => {
+      // Determine if this was a real drag or just a click on the edge handle
+      const e = event as React.MouseEvent;
+      const start = edgeReconnectStartPos.current;
+      const dist = start
+        ? Math.hypot(e.clientX - start.x, e.clientY - start.y)
+        : 0;
+      const wasDrag = dist > 5;
+
+      if (wasDrag && !edgeReconnectSuccessful.current) {
+        // User dragged to empty space — remove the dangling edge
+        setEdges((eds) => eds.filter((e) => e.id !== edge.id));
+      }
+      edgeReconnectSuccessful.current = false;
+      edgeReconnectStartPos.current = null;
+    },
+    [setEdges],
+  );
 
   const onConnect = useCallback(
     (connection: Connection) => {
@@ -886,6 +929,14 @@ export default function DiagramCanvas({
     [onNodeContextMenu],
   );
 
+  const handlePaneContextMenu = useCallback(
+    (event: React.MouseEvent) => {
+      event.preventDefault();
+      onPaneContextMenu?.(event);
+    },
+    [onPaneContextMenu],
+  );
+
   const handleSelectionChange = useCallback(({ nodes: sel }: { nodes: Node[] }) => {
     selectedNodesRef.current = sel as Node<NodeData>[];
   }, []);
@@ -898,16 +949,22 @@ export default function DiagramCanvas({
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
+        onReconnectStart={readOnly ? undefined : onReconnectStart}
+        onReconnect={readOnly ? undefined : onReconnect}
+        onReconnectEnd={readOnly ? undefined : onReconnectEnd}
         onInit={onInit}
         onNodeClick={onNodeClick}
         onEdgeClick={onEdgeClick}
         onPaneClick={onPaneClick}
         onNodeContextMenu={handleNodeContextMenu}
+        onPaneContextMenu={handlePaneContextMenu}
         onSelectionChange={handleSelectionChange}
         onNodeDrag={onNodeDrag}
         onNodeDragStop={onNodeDragStop}
         nodeTypes={NODE_TYPES}
         selectionMode={SelectionMode.Partial}
+        selectionOnDrag={!readOnly}
+        panOnDrag={readOnly ? true : [1, 2]}
         fitView
         deleteKeyCode={readOnly ? null : 'Backspace'}
         multiSelectionKeyCode="Shift"

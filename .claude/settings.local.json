@@ -38,7 +38,9 @@
       "Bash(find /Users/sunil/Development/github/drafter-rest/src/threat/entities -type f -name *.ts)",
       "Bash(dotenv -e .env.local -- npx prisma migrate dev --name add_posture_score_attack_simulation)",
       "Bash(PRISMA_FORCE_TPUT=false npm run db:migrate -- --name add_posture_score_attack_simulation)",
-      "Bash(FORCE_COLOR=0 script -q /dev/null npm run db:migrate -- --name add_posture_score_attack_simulation)"
+      "Bash(FORCE_COLOR=0 script -q /dev/null npm run db:migrate -- --name add_posture_score_attack_simulation)",
+      "Bash(node -e \"const pkg = require\\(''/Users/sunil/Development/github/drafter/node_modules/reactflow/package.json''\\); console.log\\(pkg.version\\)\")",
+      "Bash(node -e \"const rf = require\\(''/Users/sunil/Development/github/drafter/node_modules/reactflow''\\); console.log\\(Object.keys\\(rf\\).filter\\(k => k.toLowerCase\\(\\).includes\\(''edge''\\) || k.toLowerCase\\(\\).includes\\(''reconnect''\\)\\)\\)\")"
     ],
     "additionalDirectories": [
       "/Users/sunil/Development/github/drafter/.next/types/app/projects/[projectId]/threats/report"
