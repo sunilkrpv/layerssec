@@ -48,3 +48,34 @@ export function toReactFlowEdges(edges: DiagramEdge[]): Edge[] {
 export function generateId(): string {
   return `node_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
 }
+
+/**
+ * Rewrites every node ID in an AI-generated diagram to a unique `generateId()`
+ * value, and patches all edge source/target/parentNode references to match.
+ *
+ * LLMs produce stable, predictable IDs like "postgres-db" that collide across
+ * layers, causing the wrong node to be highlighted when attack paths or threat
+ * overlays reference IDs from a different layer.
+ */
+export function remapAiDiagramIds(
+  nodes: DiagramNode[],
+  edges: DiagramEdge[],
+): { nodes: DiagramNode[]; edges: DiagramEdge[] } {
+  const idMap = new Map<string, string>();
+  nodes.forEach((n) => idMap.set(n.id, generateId()));
+
+  const remappedNodes = nodes.map((n) => ({
+    ...n,
+    id: idMap.get(n.id)!,
+    parentNode: n.parentNode ? (idMap.get(n.parentNode) ?? n.parentNode) : undefined,
+  }));
+
+  const remappedEdges = edges.map((e) => ({
+    ...e,
+    id: generateId(),
+    source: idMap.get(e.source) ?? e.source,
+    target: idMap.get(e.target) ?? e.target,
+  }));
+
+  return { nodes: remappedNodes, edges: remappedEdges };
+}
