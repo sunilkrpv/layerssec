@@ -99,9 +99,11 @@ function Inner({ nodes, edges }: { nodes: unknown[]; edges: unknown[] }) {
 
 export default function MiniDiagramPreview({ nodes, edges, className = '' }: MiniDiagramPreviewProps) {
   return (
-    <div className={`overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-slate-700 dark:bg-slate-900 ${className}`}>
+    <div className={`overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-slate-700 dark:bg-slate-900 ${className}`} style={{ minHeight: 200 }}>
       <ReactFlowProvider>
-        <Inner nodes={nodes} edges={edges} />
+        <div style={{ width: '100%', height: '100%', minHeight: 200 }}>
+          <Inner nodes={nodes} edges={edges} />
+        </div>
       </ReactFlowProvider>
     </div>
   );

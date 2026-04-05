@@ -1,9 +1,12 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import {
   Sword, X, Loader2, Save, ChevronDown, ChevronRight, Zap,
   AlertTriangle, Flag, Target, Shield, Eye, Trash2, Play, Clock,
+  ChevronLeft, RotateCcw,
 } from 'lucide-react';
 import {
   type AttackMindResult,
@@ -42,13 +45,17 @@ interface PathCardProps {
   path: AttackPath;
   index: number;
   activeStepKey: string | null;
-  onStepHover: (key: string | null) => void;
-  onNodeHighlight: (nodeIds: string[]) => void;
+  activeTimelineStepIndex: number | null; // step index driven by timeline (not hover)
+  onStepHover: (key: string | null, nodeIds: string[], edgeIds: string[]) => void;
   isSelected: boolean;
   onSelect: () => void;
+  onAnimate: () => void;
 }
 
-function PathCard({ path, index, activeStepKey, onStepHover, onNodeHighlight, isSelected, onSelect }: PathCardProps) {
+function PathCard({
+  path, index, activeStepKey, activeTimelineStepIndex,
+  onStepHover, isSelected, onSelect, onAnimate,
+}: PathCardProps) {
   const [open, setOpen] = useState(index === 0);
 
   return (
@@ -83,18 +90,30 @@ function PathCard({ path, index, activeStepKey, onStepHover, onNodeHighlight, is
           <div>
             <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">Kill Chain</p>
             <div className="flex flex-col gap-1.5">
-              {path.steps.map((step) => {
+              {path.steps.map((step, stepIdx) => {
                 const key = `${path.pathId}-step-${step.stepNumber}`;
-                const isActive = activeStepKey === key;
+                const isHoverActive = activeStepKey === key;
+                const isTimelineActive = activeTimelineStepIndex === stepIdx;
+                const isActive = isHoverActive || isTimelineActive;
                 return (
                   <div
                     key={step.stepNumber}
-                    className={`rounded-lg px-3 py-2 cursor-pointer transition-colors ${isActive ? 'bg-indigo-50 dark:bg-indigo-900/30 ring-1 ring-indigo-300 dark:ring-indigo-600' : 'hover:bg-slate-50 dark:hover:bg-slate-700/40'}`}
-                    onMouseEnter={() => { onStepHover(key); onNodeHighlight(step.nodeIds); }}
-                    onMouseLeave={() => { onStepHover(null); onNodeHighlight([]); }}
+                    className={`rounded-lg px-3 py-2 cursor-pointer transition-colors ${
+                      isTimelineActive
+                        ? 'bg-red-50 dark:bg-red-900/20 ring-1 ring-red-400 dark:ring-red-600'
+                        : isHoverActive
+                        ? 'bg-indigo-50 dark:bg-indigo-900/30 ring-1 ring-indigo-300 dark:ring-indigo-600'
+                        : 'hover:bg-slate-50 dark:hover:bg-slate-700/40'
+                    }`}
+                    onMouseEnter={() => onStepHover(key, step.nodeIds, step.edgeIds ?? [])}
+                    onMouseLeave={() => onStepHover(null, [], [])}
                   >
                     <div className="flex items-center gap-2">
-                      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-slate-200 dark:bg-slate-700 text-xs font-bold text-slate-700 dark:text-slate-300">
+                      <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
+                        isActive
+                          ? 'bg-red-500 text-white'
+                          : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
+                      }`}>
                         {step.stepNumber}
                       </span>
                       <span className="flex-1 text-sm font-medium text-slate-700 dark:text-slate-200 truncate">{step.action}</span>
@@ -107,6 +126,15 @@ function PathCard({ path, index, activeStepKey, onStepHover, onNodeHighlight, is
               })}
             </div>
           </div>
+
+          {/* Animate this path button */}
+          <button
+            onClick={onAnimate}
+            className="flex items-center justify-center gap-2 rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 px-3 py-2 text-sm font-medium text-red-600 dark:text-red-400 transition hover:bg-red-100 dark:hover:bg-red-900/30"
+          >
+            <Play size={13} />
+            Animate this path on canvas
+          </button>
 
           {/* Crown jewels */}
           {path.crownJewelNodeIds.length > 0 && (
@@ -142,6 +170,89 @@ function PathCard({ path, index, activeStepKey, onStepHover, onNodeHighlight, is
   );
 }
 
+// ── Step Timeline Bar ─────────────────────────────────────────────────────────
+
+interface TimelineBarProps {
+  path: AttackPath;
+  stepIndex: number;
+  isPlaying: boolean;
+  isDark: boolean;
+  onPrev: () => void;
+  onNext: () => void;
+  onPlay: () => void;
+  onReset: () => void;
+}
+
+function TimelineBar({ path, stepIndex, isPlaying, isDark, onPrev, onNext, onPlay, onReset }: TimelineBarProps) {
+  const step = path.steps[stepIndex];
+  if (!step) return null;
+  const total = path.steps.length;
+
+  return (
+    <div className={`shrink-0 border-t px-4 py-3 flex flex-col gap-2.5 ${isDark ? 'border-red-900/40 bg-red-950/30' : 'border-red-100 bg-red-50/60'}`}>
+      {/* Path label */}
+      <div className="flex items-center gap-2">
+        <Sword size={12} className="shrink-0 text-red-500" />
+        <span className="text-xs font-semibold text-red-600 dark:text-red-400 truncate">{path.title}</span>
+      </div>
+
+      {/* Step label */}
+      <div className="flex items-center gap-2">
+        <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white`}>
+          {step.stepNumber}
+        </span>
+        <p className="flex-1 min-w-0 text-xs font-medium text-slate-700 dark:text-slate-200 truncate">{step.action}</p>
+        <span className="text-xs text-slate-400 shrink-0">{stepIndex + 1}/{total}</span>
+      </div>
+
+      {/* Progress bar */}
+      <div className="h-1 rounded-full bg-slate-200 dark:bg-slate-700">
+        <div
+          className="h-1 rounded-full bg-red-500 transition-all duration-300"
+          style={{ width: `${((stepIndex + 1) / total) * 100}%` }}
+        />
+      </div>
+
+      {/* Controls */}
+      <div className="flex items-center gap-2">
+        <button
+          onClick={onPrev}
+          disabled={stepIndex === 0}
+          className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition"
+        >
+          <ChevronLeft size={13} /> Prev
+        </button>
+        <button
+          onClick={onNext}
+          disabled={stepIndex === total - 1}
+          className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition"
+        >
+          Next <ChevronRight size={13} />
+        </button>
+        <button
+          onClick={onPlay}
+          className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+            isPlaying
+              ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border border-amber-300 dark:border-amber-700'
+              : 'bg-red-600 text-white hover:bg-red-700'
+          }`}
+        >
+          {isPlaying
+            ? <><Loader2 size={12} className="animate-spin" /> Playing…</>
+            : <><Play size={12} /> Play All</>}
+        </button>
+        <button
+          onClick={onReset}
+          title="Reset"
+          className="rounded-lg p-1.5 text-slate-400 hover:text-red-500 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 transition"
+        >
+          <RotateCcw size={13} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ── Saved Simulations List ────────────────────────────────────────────────────
 
 function SavedSimulationsList({
@@ -165,9 +276,10 @@ function SavedSimulationsList({
   return (
     <div className="flex flex-col divide-y divide-slate-100 dark:divide-slate-700/60 py-1">
       {simulations.map((sim) => {
-        const paths = sim.paths as AttackPath[];
+        const paths: AttackPath[] = sim.paths ?? [];
         const critCount = paths.filter((p) => p.severity === 'CRITICAL').length;
         const highCount = paths.filter((p) => p.severity === 'HIGH').length;
+        const isNewFormat = !sim.paths && !!sim.content;
         return (
           <div key={sim.id} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-700/40">
             {/* Icon */}
@@ -179,7 +291,9 @@ function SavedSimulationsList({
               <div className="flex items-center gap-2 mt-0.5">
                 <Clock size={11} className="text-slate-400" />
                 <span className="text-xs text-slate-400">{new Date(sim.createdAt).toLocaleDateString()}</span>
-                <span className="text-xs text-slate-400">· {paths.length} paths</span>
+                {isNewFormat
+                  ? <span className="text-xs text-slate-400">· narrative report</span>
+                  : <span className="text-xs text-slate-400">· {paths.length} paths</span>}
                 {critCount > 0 && <span className="text-xs text-red-500 font-semibold">{critCount} CRITICAL</span>}
                 {highCount > 0 && <span className="text-xs text-orange-500 font-semibold">{highCount} HIGH</span>}
               </div>
@@ -209,6 +323,7 @@ function SavedSimulationsList({
 
 export interface AttackMindHighlight {
   nodeIds: string[];
+  edgeIds: string[];
   stepKey: string | null;
   pathId: string | null;
 }
@@ -238,6 +353,7 @@ export default function AttackMindPanel({
 
   const [activeTab, setActiveTab] = useState<Tab>('simulation');
   const [result, setResult] = useState<AttackMindResult | null>(null);
+  const [narrativeContent, setNarrativeContent] = useState<string | null>(null);
   const [streaming, setStreaming] = useState(false);
   const [rawBuffer, setRawBuffer] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -245,6 +361,12 @@ export default function AttackMindPanel({
   const [entryNodeId, setEntryNodeId] = useState(initialEntryNodeId ?? '');
   const [activeStepKey, setActiveStepKey] = useState<string | null>(null);
   const [selectedPathId, setSelectedPathId] = useState<string | null>(null);
+
+  // Timeline state
+  const [timelinePath, setTimelinePath] = useState<AttackPath | null>(null);
+  const [timelineStepIndex, setTimelineStepIndex] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const playTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Save flow
   const [showSave, setShowSave] = useState(false);
@@ -273,16 +395,86 @@ export default function AttackMindPanel({
   // Load history on mount
   useEffect(() => { loadHistory(); }, [loadHistory]);
 
+  // Emit highlight whenever timeline step changes
+  useEffect(() => {
+    if (!timelinePath) return;
+    const step = timelinePath.steps[timelineStepIndex];
+    if (!step) return;
+    onHighlightChange({
+      nodeIds: step.nodeIds,
+      edgeIds: step.edgeIds ?? [],
+      stepKey: `${timelinePath.pathId}-step-${step.stepNumber}`,
+      pathId: timelinePath.pathId,
+    });
+  }, [timelinePath, timelineStepIndex, onHighlightChange]);
+
+  // Auto-play: advance step every 1.2s
+  useEffect(() => {
+    if (!isPlaying || !timelinePath) return;
+    playTimerRef.current = setTimeout(() => {
+      setTimelineStepIndex((prev) => {
+        const next = prev + 1;
+        if (next >= timelinePath.steps.length) {
+          setIsPlaying(false);
+          return prev;
+        }
+        return next;
+      });
+    }, 1200);
+    return () => { if (playTimerRef.current) clearTimeout(playTimerRef.current); };
+  }, [isPlaying, timelinePath, timelineStepIndex]);
+
+  const handleAnimatePath = useCallback((path: AttackPath) => {
+    setTimelinePath(path);
+    setTimelineStepIndex(0);
+    setIsPlaying(false);
+    setSelectedPathId(path.pathId);
+  }, []);
+
+  const handleTimelineReset = useCallback(() => {
+    setIsPlaying(false);
+    if (playTimerRef.current) clearTimeout(playTimerRef.current);
+    setTimelinePath(null);
+    setTimelineStepIndex(0);
+    onHighlightChange({ nodeIds: [], edgeIds: [], stepKey: null, pathId: null });
+  }, [onHighlightChange]);
+
+  const handleTimelinePrev = useCallback(() => {
+    setIsPlaying(false);
+    setTimelineStepIndex((prev) => Math.max(0, prev - 1));
+  }, []);
+
+  const handleTimelineNext = useCallback(() => {
+    setIsPlaying(false);
+    if (!timelinePath) return;
+    setTimelineStepIndex((prev) => Math.min(timelinePath.steps.length - 1, prev + 1));
+  }, [timelinePath]);
+
+  const handleTimelinePlay = useCallback(() => {
+    if (!timelinePath) return;
+    if (isPlaying) {
+      setIsPlaying(false);
+      return;
+    }
+    // If at last step, restart from beginning
+    if (timelineStepIndex >= timelinePath.steps.length - 1) {
+      setTimelineStepIndex(0);
+    }
+    setIsPlaying(true);
+  }, [isPlaying, timelinePath, timelineStepIndex]);
+
   const handleRun = useCallback(async () => {
     abortRef.current?.abort();
     abortRef.current = new AbortController();
     setStreaming(true);
     setResult(null);
+    setNarrativeContent(null);
     setRawBuffer('');
     setError(null);
     setShowSave(false);
     setSavedSuccess(false);
     setActiveTab('simulation');
+    handleTimelineReset();
 
     let accumulated = '';
     try {
@@ -299,7 +491,8 @@ export default function AttackMindPanel({
           setRawBuffer(accumulated);
         },
       );
-      const parsed = JSON.parse(accumulated) as AttackMindResult;
+      const cleaned = accumulated.replace(/^```(?:json)?\s*\n?/, '').replace(/\n?```\s*$/, '').trim();
+      const parsed = JSON.parse(cleaned) as AttackMindResult;
       setResult(parsed);
       setShowSave(true);
       setSaveName(`Attack Simulation — ${new Date().toLocaleDateString()}`);
@@ -311,7 +504,7 @@ export default function AttackMindPanel({
       setStreaming(false);
       setRawBuffer('');
     }
-  }, [projectId, diagramId, layers, entryNodeId, useExtended]);
+  }, [projectId, diagramId, layers, entryNodeId, useExtended, handleTimelineReset]);
 
   const handleSave = useCallback(async () => {
     if (!result) return;
@@ -335,27 +528,54 @@ export default function AttackMindPanel({
   }, [result, projectId, diagramId, saveName, entryNodeId, loadHistory]);
 
   const handleLoadSim = useCallback((sim: AttackSimulation) => {
-    setResult({ entryPointAnalysis: '', paths: sim.paths as AttackPath[] });
+    setNarrativeContent(null);
+    if (sim.paths) {
+      // Legacy format: structured paths array
+      setResult({ entryPointAnalysis: '', paths: sim.paths as AttackPath[] });
+    } else if (sim.content) {
+      // New format (PRD9): try JSON first, fall back to markdown narrative
+      try {
+        const cleaned = sim.content.replace(/^```(?:json)?\s*\n?/, '').replace(/\n?```\s*$/, '').trim();
+        const parsed = JSON.parse(cleaned);
+        if (Array.isArray(parsed)) {
+          // Saved as bare paths array (current save format)
+          setResult({ entryPointAnalysis: '', paths: parsed as AttackPath[] });
+        } else {
+          setResult(parsed as AttackMindResult);
+        }
+      } catch {
+        // Plain markdown narrative — render directly
+        setNarrativeContent(sim.content);
+        setResult(null);
+      }
+    } else {
+      setResult({ entryPointAnalysis: '', paths: [] });
+    }
     setActiveTab('simulation');
     setShowSave(false);
-  }, []);
+    handleTimelineReset();
+  }, [handleTimelineReset]);
 
   const handleDeleteSim = useCallback(async (id: string) => {
     await apiDeleteAttackSimulation(id);
     setSimulations((prev) => prev.filter((s) => s.id !== id));
   }, []);
 
-  const handleStepHover = useCallback((key: string | null) => {
+  const handleStepHover = useCallback((
+    key: string | null,
+    nodeIds: string[],
+    edgeIds: string[],
+  ) => {
+    // Only drive hover highlights if no timeline is active
+    if (timelinePath) return;
     setActiveStepKey(key);
-  }, []);
-
-  const handleNodeHighlight = useCallback((nodeIds: string[]) => {
     onHighlightChange({
       nodeIds,
-      stepKey: activeStepKey,
+      edgeIds,
+      stepKey: key,
       pathId: selectedPathId,
     });
-  }, [onHighlightChange, activeStepKey, selectedPathId]);
+  }, [onHighlightChange, selectedPathId, timelinePath]);
 
   // ── Footer controls (always visible) ─────────────────────────────────────
   const Footer = (
@@ -396,7 +616,7 @@ export default function AttackMindPanel({
   return (
     <div
       className={`flex h-full flex-col border-l ${isDark ? 'border-slate-700 bg-slate-900 text-slate-100' : 'border-slate-200 bg-white text-slate-900'}`}
-      style={{ width: 460 }}
+      style={{ width: 480 }}
     >
       {/* ── Header ── */}
       <div className={`flex h-10 shrink-0 items-center gap-2.5 border-b px-4 ${isDark ? 'border-slate-700 bg-slate-800' : 'border-slate-200 bg-slate-50'}`}>
@@ -482,24 +702,34 @@ export default function AttackMindPanel({
                 )}
 
                 <div className="flex flex-col gap-2.5">
-                  {result.paths.map((path, i) => (
+                  {(result.paths ?? []).map((path, i) => (
                     <PathCard
                       key={path.pathId}
                       path={path}
                       index={i}
                       activeStepKey={activeStepKey}
+                      activeTimelineStepIndex={timelinePath?.pathId === path.pathId ? timelineStepIndex : null}
                       onStepHover={handleStepHover}
-                      onNodeHighlight={handleNodeHighlight}
                       isSelected={selectedPathId === path.pathId}
                       onSelect={() => setSelectedPathId(path.pathId)}
+                      onAnimate={() => handleAnimatePath(path)}
                     />
                   ))}
                 </div>
               </div>
             )}
 
+            {/* Narrative content (new-format simulations) */}
+            {!streaming && narrativeContent && (
+              <div className="p-4">
+                <div className="prose prose-sm dark:prose-invert max-w-none">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{narrativeContent}</ReactMarkdown>
+                </div>
+              </div>
+            )}
+
             {/* Empty state */}
-            {!streaming && !result && !error && (
+            {!streaming && !result && !narrativeContent && !error && (
               <div className="flex flex-col items-center gap-3 py-16 px-6 text-center">
                 <div className="flex h-16 w-16 items-center justify-center rounded-full bg-red-50 dark:bg-red-900/20">
                   <Sword size={32} className="text-red-300 dark:text-red-600" />
@@ -535,6 +765,20 @@ export default function AttackMindPanel({
                 </button>
               </div>
             </div>
+          )}
+
+          {/* Step timeline — shown when animating a path */}
+          {timelinePath && !streaming && (
+            <TimelineBar
+              path={timelinePath}
+              stepIndex={timelineStepIndex}
+              isPlaying={isPlaying}
+              isDark={isDark}
+              onPrev={handleTimelinePrev}
+              onNext={handleTimelineNext}
+              onPlay={handleTimelinePlay}
+              onReset={handleTimelineReset}
+            />
           )}
 
           {Footer}

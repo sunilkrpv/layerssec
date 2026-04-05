@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import { useReactFlow } from 'reactflow';
-import { ZoomIn, ZoomOut, Maximize2, Zap } from 'lucide-react';
+import { ZoomIn, ZoomOut, Maximize2, Zap, Wand2 } from 'lucide-react';
 
 interface PaneContextMenuProps {
   x: number;
@@ -10,6 +10,8 @@ interface PaneContextMenuProps {
   animateEdges: boolean;
   onToggleAnimateEdges: () => void;
   onClose: () => void;
+  /** When provided, shows the Declutter option (only for non-empty, non-read-only diagrams) */
+  onDeclutter?: () => void;
 }
 
 export default function PaneContextMenu({
@@ -18,6 +20,7 @@ export default function PaneContextMenu({
   animateEdges,
   onToggleAnimateEdges,
   onClose,
+  onDeclutter,
 }: PaneContextMenuProps) {
   const ref = useRef<HTMLDivElement>(null);
   const { zoomIn, zoomOut, fitView } = useReactFlow();
@@ -91,6 +94,18 @@ export default function PaneContextMenu({
         active={animateEdges}
         onClick={onToggleAnimateEdges}
       />
+
+      {onDeclutter && (
+        <>
+          <div className="my-1 h-px bg-slate-100 dark:bg-slate-700" />
+          <div className="px-3 py-1.5 text-xs font-medium text-slate-400 dark:text-slate-500">AI</div>
+          <Item
+            icon={<Wand2 size={14} />}
+            label="Declutter Layout"
+            onClick={onDeclutter}
+          />
+        </>
+      )}
     </div>
   );
 }

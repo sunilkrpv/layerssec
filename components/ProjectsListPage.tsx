@@ -6,7 +6,7 @@ import {
   Plus, FolderOpen, Loader2, X, GitBranch,
   Clock, ChevronRight, Lock, FileEdit, AlertCircle,
   GitCompare, CheckCircle2, Circle, Pencil, Trash2,
-  ArrowRightCircle, BookOpen, Sun, Moon, Monitor, LogOut, Search, User, Layers,
+  ArrowRightCircle, BookOpen, Sun, Moon, Monitor, LogOut, Search, User, Layers, LayoutDashboard, Activity,
 } from 'lucide-react';
 import {
   apiListProjects, apiListProjectVersions, apiCheckoutVersion,
@@ -743,6 +743,25 @@ export default function ProjectsListPage() {
           <Layers size={14} className="text-blue-600" />
           <span className="text-sm font-bold text-slate-800 dark:text-slate-100">Drafter</span>
         </div>
+
+        {/* Dashboard link */}
+        <button
+          onClick={() => router.push('/home')}
+          className="flex items-center gap-1.5 rounded px-2 py-1 text-xs text-slate-500 hover:bg-slate-200 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200"
+          title="Back to Security Dashboard"
+        >
+          <LayoutDashboard size={13} />
+          <span className="hidden sm:inline">Dashboard</span>
+        </button>
+        <button
+          onClick={() => router.push('/activity')}
+          className="flex items-center gap-1.5 rounded px-2 py-1 text-xs text-slate-500 hover:bg-slate-200 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200"
+          title="AI Activity"
+        >
+          <Activity size={13} />
+          <span className="hidden sm:inline">AI Activity</span>
+        </button>
+        <div className="h-4 w-px bg-slate-200 dark:bg-slate-700" />
 
         {/* Right side — theme toggle + user */}
         <div className="ml-auto flex items-center gap-1">

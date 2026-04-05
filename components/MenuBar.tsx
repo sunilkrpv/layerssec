@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Minus, LogIn, LogOut, User, Sun, Moon, Monitor, Lock, Layers } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Minus, LogIn, LogOut, User, Sun, Moon, Monitor, Lock, Layers, LayoutDashboard } from 'lucide-react';
 import { useTheme } from '@/lib/themeContext';
 import type { Theme } from '@/lib/themeStore';
 
@@ -144,6 +145,7 @@ export default function MenuBar({
   const jsonInputRef = useRef<HTMLInputElement>(null);
   const projectInputRef = useRef<HTMLInputElement>(null);
   const { theme, setTheme } = useTheme();
+  const router = useRouter();
 
   const cycleTheme = () => {
     const next = THEME_CYCLE[(THEME_CYCLE.indexOf(theme) + 1) % THEME_CYCLE.length];
@@ -154,10 +156,25 @@ export default function MenuBar({
     <>
       <div className="flex h-9 flex-shrink-0 items-center border-b border-slate-200 bg-slate-50 px-3 dark:border-slate-700 dark:bg-slate-900">
         {/* Logo */}
-        <div className="mr-4 flex items-center gap-1.5 pl-1">
+        <div className="mr-2 flex items-center gap-1.5 pl-1">
           <Layers size={14} className="text-blue-600" />
           <span className="text-sm font-bold text-slate-800 dark:text-slate-100">Drafter</span>
         </div>
+
+        {/* Dashboard back-link — only for cloud projects */}
+        {isCloudProject && (
+          <>
+            <div className="mr-2 h-4 w-px bg-slate-200 dark:bg-slate-700" />
+            <button
+              onClick={() => router.push('/home')}
+              title="Back to Security Dashboard"
+              className="mr-2 flex items-center gap-1.5 rounded px-2 py-1 text-xs text-slate-500 hover:bg-slate-200 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200"
+            >
+              <LayoutDashboard size={13} />
+              <span className="hidden sm:inline">Dashboard</span>
+            </button>
+          </>
+        )}
 
         {/* Menu items */}
         <div className="flex items-center gap-0.5">

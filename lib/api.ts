@@ -332,6 +332,10 @@ export interface ChatMessage {
   layerId?: string | null;
   layerName?: string | null;
   diagramData?: { nodes: unknown[]; edges: unknown[] } | null;
+  provider?: string | null;
+  model?: string | null;
+  inputTokens?: number | null;
+  outputTokens?: number | null;
   createdAt: string;
 }
 
@@ -496,6 +500,18 @@ export interface ThreatModelFull {
   snapshotData: unknown;
   savedAt: string;
   threats: SavedThreat[];
+}
+
+/** Declutter the current diagram layer — returns new x/y positions for every node. */
+export function apiDeclutter(payload: {
+  nodes: unknown[];
+  edges: unknown[];
+  layerName?: string;
+}): Promise<{ positions: Record<string, { x: number; y: number }> }> {
+  return apiFetch<{ positions: Record<string, { x: number; y: number }> }>('/api/ai/declutter', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
 }
 
 /** Run STRIDE threat analysis on the current diagram layer — returns transient threats (not saved). */
@@ -745,8 +761,11 @@ export interface AttackSimulation {
   id: string;
   name: string;
   diagramId: string;
-  entryPointId: string | null;
-  paths: AttackPath[];
+  entryPointNodeId: string | null;
+  /** Long-form markdown content returned by the new schema (post-PRD9 refactor) */
+  content?: string;
+  /** Legacy field — present on records saved before PRD9 schema refactor */
+  paths?: AttackPath[];
   savedBy: string;
   createdAt: string;
 }
@@ -833,4 +852,511 @@ export async function apiChatEvaluate(
     if (done) break;
     onChunk(decoder.decode(value, { stream: true }));
   }
+}
+
+// ─── Security Command Center ───────────────────────────────────────────────
+
+export interface ProjectSummary {
+  id: string;
+  name: string;
+  description: string | null;
+  isPublic: boolean;
+  latestPostureScore: number | null;
+  openThreatCount: number;
+  criticalThreatCount: number;
+  lastActivityAt: string;
+}
+
+export interface ProjectOverview {
+  project: { id: string; name: string; status: string };
+  postureScore: {
+    score: number | null;
+    label: 'Good' | 'Fair' | 'Poor' | null;
+    weekDelta: number | null;
+    layerCount: number;
+    layerScores: Record<string, { layerName: string; score: number }>;
+    computedAt: string | null;
+  };
+  threats: {
+    total: number;
+    bySeverity: { critical: number; high: number; medium: number; low: number; info: number };
+    byStride: { S: number; T: number; R: number; I: number; D: number; E: number };
+  };
+  attackSims: {
+    total: number;
+    lastRunAt: string | null;
+    topPathSummary: string | null;
+  };
+  layers: Array<{
+    layerId: string;
+    layerName: string;
+    postureScore: number | null;
+    threatCount: number;
+    nodeCount: number;
+  }>;
+  recentActivity: Array<{
+    type: 'ai_generation' | 'stride_analysis' | 'posture_score' | 'attack_simulation';
+    description: string;
+    occurredAt: string;
+  }>;
+}
+
+/** All projects with latest security metadata — powers the sidebar. */
+export function apiGetProjectsSummary(): Promise<ProjectSummary[]> {
+  return apiFetch<ProjectSummary[]>('/api/projects/summary');
+}
+
+/** Per-project security intelligence for the Command Center. */
+export function apiGetProjectOverview(projectId: string): Promise<ProjectOverview> {
+  return apiFetch<ProjectOverview>(`/api/projects/${projectId}/overview`);
+}
+
+// ─── AI Settings ──────────────────────────────────────────────────────────────
+
+export type AiProvider = 'ANTHROPIC' | 'OPENAI' | 'OLLAMA' | 'REPLICATE';
+
+export interface UserAiSettings {
+  provider: AiProvider;
+  model: string;
+  maxInputTokens: number | null;
+  maxOutputTokens: number | null;
+  ollamaBaseUrl: string | null;
+  openAiBaseUrl: string | null;
+  /** True when an Anthropic API key is stored (key is never returned in plaintext). */
+  anthropicKeySet: boolean;
+  /** Masked preview, e.g. "sk-ant-api03-••••••••" */
+  anthropicKeyMasked: string | null;
+  openAiKeySet: boolean;
+  openAiKeyMasked: string | null;
+}
+
+/** Write-only payload for updating settings — API keys transmitted over HTTPS, encrypted at rest. */
+export interface UpdateAiSettingsPayload {
+  provider?: AiProvider;
+  model?: string;
+  maxOutputTokens?: number | null;
+  ollamaBaseUrl?: string | null;
+  openAiBaseUrl?: string | null;
+  /** Provide key to set/replace. Send "" to clear. Omit to leave unchanged. */
+  anthropicApiKey?: string;
+  /** Provide key to set/replace. Send "" to clear. Omit to leave unchanged. */
+  openAiApiKey?: string;
+}
+
+export interface AiTokenMetrics {
+  totalInputTokens: number;
+  totalOutputTokens: number;
+  totalTokens: number;
+  byModel: Array<{
+    provider: string;
+    model: string;
+    inputTokens: number;
+    outputTokens: number;
+    calls: number;
+  }>;
+}
+
+export function apiGetAiSettings(): Promise<UserAiSettings> {
+  return apiFetch<UserAiSettings>('/api/user/ai-settings');
+}
+
+export function apiUpdateAiSettings(payload: UpdateAiSettingsPayload): Promise<UserAiSettings> {
+  return apiFetch<UserAiSettings>('/api/user/ai-settings', {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  });
+}
+
+export function apiGetAiMetrics(): Promise<AiTokenMetrics> {
+  return apiFetch<AiTokenMetrics>('/api/user/ai-metrics');
+}
+
+// ── Async AI job endpoints ────────────────────────────────────────────────────
+
+export type AiJobStatus = 'PENDING' | 'RUNNING' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
+export type AiJobType = 'THREAT_ANALYSIS' | 'POSTURE_SCORE' | 'ATTACK_SIMULATION' | 'DECLUTTER';
+
+export interface AiJobStatusResponse {
+  id: string;
+  type: AiJobType;
+  status: AiJobStatus;
+  progress: number;
+  resultRef: string | null;
+  errorMessage: string | null;
+  createdAt: string;
+  startedAt: string | null;
+  completedAt: string | null;
+}
+
+/** Submit a threat analysis as a background job — returns { jobId } immediately. */
+export function apiSubmitThreatAnalysis(payload: {
+  projectId: string;
+  diagramId: string;
+  diagramVersion: number;
+  layerId: string;
+  layerName?: string;
+  modelName?: string;
+  nodes: unknown[];
+  edges: unknown[];
+  trustBoundaries?: unknown[];
+}): Promise<{ jobId: string }> {
+  return apiFetch<{ jobId: string }>('/api/ai/threat-analysis/submit', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+/** Submit a posture score as a background job — returns { jobId } immediately. */
+export function apiSubmitPostureScore(payload: {
+  projectId: string;
+  diagramId: string;
+  diagramVersion: number;
+  layers: unknown;
+  useExtendedThinking?: boolean;
+}): Promise<{ jobId: string }> {
+  return apiFetch<{ jobId: string }>('/api/ai/posture-score/submit', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+/** Poll the status of an async AI job. */
+export function apiGetJobStatus(jobId: string): Promise<AiJobStatusResponse> {
+  return apiFetch<AiJobStatusResponse>(`/api/jobs/${jobId}/status`);
+}
+
+/** Cancel a running or pending async AI job. */
+export function apiCancelJob(jobId: string): Promise<{ success: boolean }> {
+  return apiFetch<{ success: boolean }>(`/api/jobs/${jobId}/cancel`, { method: 'POST' });
+}
+
+/** List recent async AI jobs for the current user. */
+export function apiListJobs(projectId?: string): Promise<AiJobStatusResponse[]> {
+  const qs = projectId ? `?projectId=${projectId}` : '';
+  return apiFetch<AiJobStatusResponse[]>(`/api/jobs${qs}`);
+}
+
+// ── AI Activity (observability) ────────────────────────────────────────────────
+
+export interface AiJobListItem {
+  id: string;
+  type: AiJobType;
+  status: AiJobStatus;
+  progress: number;
+  resultRef: string | null;
+  errorMessage: string | null;
+  projectId: string | null;
+  projectName: string | null;
+  diagramId: string | null;
+  layerId: string | null;
+  createdAt: string;
+  startedAt: string | null;
+  completedAt: string | null;
+}
+
+export interface AiActivityFilters {
+  types?: AiJobType[];
+  statuses?: AiJobStatus[];
+  dateRange?: '1h' | '1d' | '7d' | '30d';
+  search?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export function apiListActivity(
+  filters: AiActivityFilters = {},
+): Promise<{ jobs: AiJobListItem[]; total: number }> {
+  const params = new URLSearchParams();
+  if (filters.types?.length) params.set('types', filters.types.join(','));
+  if (filters.statuses?.length) params.set('statuses', filters.statuses.join(','));
+  if (filters.dateRange) params.set('dateRange', filters.dateRange);
+  if (filters.search) params.set('search', filters.search);
+  if (filters.limit) params.set('limit', String(filters.limit));
+  if (filters.offset) params.set('offset', String(filters.offset));
+  const qs = params.toString();
+  return apiFetch<{ jobs: AiJobListItem[]; total: number }>(
+    `/api/jobs/activity${qs ? `?${qs}` : ''}`,
+  );
+}
+
+// ─── Threat Agent Chat ────────────────────────────────────────────────────────
+
+export interface ThreatChatPayload {
+  projectId: string;
+  diagramId: string;
+  layerId: string;
+  layerName?: string;
+  messages: Array<{ role: 'user' | 'assistant'; content: string }>;
+  nodes: Array<{
+    id: string; type?: string; label?: string;
+    technology?: string; description?: string; trustLevel?: string;
+  }>;
+  edges: Array<{ id: string; source: string; target: string; label?: string }>;
+  trustBoundaries?: Array<{ id: string; label?: string; trustLevel?: string }>;
+}
+
+export interface KeyFinding {
+  category: string;
+  count: number;
+  severity: 'CRITICAL' | 'HIGH' | 'MEDIUM';
+}
+
+export type ThreatChatEvent =
+  | { type: 'message'; delta: string }
+  | { type: 'message_done' }
+  | { type: 'analysis_triggered'; jobId: string }
+  | { type: 'analysis_complete'; modelId: string; threatCount: number; summary: string; keyFindings: KeyFinding[] }
+  | { type: 'error'; message: string };
+
+/**
+ * Multi-turn threat agent chat — streams typed SSE events.
+ * Backend handles phase detection, job submission, and ChromaDB indexing.
+ *
+ * Usage:
+ *   for await (const event of apiThreatAgentChat(payload)) { ... }
+ */
+export async function* apiThreatAgentChat(
+  payload: ThreatChatPayload,
+): AsyncGenerator<ThreatChatEvent> {
+  const res = await fetchWithRefresh(`${BASE_URL}/api/ai/threat-analysis/chat`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    yield { type: 'error', message: `HTTP ${res.status}` };
+    return;
+  }
+
+  const reader = res.body?.getReader();
+  if (!reader) {
+    yield { type: 'error', message: 'No response stream' };
+    return;
+  }
+
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+
+    // SSE frames are delimited by \n\n
+    const frames = buffer.split('\n\n');
+    buffer = frames.pop() ?? ''; // last item may be incomplete
+
+    for (const frame of frames) {
+      if (!frame.trim()) continue;
+
+      let eventName = 'message';
+      let dataLine = '';
+
+      for (const line of frame.split('\n')) {
+        if (line.startsWith('event: ')) eventName = line.slice(7).trim();
+        else if (line.startsWith('data: ')) dataLine = line.slice(6).trim();
+      }
+
+      if (!dataLine) continue;
+
+      try {
+        const parsed = JSON.parse(dataLine) as Record<string, unknown>;
+        switch (eventName) {
+          case 'message':
+            yield { type: 'message', delta: parsed.delta as string };
+            break;
+          case 'message_done':
+            yield { type: 'message_done' };
+            break;
+          case 'analysis_triggered':
+            yield { type: 'analysis_triggered', jobId: parsed.jobId as string };
+            break;
+          case 'analysis_complete':
+            yield {
+              type: 'analysis_complete',
+              modelId: parsed.modelId as string,
+              threatCount: parsed.threatCount as number,
+              summary: parsed.summary as string,
+              keyFindings: (parsed.keyFindings ?? []) as KeyFinding[],
+            };
+            break;
+          case 'error':
+            yield { type: 'error', message: parsed.message as string };
+            break;
+        }
+      } catch {
+        // Malformed SSE frame — skip
+      }
+    }
+  }
+}
+
+// ── Security Posture Score Stream ──────────────────────────────────────────
+
+export interface PostureScoreJobResult {
+  postureScoreId: string;
+  score: number;
+  summary: string;
+  topRecs: string[];
+  layerCount: number;
+}
+
+export type PostureScoreStreamEvent =
+  | { event: 'job_submitted'; jobId: string }
+  | { event: 'job_complete'; data: PostureScoreJobResult }
+  | { event: 'error'; message: string };
+
+export async function* apiPostureScoreStream(payload: {
+  projectId: string;
+  diagramId: string;
+  diagramVersion: number;
+  layers: unknown;
+  useExtendedThinking?: boolean;
+}): AsyncGenerator<PostureScoreStreamEvent> {
+  const res = await fetchWithRefresh(`${BASE_URL}/api/ai/posture-score/stream`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok || !res.body) {
+    throw new Error(`HTTP ${res.status}`);
+  }
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buf = '';
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buf += decoder.decode(value, { stream: true });
+    const frames = buf.split('\n\n');
+    buf = frames.pop() ?? '';
+    for (const frame of frames) {
+      if (!frame.trim()) continue;
+      const lines = frame.split('\n');
+      let eventName = '';
+      let dataStr = '';
+      for (const line of lines) {
+        if (line.startsWith('event: ')) eventName = line.slice(7).trim();
+        else if (line.startsWith('data: ')) dataStr = line.slice(6).trim();
+      }
+      if (!eventName) continue;
+      try {
+        const parsed = dataStr ? (JSON.parse(dataStr) as Record<string, unknown>) : {};
+        if (eventName === 'job_submitted') yield { event: 'job_submitted', jobId: parsed.jobId as string };
+        else if (eventName === 'job_complete') yield { event: 'job_complete', data: parsed as unknown as PostureScoreJobResult };
+        else if (eventName === 'error') yield { event: 'error', message: (parsed.message as string) ?? 'Unknown error' };
+      } catch { /* malformed frame */ }
+    }
+  }
+}
+
+// ── Attack Mind Stream ─────────────────────────────────────────────────────
+
+export interface AttackMindJobResult {
+  simulationId: string;
+  entryPointLabel: string;
+  summary: string;
+  contentLength: number;
+}
+
+export type AttackMindStreamEvent =
+  | { event: 'job_submitted'; jobId: string }
+  | { event: 'job_complete'; data: AttackMindJobResult }
+  | { event: 'error'; message: string };
+
+export async function* apiAttackMindStream(payload: {
+  projectId: string;
+  diagramId: string;
+  diagramVersion: number;
+  layers: unknown;
+  entryPointNodeId?: string;
+  useExtendedThinking?: boolean;
+}): AsyncGenerator<AttackMindStreamEvent> {
+  const res = await fetchWithRefresh(`${BASE_URL}/api/ai/attack-mind/stream`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok || !res.body) {
+    throw new Error(`HTTP ${res.status}`);
+  }
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buf = '';
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buf += decoder.decode(value, { stream: true });
+    const frames = buf.split('\n\n');
+    buf = frames.pop() ?? '';
+    for (const frame of frames) {
+      if (!frame.trim()) continue;
+      const lines = frame.split('\n');
+      let eventName = '';
+      let dataStr = '';
+      for (const line of lines) {
+        if (line.startsWith('event: ')) eventName = line.slice(7).trim();
+        else if (line.startsWith('data: ')) dataStr = line.slice(6).trim();
+      }
+      if (!eventName) continue;
+      try {
+        const parsed = dataStr ? (JSON.parse(dataStr) as Record<string, unknown>) : {};
+        if (eventName === 'job_submitted') yield { event: 'job_submitted', jobId: parsed.jobId as string };
+        else if (eventName === 'job_complete') yield { event: 'job_complete', data: parsed as unknown as AttackMindJobResult };
+        else if (eventName === 'error') yield { event: 'error', message: (parsed.message as string) ?? 'Unknown error' };
+      } catch { /* malformed frame */ }
+    }
+  }
+}
+
+// ── Security Intel ────────────────────────────────────────────────────────────
+
+export interface PriorityAction {
+  rank: number;
+  severity: 'critical' | 'high' | 'medium' | 'low';
+  source: 'threat' | 'posture' | 'attack';
+  title: string;
+  detail: string;
+}
+
+export interface IntelSynthesisResult {
+  executiveSummary: string;
+  priorityActions: PriorityAction[];
+}
+
+export function apiIntelSynthesis(payload: {
+  projectId: string;
+  threatModelId: string;
+  postureScoreId: string;
+  attackSimulationId?: string;
+}): Promise<IntelSynthesisResult> {
+  return apiFetch<IntelSynthesisResult>('/api/ai/intel-synthesis', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function apiExportIntelReport(params: {
+  projectId: string;
+  threatModelId: string;
+  postureScoreId: string;
+  attackSimulationId?: string;
+  executiveSummary?: string;
+  priorityActions?: PriorityAction[];
+}): Promise<void> {
+  const { projectId, ...body } = params;
+  const res = await fetchWithRefresh(`${BASE_URL}/api/projects/${projectId}/intel-report`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getAccessToken() ?? ''}` },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`Export failed: ${res.status}`);
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'security-intel-report.pdf';
+  a.click();
+  URL.revokeObjectURL(url);
 }

@@ -38,7 +38,8 @@ const TRUST_LEVEL_CONFIG = {
 } as const;
 
 export default function TrustBoundaryNode({ id, data, selected }: NodeProps<NodeData>) {
-  const level = data.trustLevel ?? 'internal';
+  const rawLevel = (data.trustLevel ?? 'internal').toLowerCase();
+  const level = (rawLevel in TRUST_LEVEL_CONFIG ? rawLevel : 'custom') as keyof typeof TRUST_LEVEL_CONFIG;
   const config = TRUST_LEVEL_CONFIG[level];
 
   const borderColor = data.borderColor || config.border;

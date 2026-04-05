@@ -23,6 +23,7 @@ import AIChatPanel from '@/components/AIChatPanel';
 import ThreatModelPanel, { type ThreatModelInfo } from '@/components/ThreatModelPanel';
 import PostureScorePanel from '@/components/PostureScorePanel';
 import AttackMindPanel, { type AttackMindHighlight } from '@/components/AttackMindPanel';
+import DeclutterOverlay from '@/components/DeclutterOverlay';
 import { type AttackHighlightMap } from '@/components/AttackPathOverlay';
 import { Lock, ArrowRight } from 'lucide-react';
 import FileLoadPrompt from '@/components/FileLoadPrompt';
@@ -40,8 +41,12 @@ import {
   apiPublishDiagram, apiListProjectVersions, apiGetProjectDraft,
   apiGetDiagram, apiGetProject, apiCheckoutVersion, DraftExistsError,
   apiChatGenerate, apiChatEvaluate, apiGetChatHistory,
-  apiRunThreatAnalysis, apiSaveThreatModel,
+  apiRunThreatAnalysis, apiSaveThreatModel, apiDeclutter,
+  apiSubmitThreatAnalysis, apiSubmitPostureScore, apiGetJobStatus,
+  apiThreatAgentChat, apiPostureScoreStream, apiAttackMindStream,
+  type AiJobStatusResponse, type ThreatChatPayload,
 } from '@/lib/api';
+import { useJobPoller } from '@/hooks/useJobPoller';
 import { getStoredUser, clearTokens, isLoggedIn, isLocalMode, clearLocalMode } from '@/lib/authStore';
 import {
   loadAllLayers,
@@ -230,6 +235,24 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
     return () => window.removeEventListener('drafter:unauthorized', handle401);
   }, [router]);
 
+  // ── Threat panel window events (from AIChatPanel buttons) ─────────────────
+  useEffect(() => {
+    const handleOpenThreatPanel = () => setShowThreatModelPanel(true);
+    window.addEventListener('drafter:open-threat-panel', handleOpenThreatPanel);
+    window.addEventListener('drafter:open-threat-model', handleOpenThreatPanel);
+    return () => {
+      window.removeEventListener('drafter:open-threat-panel', handleOpenThreatPanel);
+      window.removeEventListener('drafter:open-threat-model', handleOpenThreatPanel);
+    };
+  }, []);
+
+  // ── Attack Mind window event (from AIChatPanel) ────────────────────────────
+  useEffect(() => {
+    const openAttackSim = () => { /* optionally handle drafter:open-attack-sim */ };
+    window.addEventListener('drafter:open-attack-sim', openAttackSim);
+    return () => window.removeEventListener('drafter:open-attack-sim', openAttackSim);
+  }, []);
+
   // ── Global keyboard shortcuts (Cmd+L: layers panel, Cmd+P: projects modal) ─
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -269,6 +292,12 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
   const [showLayersPanel, setShowLayersPanel] = useState(false);
   const [animateEdges, setAnimateEdges] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isDecluttering, setIsDecluttering] = useState(false);
+  const [showDeclutterSuggestion, setShowDeclutterSuggestion] = useState(false);
+
+  // Async AI job tracking
+  const [activeJobId, setActiveJobId] = useState<string | null>(null);
+  const [activeJobType, setActiveJobType] = useState<'THREAT_ANALYSIS' | 'POSTURE_SCORE' | null>(null);
 
   // Startup modal — shown on fresh load when there's no existing work
   const [showStartupModal, setShowStartupModal] = useState(() => {
@@ -305,6 +334,36 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
   const [showAttackMindPanel, setShowAttackMindPanel] = useState(false);
   const [attackMindEntryNodeId, setAttackMindEntryNodeId] = useState<string | null>(null);
   const [attackHighlightMap, setAttackHighlightMap] = useState<AttackHighlightMap>({});
+  const [attackEdgeIds, setAttackEdgeIds] = useState<string[]>([]);
+
+  // ── Deep-link action from ?action= URL param ─────────────────────────────
+  // Read once on mount; open the matching panel as soon as backendDiagramId is ready.
+  const pendingActionRef = useRef<string | null>(
+    typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('action') : null,
+  );
+  useEffect(() => {
+    const action = pendingActionRef.current;
+    if (!action || !backendDiagramId || !user) return;
+    // Consume — only open once
+    pendingActionRef.current = null;
+    // Remove the param from the URL without triggering a navigation
+    const url = new URL(window.location.href);
+    url.searchParams.delete('action');
+    window.history.replaceState(null, '', url.toString());
+    // Open the matching panel
+    if (action === 'posture') {
+      setShowPosturePanel(true);
+      setShowAttackMindPanel(false);
+      setShowThreatModelPanel(false);
+    } else if (action === 'attack') {
+      setShowAttackMindPanel(true);
+      setShowPosturePanel(false);
+      setShowThreatModelPanel(false);
+    } else if (action === 'stride') {
+      setShowChatPanel(true);
+      setShowThreatModelPanel(false);
+    }
+  }, [backendDiagramId, user]);
 
   // Right-click context menu
   const [contextMenu, setContextMenu] = useState<{
@@ -342,6 +401,50 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
   const currentLayerId = navStack[navStack.length - 1];
   const currentLayer = layers[currentLayerId];
   const hasNodes = (currentLayer?.nodes.length ?? 0) > 0;
+
+  // Serialized diagram data for threat agent chat — derived from layer state
+  const threatAgentNodes = useMemo(() =>
+    (currentLayer?.nodes ?? [])
+      .filter((n) => n.type !== 'trustboundary')
+      .map((n) => ({
+        id: n.id,
+        type: n.type ?? 'unknown',
+        label: (n.data as { label?: string })?.label ?? n.id,
+        technology: (n.data as { technology?: string })?.technology,
+        description: (n.data as { description?: string })?.description,
+        trustLevel: (n.data as { trustLevel?: string })?.trustLevel,
+      })),
+    [currentLayer],
+  );
+
+  const threatAgentEdges = useMemo(() =>
+    (currentLayer?.edges ?? []).map((e) => ({
+      id: e.id,
+      source: e.source,
+      target: e.target,
+      label: typeof e.label === 'string' ? e.label : undefined,
+    })),
+    [currentLayer],
+  );
+
+  const threatAgentTrustBoundaries = useMemo(() =>
+    (currentLayer?.nodes ?? [])
+      .filter((n) => n.type === 'trustboundary')
+      .map((n) => ({
+        id: n.id,
+        label: (n.data as { label?: string })?.label ?? 'Trust Boundary',
+        trustLevel: (n.data as { trustLevel?: string })?.trustLevel ?? 'custom',
+      })),
+    [currentLayer],
+  );
+
+  // Threat agent chat history — messages saved with layerId='__threat_analysis__'
+  const threatAgentHistory = useMemo(() =>
+    chatHistory
+      .filter((m) => m.layerId === '__threat_analysis__')
+      .map((m) => ({ role: m.role, content: m.content })),
+    [chatHistory],
+  );
 
   // ── URL sync — update browser URL whenever the active layer changes ───────
   useEffect(() => {
@@ -510,7 +613,16 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
         : makeInitialLayers();
     saveAllLayers(importedLayers);
     setLayers(importedLayers);
-    setNavStack(canvasData?.navStack?.length ? canvasData.navStack : [ROOT_LAYER_ID]);
+    // Honor ?currLayer= URL param if the layer exists in the loaded diagram
+    const currLayerParam = readCurrLayerParam();
+    const resolvedNavStack = (() => {
+      if (currLayerParam && importedLayers[currLayerParam]) {
+        const path = getLayerPath(importedLayers, currLayerParam);
+        if (path.length > 0) return path.map((l) => l.id);
+      }
+      return canvasData?.navStack?.length ? canvasData.navStack : [ROOT_LAYER_ID];
+    })();
+    setNavStack(resolvedNavStack);
     // Force DiagramCanvas to remount with the fresh initialNodes even when
     // currentLayerId doesn't change (e.g. server data loaded while already on ROOT).
     setCanvasLoadKey((k) => k + 1);
@@ -870,33 +982,10 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
       const nodes = (rfInstanceRef.current as ReactFlowInstance | null)?.getNodes() ?? [];
       const edges = (rfInstanceRef.current as ReactFlowInstance | null)?.getEdges() ?? [];
       const layerName = layers[currentLayerId]?.name ?? 'Diagram';
-      const isCloud = projectId !== 'local' && isLoggedIn();
-      if (isCloud) {
-        // Cloud: route through drafter-rest — saves both messages to chat history server-side
-        await apiChatEvaluate(
-          { nodes, edges, layerName, userQuestion, projectId, layerId: currentLayerId },
-          onChunk,
-        );
-      } else {
-        // Local fallback — Next.js API route, no history
-        const response = await fetch('/api/evaluate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ nodes, edges, layerName, userQuestion }),
-        });
-        if (!response.ok) {
-          const errBody = await response.json().catch(() => ({ error: 'Request failed' })) as { error?: string };
-          throw new Error(errBody.error ?? 'Evaluation failed');
-        }
-        const reader = response.body?.getReader();
-        if (!reader) throw new Error('No response stream');
-        const decoder = new TextDecoder();
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          onChunk(decoder.decode(value, { stream: true }));
-        }
-      }
+      await apiChatEvaluate(
+        { nodes, edges, layerName, userQuestion, projectId, layerId: currentLayerId },
+        onChunk,
+      );
     },
     [currentLayerId, layers, projectId],
   );
@@ -951,6 +1040,65 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
 
     return result.threats;
   }, [currentLayerId, layers]);
+
+  /** Multi-turn threat agent chat — delegates to apiThreatAgentChat SSE generator. */
+  const handleThreatAgentChat = useCallback(
+    (payload: ThreatChatPayload) => apiThreatAgentChat(payload),
+    [],
+  );
+
+  /** Submit threat analysis as a background job — returns immediately, results populate on completion. */
+  const handleSubmitThreatAnalysisAsync = useCallback(async () => {
+    if (projectId === 'local' || !backendDiagramIdRef.current) return;
+    const nodes = (rfInstanceRef.current as ReactFlowInstance | null)?.getNodes() ?? [];
+    const edges = (rfInstanceRef.current as ReactFlowInstance | null)?.getEdges() ?? [];
+    const layer = layers[currentLayerId];
+    const diagramVersion = layers[currentLayerId] ? 1 : 1; // version from backend when available
+
+    const trustBoundaries = nodes
+      .filter((n) => n.type === 'trustboundary')
+      .map((n) => ({ id: n.id, label: n.data?.label ?? 'Trust Boundary', trustLevel: n.data?.trustLevel ?? 'custom' }));
+    const regularNodes = nodes
+      .filter((n) => n.type !== 'trustboundary')
+      .map((n) => ({ id: n.id, type: n.type ?? 'unknown', label: n.data?.label ?? n.id, technology: n.data?.technology, description: n.data?.description }));
+    const serializedEdges = edges.map((e) => ({ id: e.id, source: e.source, target: e.target, label: typeof e.label === 'string' ? e.label : undefined }));
+
+    const { jobId } = await apiSubmitThreatAnalysis({
+      projectId,
+      diagramId: backendDiagramIdRef.current,
+      diagramVersion,
+      layerId: currentLayerId,
+      layerName: layer?.name,
+      nodes: regularNodes,
+      edges: serializedEdges,
+      trustBoundaries,
+    });
+    setActiveJobId(jobId);
+    setActiveJobType('THREAT_ANALYSIS');
+    setShowThreatModelPanel(true);
+  }, [currentLayerId, layers, projectId]);
+
+  // useJobPoller — polls the active background job and loads results on completion
+  useJobPoller(activeJobId, {
+    onComplete: async (resultRef) => {
+      setActiveJobId(null);
+      setActiveJobType(null);
+      if (!resultRef) return;
+      try {
+        const { apiGetThreatModel } = await import('@/lib/api');
+        const model = await apiGetThreatModel(resultRef);
+        setThreatPanelThreats((prev) => [
+          ...prev.filter((t) => t.layerId !== currentLayerId),
+          ...model.threats,
+        ]);
+        setThreatModelInfo({ name: model.name, isSaved: true, threatModelId: model.id });
+      } catch { /* silently ignore load error — user can reload manually */ }
+    },
+    onFail: () => {
+      setActiveJobId(null);
+      setActiveJobType(null);
+    },
+  });
 
   const handleSaveThreatModel = useCallback(
     async (name: string, threats: ThreatItem[]) => {
@@ -1010,6 +1158,7 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
   const handleAttackHighlightChange = useCallback((highlight: AttackMindHighlight) => {
     if (highlight.nodeIds.length === 0) {
       setAttackHighlightMap({});
+      setAttackEdgeIds([]);
       return;
     }
     const map: AttackHighlightMap = {};
@@ -1019,6 +1168,7 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
       map[nodeId] = [stepNum];
     }
     setAttackHighlightMap(map);
+    setAttackEdgeIds(highlight.edgeIds ?? []);
   }, []);
 
   /** Open Attack Mind panel pre-seeded with a specific entry node */
@@ -1447,32 +1597,20 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
     setError(null);
     setGeneratingStatus('Thinking...');
     try {
-      let diagram: GenerateResponse;
-      const isCloud = projectId !== 'local' && isLoggedIn();
-      if (isCloud) {
-        // Cloud: use chat-specific endpoint — saves to chat history
-        diagram = await apiChatGenerate({
-          prompt,
-          projectId,
-          diagramId: backendDiagramIdRef.current ?? undefined,
-          layerId: currentLayerId,
-          layerName: layers[currentLayerId]?.name,
-        }) as GenerateResponse;
-      } else {
-        // Local fallback — Next.js API route, no history
-        const response = await fetch('/api/generate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ prompt }),
-        });
-        if (!response.ok) throw new Error('Generation failed');
-        diagram = await response.json() as GenerateResponse;
-      }
+      const diagram = await apiChatGenerate({
+        prompt,
+        projectId,
+        diagramId: backendDiagramIdRef.current ?? undefined,
+        layerId: currentLayerId,
+        layerName: layers[currentLayerId]?.name,
+      }) as GenerateResponse;
       setGeneratingStatus('Rendering diagram...');
       rfInstanceRef.current?.loadDiagram(diagram);
       setTimeout(() => {
         (rfInstanceRef.current as ReactFlowInstance | null)?.fitView({ padding: 0.15 });
       }, 100);
+      // Offer Declutter after generation so user can clean up the layout
+      if (!isReadOnly) setShowDeclutterSuggestion(true);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to generate diagram');
       throw err;
@@ -1480,7 +1618,85 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
       setIsGenerating(false);
       setGeneratingStatus('');
     }
-  }, [currentLayerId, layers, projectId]);
+  }, [currentLayerId, isReadOnly, layers, projectId]);
+
+  // ── AI Declutter ──────────────────────────────────────────────────────────
+
+  const handleDeclutter = useCallback(async () => {
+    const nodes = (rfInstanceRef.current as ReactFlowInstance | null)?.getNodes() ?? [];
+    const edges = (rfInstanceRef.current as ReactFlowInstance | null)?.getEdges() ?? [];
+    if (nodes.length === 0) return;
+    setIsDecluttering(true);
+    setShowDeclutterSuggestion(false);
+    try {
+      const result = await apiDeclutter({
+        nodes,
+        edges,
+        layerName: layers[currentLayerId]?.name,
+      });
+      rfInstanceRef.current?.applyLayout(result.positions);
+      setTimeout(() => {
+        (rfInstanceRef.current as ReactFlowInstance | null)?.fitView({ padding: 0.15 });
+      }, 150);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Declutter failed');
+    } finally {
+      setIsDecluttering(false);
+    }
+  }, [currentLayerId, layers]);
+
+  // ── Generate preview (no canvas apply) — caller decides where to put it ──
+
+  const handleGeneratePreview = useCallback(
+    async (prompt: string): Promise<{ nodes: unknown[]; edges: unknown[] }> => {
+      setIsGenerating(true);
+      setError(null);
+      setGeneratingStatus('Generating...');
+      try {
+        const diagram = (await apiChatGenerate({
+          prompt,
+          projectId,
+          diagramId: backendDiagramIdRef.current ?? undefined,
+          layerId: currentLayerId,
+          layerName: layers[currentLayerId]?.name,
+        })) as GenerateResponse;
+        return { nodes: diagram.nodes as unknown[], edges: diagram.edges as unknown[] };
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : 'Failed to generate diagram');
+        throw err;
+      } finally {
+        setIsGenerating(false);
+        setGeneratingStatus('');
+      }
+    },
+    [currentLayerId, layers, projectId],
+  );
+
+  // ── Apply pre-generated diagram to current or a new layer ─────────────────
+
+  const handleApplyGeneratedDiagram = useCallback(
+    async (nodes: unknown[], edges: unknown[], layerName?: string) => {
+      if (layerName) {
+        const newLayer = createStandaloneLayer(layerName);
+        const snapshot = captureCanvas(rfInstanceRef);
+        setLayers((prev) => {
+          const flushed = flushCurrentLayer(prev, currentLayerId, snapshot);
+          const updated = { ...flushed, [newLayer.id]: newLayer };
+          saveAllLayers(updated);
+          return updated;
+        });
+        setNavStack((stack) => [...stack, newLayer.id]);
+        setSelectedNode(null);
+        setSelectedEdge(null);
+        await new Promise<void>((resolve) => setTimeout(resolve, 300));
+      }
+      rfInstanceRef.current?.loadDiagram({ nodes, edges } as GenerateResponse);
+      setTimeout(() => {
+        (rfInstanceRef.current as ReactFlowInstance | null)?.fitView({ padding: 0.15 });
+      }, 100);
+    },
+    [currentLayerId, flushCurrentLayer],
+  );
 
   // ── Generate on a new standalone layer ────────────────────────────────────
 
@@ -1725,6 +1941,7 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
             onOpenAttackMind={projectId !== 'local' && !!user ? () => { setShowAttackMindPanel((v) => !v); setShowPosturePanel(false); } : undefined}
             onShowAI={() => setShowChatPanel(true)}
             onShowAIHistory={projectId !== 'local' && isLoggedIn() ? () => router.push(`/projects/${projectId}/ai-history`) : undefined}
+            onShowSecurityIntel={projectId !== 'local' && isLoggedIn() ? () => router.push(`/projects/${projectId}/intel`) : undefined}
             isCloudProject={!!backendDiagramId && projectId !== 'local'}
             onPublish={() => setShowPublishModal(true)}
             onOpenDiff={projectId !== 'local' ? () => setShowVersionCompare(true) : undefined}
@@ -1814,29 +2031,62 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
               </div>
             )}
 
-            <DiagramCanvas
-              key={`${currentLayerId}_${canvasLoadKey}`}
-              initialNodes={(currentLayer?.nodes ?? []) as Node<NodeData>[]}
-              initialEdges={currentLayer?.edges ?? []}
-              onLayerSave={handleLayerSave}
-              onNodeContextMenu={handleNodeContextMenu}
-              onPaneContextMenu={handlePaneContextMenu}
-              onNodeSelect={handleNodeSelect}
-              onEdgeSelect={handleEdgeSelect}
-              rfInstanceRef={rfInstanceRef}
-              canvasRef={canvasRef}
-              clipboardRef={clipboardRef}
-              onRequestEdit={startEditing}
-              animateEdges={animateEdges}
-              readOnly={isReadOnly}
-              threatOverlays={showThreatModelPanel ? threatPanelThreats.filter((t) => t.layerId === currentLayerId) : undefined}
-              activeThreatTargetId={canvasBadgeTargetId}
-              onThreatNodeClick={(targetId) => {
-                handleHighlightThreatTarget(targetId);
-                setCanvasBadgeTargetId(targetId);
-              }}
-              attackHighlightMap={showAttackMindPanel ? attackHighlightMap : undefined}
-            />
+            {/* Canvas wrapper — relative so overlay + banner can be positioned inside */}
+            <div className="relative flex flex-1 overflow-hidden">
+              <DiagramCanvas
+                key={`${currentLayerId}_${canvasLoadKey}`}
+                initialNodes={(currentLayer?.nodes ?? []) as Node<NodeData>[]}
+                initialEdges={currentLayer?.edges ?? []}
+                onLayerSave={handleLayerSave}
+                onNodeContextMenu={handleNodeContextMenu}
+                onPaneContextMenu={handlePaneContextMenu}
+                onNodeSelect={handleNodeSelect}
+                onEdgeSelect={handleEdgeSelect}
+                rfInstanceRef={rfInstanceRef}
+                canvasRef={canvasRef}
+                clipboardRef={clipboardRef}
+                onRequestEdit={startEditing}
+                animateEdges={animateEdges}
+                readOnly={isReadOnly}
+                threatOverlays={showThreatModelPanel ? threatPanelThreats.filter((t) => t.layerId === currentLayerId) : undefined}
+                activeThreatTargetId={canvasBadgeTargetId}
+                onThreatNodeClick={(targetId) => {
+                  handleHighlightThreatTarget(targetId);
+                  setCanvasBadgeTargetId(targetId);
+                }}
+                attackHighlightMap={showAttackMindPanel ? attackHighlightMap : undefined}
+                attackEdgeIds={showAttackMindPanel ? attackEdgeIds : undefined}
+              />
+
+              {/* ── Declutter loading overlay ──────────────────────────── */}
+              {isDecluttering && <DeclutterOverlay />}
+
+              {/* ── Post-generate Declutter suggestion banner ──────────── */}
+              {showDeclutterSuggestion && !isDecluttering && (
+                <div className="absolute bottom-4 left-1/2 z-30 flex -translate-x-1/2 items-center gap-3 rounded-2xl border border-violet-400/30 bg-slate-900/90 px-4 py-2.5 shadow-xl backdrop-blur-sm">
+                  <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-lg bg-violet-500/20 ring-1 ring-violet-400/30">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-violet-400">
+                      <path d="M15 4V2" /><path d="M15 16v-2" /><path d="M8 9h2" /><path d="M20 9h2" /><path d="M17.8 11.8 19 13" /><path d="M15 9h.01" /><path d="M17.8 6.2 19 5" /><path d="m3 21 9-9" /><path d="M12.2 6.2 11 5" />
+                    </svg>
+                  </div>
+                  <p className="text-xs text-slate-300">
+                    <span className="font-medium text-white">Diagram generated.</span> Want to clean up the layout?
+                  </p>
+                  <button
+                    onClick={() => { setShowDeclutterSuggestion(false); void handleDeclutter(); }}
+                    className="rounded-lg bg-violet-600 px-3 py-1 text-xs font-semibold text-white transition hover:bg-violet-500"
+                  >
+                    Declutter
+                  </button>
+                  <button
+                    onClick={() => setShowDeclutterSuggestion(false)}
+                    className="rounded-lg px-2 py-1 text-xs text-slate-400 transition hover:text-slate-200"
+                  >
+                    Dismiss
+                  </button>
+                </div>
+              )}
+            </div>
 
             {/* ── Right sidebar ─────────────────────────────────────────── */}
             {showRightSidebar && (
@@ -1882,6 +2132,9 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
                 externalTargetId={canvasBadgeTargetId}
                 onExternalTargetConsumed={() => setCanvasBadgeTargetId(null)}
                 onOpenAIAssistant={() => { setShowChatPanel(true); setShowThreatModelPanel(false); }}
+                onRunAsync={handleSubmitThreatAnalysisAsync}
+                activeJobId={activeJobId}
+                activeJobType={activeJobType}
                 onSave={handleSaveThreatModelFromPanel}
                 onLoadModel={handleLoadModelToPanel}
                 onThreatsChanged={setThreatPanelThreats}
@@ -1910,7 +2163,7 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
                 layers={buildProjectSnapshot().layers as Record<string, unknown>}
                 initialEntryNodeId={attackMindEntryNodeId}
                 onHighlightChange={handleAttackHighlightChange}
-                onClose={() => { setShowAttackMindPanel(false); setAttackHighlightMap({}); setAttackMindEntryNodeId(null); }}
+                onClose={() => { setShowAttackMindPanel(false); setAttackHighlightMap({}); setAttackEdgeIds([]); setAttackMindEntryNodeId(null); }}
               />
             )}
 
@@ -1919,16 +2172,31 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
               <AIChatPanel
                 onGenerate={handleGenerate}
                 onGenerateNewLayer={handleGenerateNewLayer}
+                onGeneratePreview={handleGeneratePreview}
+                onApplyGeneratedDiagram={handleApplyGeneratedDiagram}
                 onEvaluate={handleEvaluate}
                 onThreatAnalysis={projectId !== 'local' ? handleThreatAnalysis : undefined}
                 onSaveThreatModel={projectId !== 'local' ? handleSaveThreatModel : undefined}
+                onThreatAgentChat={projectId !== 'local' ? handleThreatAgentChat : undefined}
+                diagramId={backendDiagramId ?? undefined}
+                layerId={currentLayerId}
+                layerName={currentLayer?.name}
+                diagramNodes={threatAgentNodes}
+                diagramEdges={threatAgentEdges}
+                diagramTrustBoundaries={threatAgentTrustBoundaries}
+                initialThreatMessages={threatAgentHistory}
+                onRunPostureScore={isLoggedIn() ? (payload) => apiPostureScoreStream(payload) : undefined}
+                onRunAttackMind={isLoggedIn() ? (payload) => apiAttackMindStream(payload) : undefined}
+                diagramVersion={1}
+                diagramLayers={layers}
                 projectId={projectId !== 'local' ? projectId : undefined}
+                onShowSecurityIntel={projectId !== 'local' && isLoggedIn() ? () => router.push(`/projects/${projectId}/intel`) : undefined}
                 isLoading={isGenerating}
                 status={generatingStatus}
                 onClose={() => setShowChatPanel(false)}
                 hasNodes={hasNodes}
                 isReadOnly={isReadOnly}
-                initialMessages={chatHistory.map((m) => ({ role: m.role, content: m.content }))}
+                initialMessages={chatHistory.filter((m) => m.layerId !== '__threat_analysis__').map((m) => ({ role: m.role, content: m.content }))}
               />
             )}
           </div>
@@ -1942,6 +2210,7 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
             animateEdges={animateEdges}
             onToggleAnimateEdges={() => setAnimateEdges((v) => !v)}
             onClose={() => setPaneContextMenu(null)}
+            onDeclutter={hasNodes && !isReadOnly ? () => { setPaneContextMenu(null); void handleDeclutter(); } : undefined}
           />
         )}
 

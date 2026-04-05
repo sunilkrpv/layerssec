@@ -40,10 +40,23 @@
       "Bash(PRISMA_FORCE_TPUT=false npm run db:migrate -- --name add_posture_score_attack_simulation)",
       "Bash(FORCE_COLOR=0 script -q /dev/null npm run db:migrate -- --name add_posture_score_attack_simulation)",
       "Bash(node -e \"const pkg = require\\(''/Users/sunil/Development/github/drafter/node_modules/reactflow/package.json''\\); console.log\\(pkg.version\\)\")",
-      "Bash(node -e \"const rf = require\\(''/Users/sunil/Development/github/drafter/node_modules/reactflow''\\); console.log\\(Object.keys\\(rf\\).filter\\(k => k.toLowerCase\\(\\).includes\\(''edge''\\) || k.toLowerCase\\(\\).includes\\(''reconnect''\\)\\)\\)\")"
+      "Bash(node -e \"const rf = require\\(''/Users/sunil/Development/github/drafter/node_modules/reactflow''\\); console.log\\(Object.keys\\(rf\\).filter\\(k => k.toLowerCase\\(\\).includes\\(''edge''\\) || k.toLowerCase\\(\\).includes\\(''reconnect''\\)\\)\\)\")",
+      "Bash(PRISMA_NON_INTERACTIVE=1 npm run db:migrate -- --name add_user_ai_settings --create-only)",
+      "Bash(npx dotenv:*)",
+      "Bash(npx dotenv-cli:*)",
+      "Bash(FORCE_COLOR=0 node -e \":*)",
+      "Bash(ls /proc)",
+      "Bash(dotenv -e .env.local -- npx prisma migrate dev --name add_ai_jobs)",
+      "Bash(DATABASE_URL=\"postgresql://postgres:postgres@localhost:5432/drafter?schema=public\" DIRECT_URL=\"postgresql://postgres:postgres@localhost:5432/drafter?schema=public\" npx prisma migrate dev --name add_ai_jobs)",
+      "Bash(DATABASE_URL=\"postgresql://postgres:postgres@localhost:5432/drafter?schema=public\" DIRECT_URL=\"postgresql://postgres:postgres@localhost:5432/drafter?schema=public\" npx prisma db push)",
+      "Bash(docker compose:*)",
+      "Bash(sed -n '760,790p' /Users/sunil/Development/github/drafter/components/ThreatsDashboardPage.tsx)",
+      "Bash(sed -n '900,990p' /Users/sunil/Development/github/drafter/components/ThreatsDashboardPage.tsx)"
     ],
     "additionalDirectories": [
-      "/Users/sunil/Development/github/drafter/.next/types/app/projects/[projectId]/threats/report"
+      "/Users/sunil/Development/github/drafter/.next/types/app/projects/[projectId]/threats/report",
+      "/Users/sunil/Development/github/drafter/docs/superpowers",
+      "/Users/sunil/Development/github/drafter/app/projects/[projectId]"
     ]
   }
 }

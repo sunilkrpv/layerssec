@@ -1,4 +1,5 @@
 node_modules
 .next
+.prd
 .env.local
 tsconfig.tsbuildinfo

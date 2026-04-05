@@ -3,73 +3,176 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  Layers,
-  Sparkles,
-  GitBranch,
-  Share2,
-  Download,
-  ArrowRight,
+  Layers, Sparkles, GitBranch, Shield, FileText,
+  ArrowRight, Sword, BarChart2,
 } from 'lucide-react';
 import { apiLogin, apiRegister, apiGetMe } from '@/lib/api';
-import { saveTokens, saveUser, isLoggedIn, setLocalMode } from '@/lib/authStore';
+import { saveTokens, saveUser, isLoggedIn } from '@/lib/authStore';
 
-// ── Decorative diagram illustration (SVG) ────────────────────────────────────
+// ── STRIDE-annotated animated diagram illustration ────────────────────────────
 function DiagramIllustration() {
   return (
-    <svg viewBox="0 0 320 220" fill="none" className="w-full max-w-xs opacity-80" aria-hidden>
-      {/* Edges */}
-      <path d="M90 70 L160 70" stroke="rgba(147,197,253,0.6)" strokeWidth="1.5" strokeDasharray="4 3" />
-      <path d="M160 70 L230 70" stroke="rgba(147,197,253,0.6)" strokeWidth="1.5" />
-      <path d="M160 70 L160 130" stroke="rgba(147,197,253,0.6)" strokeWidth="1.5" />
-      <path d="M90 130 L160 130" stroke="rgba(147,197,253,0.6)" strokeWidth="1.5" strokeDasharray="4 3" />
-      <path d="M160 130 L230 130" stroke="rgba(147,197,253,0.6)" strokeWidth="1.5" />
-      <path d="M230 70 L230 130" stroke="rgba(147,197,253,0.6)" strokeWidth="1.5" strokeDasharray="4 3" />
-      <path d="M160 130 L160 190" stroke="rgba(147,197,253,0.4)" strokeWidth="1.5" />
-      {/* Arrowheads */}
-      <polygon points="228,68 232,71 228,74" fill="rgba(147,197,253,0.8)" />
-      <polygon points="228,128 232,131 228,134" fill="rgba(147,197,253,0.8)" />
-      <polygon points="158,128 161,132 164,128" fill="rgba(147,197,253,0.8)" />
-      <polygon points="158,188 161,192 164,188" fill="rgba(147,197,253,0.8)" />
+    <>
+      <style>{`
+        .edge-flow      { animation: edge-flow 2s linear infinite; }
+        .edge-flow-slow { animation: edge-flow 3.2s linear infinite; }
+        @keyframes edge-flow { to { stroke-dashoffset: -24; } }
 
-      {/* Nodes */}
-      {/* Client */}
-      <rect x="44" y="54" width="68" height="32" rx="6" fill="rgba(96,165,250,0.15)" stroke="rgba(147,197,253,0.6)" strokeWidth="1.5" />
-      <text x="78" y="75" textAnchor="middle" fill="rgba(219,234,254,0.9)" fontSize="10" fontFamily="sans-serif">Client</text>
+        .pulse-ring       { animation: pulse-ring 2.8s ease-out infinite; }
+        .pulse-ring-delay { animation: pulse-ring 2.8s ease-out 1.4s infinite; }
+        @keyframes pulse-ring {
+          0%   { r: 5;  opacity: 0.5; }
+          100% { r: 18; opacity: 0; }
+        }
 
-      {/* API Gateway */}
-      <rect x="130" y="54" width="84" height="32" rx="6" fill="rgba(99,102,241,0.25)" stroke="rgba(167,139,250,0.7)" strokeWidth="1.5" />
-      <text x="172" y="75" textAnchor="middle" fill="rgba(224,231,255,0.95)" fontSize="10" fontFamily="sans-serif" fontWeight="600">API Gateway</text>
+        .ai-scan-line { animation: ai-scan 4.5s ease-in-out infinite; }
+        @keyframes ai-scan {
+          0%   { transform: translateY(0px);   opacity: 0; }
+          6%   { opacity: 0.6; }
+          94%  { opacity: 0.6; }
+          100% { transform: translateY(190px); opacity: 0; }
+        }
 
-      {/* Service A */}
-      <rect x="44" y="114" width="68" height="32" rx="6" fill="rgba(96,165,250,0.15)" stroke="rgba(147,197,253,0.6)" strokeWidth="1.5" />
-      <text x="78" y="135" textAnchor="middle" fill="rgba(219,234,254,0.9)" fontSize="10" fontFamily="sans-serif">Service A</text>
+        .ai-dot { animation: ai-dot-pulse 1.5s ease-in-out infinite; }
+        @keyframes ai-dot-pulse {
+          0%, 100% { opacity: 0.5; }
+          50%       { opacity: 1; }
+        }
+      `}</style>
 
-      {/* Service */}
-      <rect x="230" y="54" width="68" height="32" rx="6" fill="rgba(96,165,250,0.15)" stroke="rgba(147,197,253,0.6)" strokeWidth="1.5" />
-      <text x="264" y="75" textAnchor="middle" fill="rgba(219,234,254,0.9)" fontSize="10" fontFamily="sans-serif">Service</text>
+      <svg viewBox="0 0 480 186" fill="none" className="w-full" aria-hidden>
+        {/* ── Pulse rings (high-risk nodes) ──────────────────────────── */}
+        <circle cx="202" cy="50" r="5" fill="none" stroke="rgba(239,68,68,0.3)" className="pulse-ring" />
+        <circle cx="352" cy="50" r="5" fill="none" stroke="rgba(139,92,246,0.3)" className="pulse-ring-delay" />
 
-      {/* Database */}
-      <rect x="230" y="114" width="68" height="32" rx="6" fill="rgba(52,211,153,0.15)" stroke="rgba(110,231,183,0.6)" strokeWidth="1.5" />
-      <text x="264" y="135" textAnchor="middle" fill="rgba(209,250,229,0.9)" fontSize="10" fontFamily="sans-serif">Database</text>
+        {/* ── AI scan line ────────────────────────────────────────────── */}
+        <rect x="0" y="0" width="480" height="4" rx="1" fill="rgba(96,165,250,0.15)" className="ai-scan-line" />
 
-      {/* Cache / Queue */}
-      <rect x="130" y="174" width="84" height="32" rx="6" fill="rgba(251,191,36,0.1)" stroke="rgba(253,224,71,0.4)" strokeWidth="1.5" />
-      <text x="172" y="195" textAnchor="middle" fill="rgba(254,249,195,0.85)" fontSize="10" fontFamily="sans-serif">Message Queue</text>
+        {/* ── Edges ───────────────────────────────────────────────────── */}
+        {/* Client → API Gateway */}
+        <path d="M100 50 L148 50" stroke="rgba(147,197,253,0.55)" strokeWidth="1.5" strokeDasharray="5 3" className="edge-flow" />
+        {/* API Gateway → Auth Service */}
+        <path d="M256 50 L300 50" stroke="rgba(167,139,250,0.55)" strokeWidth="1.5" strokeDasharray="5 3" className="edge-flow" />
+        {/* API Gateway → Microservice */}
+        <path d="M202 62 L202 108" stroke="rgba(147,197,253,0.45)" strokeWidth="1.5" strokeDasharray="5 3" className="edge-flow-slow" />
+        {/* Auth Service → Database */}
+        <path d="M352 62 L352 108" stroke="rgba(167,139,250,0.4)" strokeWidth="1.5" strokeDasharray="5 3" className="edge-flow-slow" />
+        {/* Microservice → Database */}
+        <path d="M256 120 L300 120" stroke="rgba(52,211,153,0.5)" strokeWidth="1.5" strokeDasharray="5 3" className="edge-flow" />
+        {/* Microservice → Cache (reversed) */}
+        <path d="M148 120 L100 120" stroke="rgba(147,197,253,0.4)" strokeWidth="1.5" strokeDasharray="5 3" className="edge-flow-slow" />
 
-      {/* AI sparkle */}
-      <circle cx="300" cy="40" r="12" fill="rgba(99,102,241,0.3)" stroke="rgba(167,139,250,0.6)" strokeWidth="1" />
-      <text x="300" y="45" textAnchor="middle" fill="rgba(224,231,255,0.9)" fontSize="12">✦</text>
-    </svg>
+        {/* Arrowheads */}
+        <polygon points="146,47 150,50 146,53" fill="rgba(147,197,253,0.7)" />
+        <polygon points="298,47 302,50 298,53" fill="rgba(167,139,250,0.7)" />
+        <polygon points="199,106 202,110 205,106" fill="rgba(147,197,253,0.7)" />
+        <polygon points="349,106 352,110 355,106" fill="rgba(167,139,250,0.7)" />
+        <polygon points="298,117 302,120 298,123" fill="rgba(52,211,153,0.7)" />
+        <polygon points="102,117 98,120 102,123" fill="rgba(147,197,253,0.7)" />
+
+        {/* ── Nodes ───────────────────────────────────────────────────── */}
+        {/* Client */}
+        <rect x="20" y="38" width="80" height="24" rx="5"
+          fill="rgba(96,165,250,0.12)" stroke="rgba(147,197,253,0.5)" strokeWidth="1.2" />
+        <text x="60" y="54" textAnchor="middle" fill="rgba(219,234,254,0.85)"
+          fontSize="6" fontFamily="system-ui,sans-serif">Client</text>
+
+        {/* API Gateway */}
+        <rect x="148" y="38" width="108" height="24" rx="5"
+          fill="rgba(99,102,241,0.25)" stroke="rgba(167,139,250,0.7)" strokeWidth="1.2" />
+        <text x="202" y="54" textAnchor="middle" fill="rgba(224,231,255,0.95)"
+          fontSize="6" fontFamily="system-ui,sans-serif" fontWeight="600">API Gateway</text>
+
+        {/* Auth Service */}
+        <rect x="300" y="38" width="104" height="24" rx="5"
+          fill="rgba(139,92,246,0.18)" stroke="rgba(167,139,250,0.55)" strokeWidth="1.2" />
+        <text x="352" y="54" textAnchor="middle" fill="rgba(221,214,254,0.85)"
+          fontSize="6" fontFamily="system-ui,sans-serif">Auth Service</text>
+
+        {/* Cache */}
+        <rect x="20" y="108" width="80" height="24" rx="5"
+          fill="rgba(251,191,36,0.1)" stroke="rgba(253,224,71,0.38)" strokeWidth="1.2" />
+        <text x="60" y="124" textAnchor="middle" fill="rgba(254,249,195,0.8)"
+          fontSize="6" fontFamily="system-ui,sans-serif">Cache</text>
+
+        {/* Microservice */}
+        <rect x="148" y="108" width="108" height="24" rx="5"
+          fill="rgba(96,165,250,0.12)" stroke="rgba(147,197,253,0.5)" strokeWidth="1.2" />
+        <text x="202" y="124" textAnchor="middle" fill="rgba(219,234,254,0.85)"
+          fontSize="6" fontFamily="system-ui,sans-serif">Microservice</text>
+
+        {/* Database */}
+        <rect x="300" y="108" width="104" height="24" rx="5"
+          fill="rgba(52,211,153,0.12)" stroke="rgba(110,231,183,0.5)" strokeWidth="1.2" />
+        <text x="352" y="124" textAnchor="middle" fill="rgba(209,250,229,0.85)"
+          fontSize="6" fontFamily="system-ui,sans-serif">Database</text>
+
+        {/* ── AI analysis status bar ───────────────────────────────────── */}
+        <rect x="16" y="148" width="448" height="28" rx="7"
+          fill="rgba(15,10,50,0.5)" stroke="rgba(99,102,241,0.28)" strokeWidth="1" />
+
+        <circle cx="30" cy="162" r="3.5" fill="rgba(99,102,241,0.9)" className="ai-dot" />
+
+        <text x="42" y="159" fill="rgba(199,210,254,0.9)" fontSize="7.5" fontWeight="600"
+          fontFamily="system-ui,sans-serif">AI Threat Analysis</text>
+        <text x="42" y="170" fill="rgba(165,180,252,0.5)" fontSize="7"
+          fontFamily="system-ui,sans-serif">14 threats · 6 nodes</text>
+
+        <text x="220" y="158" fill="rgba(252,165,165,0.9)" fontSize="7.5" fontWeight="700"
+          fontFamily="system-ui,sans-serif">3 Critical</text>
+        <text x="220" y="169" fill="rgba(253,186,116,0.8)" fontSize="7"
+          fontFamily="system-ui,sans-serif">5 High · 6 Medium</text>
+
+        <text x="456" y="157" textAnchor="end" fill="rgba(165,180,252,0.45)" fontSize="7"
+          fontFamily="system-ui,sans-serif">Posture</text>
+        <text x="456" y="170" textAnchor="end" fill="rgba(252,165,165,0.85)" fontSize="10"
+          fontWeight="800" fontFamily="system-ui,sans-serif">62/100</text>
+      </svg>
+    </>
   );
 }
 
+// ── Feature cards ─────────────────────────────────────────────────────────────
 const FEATURES = [
-  { icon: Sparkles, label: 'AI diagram generation', desc: 'Describe your architecture in plain text' },
-  { icon: GitBranch, label: 'Layered drill-down', desc: 'Nested views from HLD to LLD' },
-  { icon: Share2, label: 'Cloud sync', desc: 'Projects saved and accessible anywhere' },
-  { icon: Download, label: 'Export anywhere', desc: 'PNG, JSON, and project bundles' },
+  {
+    icon: Sparkles,
+    label: 'AI Architecture Generation',
+    desc: 'Generate full diagrams from plain-text system descriptions',
+    accent: 'bg-blue-500/20 ring-blue-400/30 text-blue-300',
+  },
+  {
+    icon: Shield,
+    label: 'STRIDE Threat Modeling',
+    desc: 'Auto-identify threats across all 6 STRIDE categories per node',
+    accent: 'bg-red-500/20 ring-red-400/30 text-red-300',
+  },
+  {
+    icon: Sword,
+    label: 'Attack Simulation',
+    desc: 'Simulate red-team attack paths and exploit chains',
+    accent: 'bg-orange-500/20 ring-orange-400/30 text-orange-300',
+  },
+  {
+    icon: BarChart2,
+    label: 'Security Posture Score',
+    desc: 'AI-computed 0–100 health score with remediation steps',
+    accent: 'bg-emerald-500/20 ring-emerald-400/30 text-emerald-300',
+  },
+  {
+    icon: GitBranch,
+    label: 'Version Control & Diff',
+    desc: 'Publish, compare, and track architecture changes over time',
+    accent: 'bg-indigo-500/20 ring-indigo-400/30 text-indigo-300',
+  },
+  {
+    icon: FileText,
+    label: 'Threat Reports',
+    desc: 'Export professional PDF reports for auditors and stakeholders',
+    accent: 'bg-violet-500/20 ring-violet-400/30 text-violet-300',
+  },
 ];
 
+// ── Main component ────────────────────────────────────────────────────────────
 export default function LoginPage() {
   const router = useRouter();
   const [tab, setTab] = useState<'login' | 'register'>('login');
@@ -79,10 +182,9 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  // If already authenticated, skip login and go straight to the projects list
   useEffect(() => {
     if (isLoggedIn()) {
-      router.replace('/projects');
+      router.replace('/home');
     }
   }, [router]);
 
@@ -103,7 +205,7 @@ export default function LoginPage() {
       saveTokens(tokens.accessToken, tokens.refreshToken);
       const user = await apiGetMe();
       saveUser(user);
-      router.push('/projects');
+      router.push('/home');
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Authentication failed');
     } finally {
@@ -113,8 +215,10 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-screen">
-      {/* ── Left hero panel ─────────────────────────────────────────────────── */}
-      <div className="hidden lg:flex lg:w-[52%] flex-col justify-between bg-gradient-to-br from-indigo-950 via-indigo-900 to-blue-900 p-12 relative overflow-hidden">
+
+      {/* ── Left hero panel ───────────────────────────────────────────────── */}
+      <div className="hidden lg:flex lg:w-[55%] flex-col justify-between bg-gradient-to-br from-indigo-950 via-indigo-900 to-blue-900 p-10 relative overflow-hidden">
+
         {/* Background mesh */}
         <div className="pointer-events-none absolute inset-0">
           <div className="absolute -top-32 -left-32 h-96 w-96 rounded-full bg-blue-600/10 blur-3xl" />
@@ -122,66 +226,66 @@ export default function LoginPage() {
           <div className="absolute -bottom-24 left-1/4 h-72 w-72 rounded-full bg-violet-600/10 blur-3xl" />
         </div>
 
-        {/* Top: Logo */}
-        <div className="relative flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 backdrop-blur-sm ring-1 ring-white/20">
-            <Layers size={20} className="text-blue-300" />
+        {/* Top: Logo + eyebrow */}
+        <div className="relative">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 backdrop-blur-sm ring-1 ring-white/20">
+              <Layers size={20} className="text-blue-300" />
+            </div>
+            <span className="text-xl font-bold tracking-tight text-white">Drafter</span>
+            <span className="ml-1 rounded-full border border-indigo-400/40 bg-indigo-400/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-widest text-indigo-300">
+              Beta
+            </span>
           </div>
-          <span className="text-xl font-bold tracking-tight text-white">Drafter</span>
-          <span className="ml-1 rounded-full border border-indigo-400/40 bg-indigo-400/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-widest text-indigo-300">
-            Beta
-          </span>
+          <p className="mt-3 text-[11px] font-semibold uppercase tracking-widest text-indigo-400">
+            AI-Powered Architecture &amp; Threat Modelling
+          </p>
         </div>
 
-        {/* Middle: Hero copy + diagram */}
-        <div className="relative space-y-6">
-          <div className="space-y-3">
-            <p className="text-sm font-semibold uppercase tracking-widest text-indigo-400">
-              AI-Powered Architecture Tool
-            </p>
-            <h1 className="text-4xl font-extrabold leading-tight tracking-tight text-white">
+        {/* Middle: Headline + subtext + diagram */}
+        <div className="relative space-y-4">
+          <div className="space-y-2">
+            <h1 className="text-3xl font-extrabold leading-tight tracking-tight text-white">
               Design.{' '}
               <span className="bg-gradient-to-r from-blue-300 to-indigo-300 bg-clip-text text-transparent">
-                Collaborate.
+                Threat Model.
               </span>
               <br />
-              Ship.
+              Simulate Exploits.
             </h1>
-            <p className="max-w-xs text-base text-indigo-200/80">
-              Describe your high level system.
-              <br />
-              Claude draws the architecture diagram.
-              <br />
-              Drill down from HLD to code in layers.
+            <p className="text-[13px] leading-relaxed text-indigo-200/70">
+              Generate architecture with AI, run STRIDE threat analysis, simulate attacks
+              and score your security posture — all in one canvas.
             </p>
           </div>
 
           <DiagramIllustration />
         </div>
 
-        {/* Bottom: feature list */}
-        <div className="relative grid grid-cols-2 gap-3">
-          {FEATURES.map(({ icon: Icon, label, desc }) => (
+        {/* Bottom: 6-feature grid (3×2) */}
+        <div className="relative grid grid-cols-3 gap-2">
+          {FEATURES.map(({ icon: Icon, label, desc, accent }) => (
             <div
               key={label}
-              className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/5 p-3 backdrop-blur-sm"
+              className="flex flex-col gap-1.5 rounded-xl border border-white/10 bg-white/5 p-3 backdrop-blur-sm"
             >
-              <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-indigo-500/20 ring-1 ring-indigo-400/30">
-                <Icon size={15} className="text-indigo-300" />
+              <div className="flex items-center gap-2">
+                <div className={`flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-md ring-1 ${accent}`}>
+                  <Icon size={12} />
+                </div>
+                <p className="text-[11px] font-semibold leading-tight text-white">{label}</p>
               </div>
-              <div>
-                <p className="text-xs font-semibold text-white">{label}</p>
-                <p className="text-[11px] text-indigo-300/70">{desc}</p>
-              </div>
+              <p className="text-[10px] leading-snug text-indigo-200/80">{desc}</p>
             </div>
           ))}
         </div>
       </div>
 
-      {/* ── Right form panel ─────────────────────────────────────────────────── */}
+      {/* ── Right form panel ──────────────────────────────────────────────────── */}
       <div className="flex flex-1 flex-col items-center justify-center bg-white px-8 py-12">
         <div className="w-full max-w-sm">
-          {/* Mobile logo (shown only when left panel is hidden) */}
+
+          {/* Mobile logo */}
           <div className="mb-8 flex items-center gap-2 lg:hidden">
             <Layers size={22} className="text-blue-600" />
             <span className="text-xl font-bold text-slate-800">Drafter</span>
@@ -293,28 +397,6 @@ export default function LoginPage() {
             >
               {tab === 'login' ? 'Register' : 'Sign In'}
             </button>
-          </p>
-
-          {/* Divider */}
-          <div className="my-6 flex items-center gap-3">
-            <div className="h-px flex-1 bg-slate-200" />
-            <span className="text-xs text-slate-400">or</span>
-            <div className="h-px flex-1 bg-slate-200" />
-          </div>
-
-          {/* Local mode */}
-          <button
-            type="button"
-            onClick={() => {
-              setLocalMode();
-              router.push('/projects/local');
-            }}
-            className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-slate-100 hover:text-slate-800"
-          >
-            Use without login
-          </button>
-          <p className="mt-2 text-center text-[11px] text-slate-400">
-            Save to local — no cloud backup
           </p>
         </div>
       </div>

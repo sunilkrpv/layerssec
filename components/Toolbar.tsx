@@ -5,7 +5,7 @@ import {
   Trash2, Save, Clock,
   Loader2, FolderOpen, Copy, ClipboardPaste,
   ShieldAlert, ShieldCheck, LayoutDashboard, ChevronDown,
-  Sparkles, History, Lock, GitCompareArrows, Sword,
+  Sparkles, History, Lock, GitCompareArrows, Sword, Shield,
 } from 'lucide-react';
 
 interface ToolbarProps {
@@ -45,6 +45,8 @@ interface ToolbarProps {
   onShowAI?: () => void;
   /** Open AI History page */
   onShowAIHistory?: () => void;
+  /** Open Security Intel page */
+  onShowSecurityIntel?: () => void;
   /** Whether this is a cloud project (shows Publish button) */
   isCloudProject?: boolean;
   /** Publish the current diagram */
@@ -122,6 +124,7 @@ export default function Toolbar({
   onOpenAttackMind,
   onShowAI,
   onShowAIHistory,
+  onShowSecurityIntel,
   isCloudProject,
   onPublish,
   onOpenDiff,
@@ -413,6 +416,18 @@ export default function Toolbar({
                     <div>
                       <p className="text-xs font-medium text-slate-800 dark:text-slate-200">History</p>
                       <p className="text-[10px] text-slate-400 dark:text-slate-500">Past AI generations &amp; chat</p>
+                    </div>
+                  </button>
+                )}
+                {onShowSecurityIntel && (
+                  <button
+                    onClick={() => { onShowSecurityIntel(); setAiMenuOpen(false); }}
+                    className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm hover:bg-slate-50 dark:hover:bg-slate-700/50"
+                  >
+                    <Shield size={14} className="flex-shrink-0 text-indigo-500" />
+                    <div>
+                      <p className="text-xs font-medium text-slate-800 dark:text-slate-200">Security Intel</p>
+                      <p className="text-[10px] text-slate-400 dark:text-slate-500">Unified risk summary &amp; report</p>
                     </div>
                   </button>
                 )}

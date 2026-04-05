@@ -330,7 +330,7 @@ export default function PostureScorePanel({
   return (
     <div
       className={`flex h-full flex-col border-l ${isDark ? 'border-slate-700 bg-slate-900 text-slate-100' : 'border-slate-200 bg-white text-slate-900'}`}
-      style={{ width: 460 }}
+      style={{ width: 480 }}
     >
       {/* ── Header ── */}
       <div className={`flex h-10 shrink-0 items-center gap-2.5 border-b px-4 ${isDark ? 'border-slate-700 bg-slate-800' : 'border-slate-200 bg-slate-50'}`}>
@@ -395,8 +395,17 @@ export default function PostureScorePanel({
                   <ShieldCheck size={36} className="mx-auto mb-3 text-indigo-400" />
                   <p className="text-base font-semibold text-slate-700 dark:text-slate-200">Run a Posture Analysis</p>
                   <p className="mt-1.5 text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                    AI will score your architecture across 5 security dimensions — per layer and in aggregate.
+                    AI will score your architecture across 5 security dimensions - per layer and in aggregate.
                   </p>
+                    <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-900/20">
+                    <div className="flex flex-col gap-1.5 text-left">
+                      <p className="text-xs text-amber-700 dark:text-amber-300"><strong>Attack Surface -</strong> External exposure and entry points to threats.</p>
+                      <p className="text-xs text-amber-700 dark:text-amber-300"><strong>Identity Posture -</strong> Strength of authentication and access control.</p>
+                      <p className="text-xs text-amber-700 dark:text-amber-300"><strong>Data Protection -</strong> Measures in place to safeguard sensitive information.</p>
+                      <p className="text-xs text-amber-700 dark:text-amber-300"><strong>Infrastructure Security -</strong> Robustness of the underlying infrastructure.</p>
+                      <p className="text-xs text-amber-700 dark:text-amber-300"><strong>Operational Resilience -</strong> Ability to maintain operations under stress.</p>
+                    </div>
+                    </div>
                   <button
                     onClick={handleCompute}
                     className="mt-4 flex items-center gap-2 mx-auto rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 transition-colors"

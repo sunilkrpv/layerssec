@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState, type DragEvent, type MutableRefObject } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type MutableRefObject } from 'react';
 import ReactFlow, {
   type Node,
   type Edge,
@@ -146,6 +146,8 @@ export type ExtendedRFInstance = ReactFlowInstance & {
   doPaste: () => void;
   /** Visually highlight a node or edge by id; pass null to clear. Auto-clears after 3s. */
   highlightThreatTarget: (targetId: string | null) => void;
+  /** Apply AI-computed positions to existing nodes without changing any other node data. */
+  applyLayout: (positions: Record<string, { x: number; y: number }>) => void;
 };
 
 interface DiagramCanvasProps {
@@ -179,6 +181,8 @@ interface DiagramCanvasProps {
   activeThreatTargetId?: string | null;
   /** Node IDs → step numbers highlighted by Attack Mind hover */
   attackHighlightMap?: AttackHighlightMap;
+  /** Edge IDs to animate as the active attack path */
+  attackEdgeIds?: string[];
 }
 
 export default function DiagramCanvas({
@@ -199,6 +203,7 @@ export default function DiagramCanvas({
   onThreatNodeClick,
   activeThreatTargetId,
   attackHighlightMap,
+  attackEdgeIds,
 }: DiagramCanvasProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState<NodeData>(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>(initialEdges);
@@ -811,6 +816,16 @@ export default function DiagramCanvas({
         pushHistoryRef.current();
       };
 
+      const applyLayout = (positions: Record<string, { x: number; y: number }>) => {
+        pushHistoryRef.current();
+        setNodes((nds) =>
+          nds.map((n) =>
+            positions[n.id] ? { ...n, position: { x: positions[n.id].x, y: positions[n.id].y } } : n,
+          ),
+        );
+        setTimeout(() => onLayerSaveRef.current(instance.getNodes(), instance.getEdges()), 100);
+      };
+
       const doCopy = () => {
         const selected = getNodes().filter((n) => n.selected);
         if (selected.length === 0) return;
@@ -897,6 +912,7 @@ export default function DiagramCanvas({
         doCopy,
         doPaste,
         highlightThreatTarget,
+        applyLayout,
       }) as ExtendedRFInstance;
     },
     // initialNodes.length is intentionally included so fitView fires on remount
@@ -941,11 +957,22 @@ export default function DiagramCanvas({
     selectedNodesRef.current = sel as Node<NodeData>[];
   }, []);
 
+  // Apply animated red stroke to edges that are part of the active attack path
+  const displayEdges = useMemo(() => {
+    if (!attackEdgeIds || attackEdgeIds.length === 0) return edges;
+    const attackSet = new Set(attackEdgeIds);
+    return edges.map((e) =>
+      attackSet.has(e.id)
+        ? { ...e, animated: true, style: { ...e.style, stroke: '#ef4444', strokeWidth: 2.5 } }
+        : e,
+    );
+  }, [edges, attackEdgeIds]);
+
   return (
     <div ref={canvasRef} className="relative h-full flex-1" onDragOver={onDragOver} onDrop={onDrop}>
       <ReactFlow
         nodes={nodes}
-        edges={edges}
+        edges={displayEdges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}

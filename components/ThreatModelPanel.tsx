@@ -39,6 +39,11 @@ interface ThreatModelPanelProps {
   onExternalTargetConsumed?: () => void;
   /** Opens AI Assistant panel so user can run analysis */
   onOpenAIAssistant: () => void;
+  /** Submit analysis as a background job — user can navigate away while it runs */
+  onRunAsync?: () => Promise<void>;
+  /** Active background job id (non-null while a job is running) */
+  activeJobId?: string | null;
+  activeJobType?: 'THREAT_ANALYSIS' | 'POSTURE_SCORE' | null;
   /** Save current transient threats as a named model */
   onSave: (name: string) => Promise<void>;
   /** Replace displayed threats with a loaded saved model */
@@ -85,6 +90,9 @@ export default function ThreatModelPanel({
   externalTargetId,
   onExternalTargetConsumed,
   onOpenAIAssistant,
+  onRunAsync,
+  activeJobId,
+  activeJobType,
   onSave,
   onLoadModel,
   onThreatsChanged,
@@ -396,37 +404,74 @@ export default function ThreatModelPanel({
             </div>
           )}
 
+          {/* ── Background job running banner ── */}
+          {activeJobId && (
+            <div className="mx-4 mt-3 flex items-center gap-3 rounded-xl border border-violet-300/40 bg-violet-50 px-3 py-2.5 dark:border-violet-500/20 dark:bg-violet-900/20">
+              <Loader2 size={14} className="animate-spin flex-shrink-0 text-violet-500" />
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-semibold text-violet-700 dark:text-violet-300">
+                  {activeJobType === 'THREAT_ANALYSIS' ? 'Threat analysis' : 'Posture score'} running in background
+                </p>
+                <p className="text-xs text-violet-500 dark:text-violet-400">Results will appear here when complete. You can safely navigate away.</p>
+              </div>
+            </div>
+          )}
+
           {/* Threat list / empty states */}
           <div ref={listRef} className="flex-1 overflow-y-auto px-4 py-3">
-            {threats.length === 0 ? (
+            {threats.length === 0 && !activeJobId ? (
               <div className="flex flex-col items-center justify-center py-16 text-center gap-4">
                 <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 dark:bg-slate-700">
                   <ShieldCheck size={24} className="text-red-300 dark:text-red-500/60" />
                 </div>
                 <div>
                   <p className="mb-1 text-sm font-semibold text-slate-900 dark:text-slate-100">No threat analysis yet</p>
-                  <p className="text-sm text-slate-500 dark:text-slate-400">Run a STRIDE analysis from the AI Assistant to populate this panel.</p>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">Analyse in the background and keep working, or open the AI Assistant.</p>
                 </div>
-                <button
-                  onClick={onOpenAIAssistant}
-                  className="flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500"
-                >
-                  <ScanSearch size={14} />
-                  Open AI Assistant
-                </button>
+                <div className="flex flex-col items-center gap-2">
+                  {onRunAsync && (
+                    <button
+                      onClick={() => void onRunAsync()}
+                      className="flex items-center gap-2 rounded-xl bg-violet-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-violet-500"
+                    >
+                      <ScanSearch size={14} />
+                      Analyse in background
+                    </button>
+                  )}
+                  <button
+                    onClick={onOpenAIAssistant}
+                    className="flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100 dark:border-slate-600 dark:text-slate-400 dark:hover:bg-slate-700"
+                  >
+                    <ScanSearch size={14} />
+                    Open AI Assistant
+                  </button>
+                </div>
               </div>
-            ) : layerThreats.length === 0 ? (
+            ) : layerThreats.length === 0 && !activeJobId ? (
               <div className="flex flex-col items-center justify-center py-12 text-center gap-3">
                 <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">No threats for this layer</p>
                 <p className="text-sm text-slate-500 dark:text-slate-400">Switch to a layer that has been analyzed, or run a new analysis.</p>
-                <button
-                  onClick={onOpenAIAssistant}
-                  className="flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100 dark:border-slate-600 dark:text-slate-400 dark:hover:bg-slate-700"
-                >
-                  <ScanSearch size={13} />
-                  Analyze this layer
-                </button>
+                <div className="flex items-center gap-2">
+                  {onRunAsync && (
+                    <button
+                      onClick={() => void onRunAsync()}
+                      className="flex items-center gap-1.5 rounded-xl bg-violet-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-violet-500"
+                    >
+                      <ScanSearch size={13} />
+                      Analyse in background
+                    </button>
+                  )}
+                  <button
+                    onClick={onOpenAIAssistant}
+                    className="flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100 dark:border-slate-600 dark:text-slate-400 dark:hover:bg-slate-700"
+                  >
+                    <ScanSearch size={13} />
+                    AI Assistant
+                  </button>
+                </div>
               </div>
+            ) : layerThreats.length === 0 ? (
+              <div className="py-8 text-center text-sm text-slate-400 dark:text-slate-500">Results will appear here when the analysis completes.</div>
             ) : (
               <div className="space-y-2.5">
                 {sorted.map((t, i) => (

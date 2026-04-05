@@ -7,12 +7,13 @@ import {
   ArrowLeft, Check, ChevronRight, Copy, Eye, Layers, Loader2,
   Maximize2, MessageSquare, Minimize2, Paperclip, PlusCircle, Send, Sparkles, SquarePen,
   User, X, Zap, AlertTriangle, GitBranch, Sun, Moon, Monitor, LogOut,
+  BarChart2, Cpu,
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import {
   apiContextualChatAsk, apiGetChatHistory, apiGetProject, apiGetProjectDraft,
-  apiUpdateDiagram, ApiUnauthorizedError, type ChatMessage,
+  apiUpdateDiagram, ApiUnauthorizedError, apiListActivity, type ChatMessage,
 } from '@/lib/api';
 import { ROOT_LAYER_ID, type Layer, type LayerMap } from '@/lib/layerStore';
 import { LINE_NODE_TYPES } from '@/lib/nodeConfig';
@@ -26,7 +27,9 @@ const MiniDiagramPreview = dynamic(() => import('./MiniDiagramPreview'), { ssr: 
 type UIItem =
   | { kind: 'message'; data: ChatMessage }
   | { kind: 'streaming'; content: string }
-  | { kind: 'separator' };
+  | { kind: 'separator' }
+  | { kind: 'posture_score'; jobId: string; createdAt: string; score: number; summary: string; topRecs: string[] }
+  | { kind: 'attack_mind'; jobId: string; createdAt: string; simulationId: string; entryPoint: string; summary: string };
 
 interface DiagramPayload {
   nodes: unknown[];
@@ -575,7 +578,7 @@ function DiagramBubble({ diagram, onApply }: DiagramBubbleProps) {
               onClick={onApply}
               className="rounded-lg bg-indigo-600 px-2.5 py-0.5 text-[10px] font-medium text-white transition hover:bg-indigo-500"
             >
-              Apply →
+              Copy to canvas
             </button>
           </div>
         </div>
@@ -607,7 +610,7 @@ function DiagramBubble({ diagram, onApply }: DiagramBubbleProps) {
                 onClick={onApply}
                 className="rounded-lg bg-indigo-500 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-indigo-400"
               >
-                Apply →
+                Copy to canvas
               </button>
               <button
                 onClick={() => setMaximized(false)}
@@ -668,9 +671,32 @@ export default function AIHistoryPage({ projectId }: AIHistoryPageProps) {
 
   // ── Load on mount ────────────────────────────────────────────────────────
   useEffect(() => {
-    const historyP = apiGetChatHistory(projectId)
-      .then((msgs) => {
-        setUiItems(msgs.map((m) => ({ kind: 'message', data: m })));
+    const historyP = Promise.all([
+      apiGetChatHistory(projectId),
+      apiListActivity({
+        types: ['POSTURE_SCORE', 'ATTACK_SIMULATION'],
+        statuses: ['COMPLETED'],
+        limit: 50,
+      }).catch(() => ({ jobs: [], total: 0 })),
+    ])
+      .then(([msgs, activityData]) => {
+        const msgItems: UIItem[] = msgs.map((m) => ({ kind: 'message', data: m }));
+        const activityItems: UIItem[] = activityData.jobs.flatMap((job): UIItem[] => {
+          if (job.type === 'POSTURE_SCORE') {
+            return [{ kind: 'posture_score', jobId: job.id, createdAt: job.createdAt, score: 0, summary: '', topRecs: [] }];
+          }
+          if (job.type === 'ATTACK_SIMULATION') {
+            return [{ kind: 'attack_mind', jobId: job.id, createdAt: job.createdAt, simulationId: job.resultRef ?? '', entryPoint: 'Auto', summary: '' }];
+          }
+          return [];
+        });
+        const getItemTime = (item: UIItem): number => {
+          if (item.kind === 'message') return new Date(item.data.createdAt).getTime();
+          if (item.kind === 'posture_score' || item.kind === 'attack_mind') return new Date(item.createdAt).getTime();
+          return 0;
+        };
+        const allItems = [...msgItems, ...activityItems].sort((a, b) => getItemTime(a) - getItemTime(b));
+        setUiItems(allItems);
         setIsLoading(false);
       })
       .catch((err) => {
@@ -1055,6 +1081,44 @@ export default function AIHistoryPage({ projectId }: AIHistoryPageProps) {
                     );
                   }
 
+                  if (item.kind === 'posture_score') {
+                    return (
+                      <div key={`posture-${item.jobId}`} className="flex gap-3">
+                        <div className="mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-lg bg-purple-50 ring-1 ring-purple-200 dark:bg-slate-700 dark:ring-slate-600">
+                          <BarChart2 size={11} className="text-purple-500" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="mb-1 flex items-center gap-2">
+                            <span className="rounded-full bg-purple-100 px-2 py-0.5 text-[10px] font-semibold text-purple-700 dark:bg-purple-900/40 dark:text-purple-300">Posture Score</span>
+                            <span className="text-[10px] text-slate-400">{new Date(item.createdAt).toLocaleString()}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className={`text-lg font-bold ${item.score >= 70 ? 'text-emerald-600' : item.score >= 40 ? 'text-amber-600' : 'text-red-500'}`}>{item.score}</span>
+                            <p className="text-xs text-slate-600 dark:text-slate-300 line-clamp-2">{item.summary}</p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  if (item.kind === 'attack_mind') {
+                    return (
+                      <div key={`attack-${item.jobId}`} className="flex gap-3">
+                        <div className="mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-lg bg-orange-50 ring-1 ring-orange-200 dark:bg-slate-700 dark:ring-slate-600">
+                          <Cpu size={11} className="text-orange-500" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="mb-1 flex items-center gap-2">
+                            <span className="rounded-full bg-orange-100 px-2 py-0.5 text-[10px] font-semibold text-orange-700 dark:bg-orange-900/40 dark:text-orange-300">Attack Mind</span>
+                            <span className="text-[10px] text-slate-400">{new Date(item.createdAt).toLocaleString()}</span>
+                          </div>
+                          <div className="text-[10px] text-slate-400 mb-0.5">Entry: <span className="font-medium text-slate-600 dark:text-slate-300">{item.entryPoint}</span></div>
+                          <p className="text-xs text-slate-600 dark:text-slate-300 line-clamp-2">{item.summary}</p>
+                        </div>
+                      </div>
+                    );
+                  }
+
                   if (item.kind === 'streaming') {
                     const { text: displayText } = splitDiagramContent(item.content);
                     return (
@@ -1077,6 +1141,7 @@ export default function AIHistoryPage({ projectId }: AIHistoryPageProps) {
                     );
                   }
 
+                  if (item.kind !== 'message') return null;
                   const msg = item.data;
                   const prevMsg = (() => {
                     for (let j = i - 1; j >= 0; j--) {
@@ -1147,8 +1212,22 @@ export default function AIHistoryPage({ projectId }: AIHistoryPageProps) {
                                 />
                               )}
                             </div>
-                            <div className="mt-1 text-[10px] text-gray-400 dark:text-indigo-300/40">
-                              {formatTime(msg.createdAt)}
+                            <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                              <span className="text-[10px] text-gray-400 dark:text-indigo-300/40">
+                                {formatTime(msg.createdAt)}
+                              </span>
+                              {msg.model && (
+                                <span className="rounded-full border border-slate-200 bg-white px-1.5 py-0.5 font-mono text-[9px] text-slate-500 dark:border-white/10 dark:bg-white/5 dark:text-indigo-300/50">
+                                  {msg.provider ? `${msg.provider}/` : ''}{msg.model}
+                                </span>
+                              )}
+                              {(msg.inputTokens || msg.outputTokens) && (
+                                <span className="rounded-full border border-slate-200 bg-white px-1.5 py-0.5 text-[9px] text-slate-400 dark:border-white/10 dark:bg-white/5 dark:text-indigo-300/40">
+                                  {msg.inputTokens ? `↑${msg.inputTokens}` : ''}
+                                  {msg.inputTokens && msg.outputTokens ? ' ' : ''}
+                                  {msg.outputTokens ? `↓${msg.outputTokens}` : ''}
+                                </span>
+                              )}
                             </div>
                           </div>
                         </div>
