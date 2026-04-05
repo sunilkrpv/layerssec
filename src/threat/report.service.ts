@@ -52,6 +52,59 @@ const SEVERITY_ORDER: ThreatSeverity[] = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW', '
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
+interface AttackStep {
+  stepNumber: number;
+  action: string;
+  attackTechnique: string;
+  description: string;
+  successLikelihood: 'HIGH' | 'MEDIUM' | 'LOW';
+}
+
+interface AttackPath {
+  pathId: string;
+  title: string;
+  severity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
+  likelihood: 'HIGH' | 'MEDIUM' | 'LOW';
+  entryPointLabel: string;
+  steps: AttackStep[];
+  summary: string;
+  mitigations: string[];
+}
+
+const ATTACK_SEV_COLOR: Record<string, string> = {
+  CRITICAL: '#b91c1c',
+  HIGH:     '#c2410c',
+  MEDIUM:   '#b45309',
+  LOW:      '#15803d',
+};
+
+const ATTACK_SEV_BG: Record<string, string> = {
+  CRITICAL: '#fef2f2',
+  HIGH:     '#fff7ed',
+  MEDIUM:   '#fffbeb',
+  LOW:      '#f0fdf4',
+};
+
+const LIKELIHOOD_COLOR: Record<string, string> = {
+  HIGH:   '#dc2626',
+  MEDIUM: '#d97706',
+  LOW:    '#64748b',
+};
+
+function parseAttackPaths(content: string): AttackPath[] | null {
+  try {
+    const cleaned = content.replace(/^```(?:json)?\s*\n?/, '').replace(/\n?```\s*$/, '').trim();
+    const parsed = JSON.parse(cleaned);
+    if (Array.isArray(parsed)) return parsed as AttackPath[];
+    if (parsed && Array.isArray((parsed as { paths?: unknown[] }).paths)) {
+      return (parsed as { paths: AttackPath[] }).paths;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 interface ThreatRow {
   id: string;
   title: string;
@@ -832,30 +885,160 @@ export class ReportService {
         doc.addPage();
         currentY = 60;
 
+        // Page title
         doc.fontSize(14).font('Helvetica-Bold').fillColor(BRAND_DARK).text('Attack Surface Analysis', 50, currentY);
         currentY += 18;
         doc.rect(50, currentY, W, 2).fill('#ea580c');
-        currentY += 15;
+        currentY += 14;
 
-        doc.fontSize(10).font('Helvetica-Bold').fillColor('#64748b').text('Entry Point:', 50, currentY);
-        doc.font('Helvetica').fillColor(BRAND_DARK).text(attackSim.entryPointNodeId ?? 'Auto-selected', 120, currentY);
-        currentY += 20;
+        // Meta row
+        doc.fontSize(9).font('Helvetica-Bold').fillColor('#64748b').text('Entry Point:', 50, currentY);
+        doc.font('Helvetica').fillColor(BRAND_DARK).text(attackSim.entryPointNodeId ?? 'Auto-selected', 125, currentY);
+        currentY += 18;
 
-        // Strip markdown markers for PDF rendering
-        const plainContent = attackSim.content
-          .slice(0, 3000)
-          .replace(/^#{1,6}\s+/gm, '')
-          .replace(/^\*\*(.+?)\*\*/gm, '$1')
-          .replace(/^[-*]\s+/gm, '• ')
-          .trim();
+        // Try to parse structured paths
+        const paths = parseAttackPaths(attackSim.content);
 
-        const paragraphs = plainContent.split(/\n{2,}/);
-        for (const para of paragraphs) {
-          if (currentY > doc.page.height - 60) { doc.addPage(); currentY = 60; }
-          const trimmed = para.trim();
-          if (!trimmed) continue;
-          doc.fontSize(10).font('Helvetica').fillColor('#334155').text(trimmed, 50, currentY, { width: W, lineGap: 3 });
-          currentY = doc.y + 10;
+        if (paths && paths.length > 0) {
+          // Summary pill row: critical/high/total
+          const critCount = paths.filter((p) => p.severity === 'CRITICAL').length;
+          const highCount = paths.filter((p) => p.severity === 'HIGH').length;
+          const pillY = currentY;
+          let pillX = 50;
+          const pillH = 16;
+          const renderPill = (label: string, bg: string, fg: string) => {
+            const tw = doc.widthOfString(label) + 14;
+            doc.roundedRect(pillX, pillY, tw, pillH, 3).fill(bg);
+            doc.fontSize(8).font('Helvetica-Bold').fillColor(fg).text(label, pillX + 7, pillY + 3.5, { lineBreak: false });
+            pillX += tw + 6;
+          };
+          if (critCount > 0) renderPill(`${critCount} CRITICAL`, '#fef2f2', '#b91c1c');
+          if (highCount > 0) renderPill(`${highCount} HIGH`, '#fff7ed', '#c2410c');
+          renderPill(`${paths.length} attack path${paths.length !== 1 ? 's' : ''}`, '#f1f5f9', '#475569');
+          currentY = pillY + pillH + 14;
+
+          // Render each path as a card
+          for (let pi = 0; pi < paths.length; pi++) {
+            const path = paths[pi];
+            const sevColor = ATTACK_SEV_COLOR[path.severity] ?? '#475569';
+            const sevBg = ATTACK_SEV_BG[path.severity] ?? '#f8fafc';
+
+            // Reserve at minimum the card header (~50pt); break page if needed
+            if (currentY > doc.page.height - 110) { doc.addPage(); currentY = 50; }
+
+            const cardStartY = currentY;
+            const cardLeft = 50;
+            const cardW = W;
+
+            // Card header background
+            doc.rect(cardLeft, cardStartY, cardW, 36).fill(sevBg);
+            // Left accent bar
+            doc.rect(cardLeft, cardStartY, 4, 36).fill(sevColor);
+
+            // Index circle
+            doc.circle(cardLeft + 20, cardStartY + 18, 10).fill(sevColor);
+            doc.fontSize(9).font('Helvetica-Bold').fillColor('#ffffff')
+              .text(`${pi + 1}`, cardLeft + 16, cardStartY + 12, { lineBreak: false });
+
+            // Title
+            doc.fontSize(10).font('Helvetica-Bold').fillColor(sevColor)
+              .text(path.title, cardLeft + 36, cardStartY + 5, { width: cardW - 130, lineBreak: false });
+
+            // Severity + likelihood chips (right-aligned)
+            const chipText = `${path.severity}  ·  ${path.likelihood} likelihood`;
+            doc.fontSize(8).font('Helvetica').fillColor(sevColor)
+              .text(chipText, cardLeft + 36, cardStartY + 21, { width: cardW - 40, lineBreak: false });
+
+            currentY = cardStartY + 40;
+
+            // Summary
+            if (path.summary) {
+              if (currentY > doc.page.height - 80) { doc.addPage(); currentY = 50; }
+              doc.fontSize(9).font('Helvetica').fillColor('#334155')
+                .text(path.summary, cardLeft + 8, currentY, { width: cardW - 16, lineGap: 2 });
+              currentY = doc.y + 10;
+            }
+
+            // Kill chain steps
+            if (path.steps && path.steps.length > 0) {
+              if (currentY > doc.page.height - 60) { doc.addPage(); currentY = 50; }
+              doc.fontSize(8).font('Helvetica-Bold').fillColor('#94a3b8')
+                .text('KILL CHAIN', cardLeft + 8, currentY);
+              currentY += 12;
+
+              for (const step of path.steps) {
+                if (currentY > doc.page.height - 70) { doc.addPage(); currentY = 50; }
+
+                const lhColor = LIKELIHOOD_COLOR[step.successLikelihood] ?? '#64748b';
+                const stepLeft = cardLeft + 8;
+
+                // Step number bubble
+                doc.circle(stepLeft + 8, currentY + 7, 7).fill('#e2e8f0');
+                doc.fontSize(7).font('Helvetica-Bold').fillColor('#475569')
+                  .text(`${step.stepNumber}`, stepLeft + 5, currentY + 3.5, { lineBreak: false });
+
+                // Step action (bold) + technique (indigo)
+                const textX = stepLeft + 22;
+                const textW = cardW - 30;
+                doc.fontSize(9).font('Helvetica-Bold').fillColor('#1e293b')
+                  .text(step.action, textX, currentY, { width: textW - 60, lineBreak: false });
+
+                // Likelihood pill right side
+                const lhLabel = step.successLikelihood;
+                doc.fontSize(7).font('Helvetica-Bold').fillColor(lhColor)
+                  .text(lhLabel, cardLeft + cardW - 55, currentY + 1, { lineBreak: false });
+
+                currentY += 13;
+                doc.fontSize(8).font('Helvetica').fillColor('#4f46e5')
+                  .text(step.attackTechnique, textX, currentY, { width: textW, lineBreak: false });
+                currentY += 12;
+                doc.fontSize(8.5).font('Helvetica').fillColor('#475569')
+                  .text(step.description, textX, currentY, { width: textW, lineGap: 2 });
+                currentY = doc.y + 8;
+
+                // Connector line to next step
+                if (step.stepNumber < path.steps.length) {
+                  doc.moveTo(stepLeft + 8, currentY - 4).lineTo(stepLeft + 8, currentY + 2)
+                    .strokeColor('#cbd5e1').lineWidth(1).stroke();
+                }
+              }
+            }
+
+            // Mitigations
+            if (path.mitigations && path.mitigations.length > 0) {
+              if (currentY > doc.page.height - 60) { doc.addPage(); currentY = 50; }
+              doc.fontSize(8).font('Helvetica-Bold').fillColor('#94a3b8')
+                .text('RECOMMENDED MITIGATIONS', cardLeft + 8, currentY);
+              currentY += 11;
+              for (const m of path.mitigations) {
+                if (currentY > doc.page.height - 50) { doc.addPage(); currentY = 50; }
+                doc.fontSize(8).font('Helvetica').fillColor('#15803d').text('✓', cardLeft + 8, currentY, { lineBreak: false });
+                doc.fillColor('#334155').text(m, cardLeft + 22, currentY, { width: cardW - 30, lineGap: 2 });
+                currentY = doc.y + 5;
+              }
+            }
+
+            // Card bottom border
+            doc.moveTo(cardLeft, currentY).lineTo(cardLeft + cardW, currentY)
+              .strokeColor('#e2e8f0').lineWidth(0.5).stroke();
+            currentY += 14;
+          }
+        } else {
+          // Fallback: narrative / plain text
+          const plainContent = attackSim.content
+            .replace(/^```(?:json)?\s*\n?/, '').replace(/\n?```\s*$/, '')
+            .replace(/^#{1,6}\s+/gm, '').replace(/\*\*(.+?)\*\*/g, '$1')
+            .replace(/^[-*]\s+/gm, '• ').trim();
+
+          const paragraphs = plainContent.split(/\n{2,}/);
+          for (const para of paragraphs) {
+            if (currentY > doc.page.height - 60) { doc.addPage(); currentY = 60; }
+            const trimmed = para.trim();
+            if (!trimmed) continue;
+            doc.fontSize(10).font('Helvetica').fillColor('#334155')
+              .text(trimmed, 50, currentY, { width: W, lineGap: 3 });
+            currentY = doc.y + 10;
+          }
         }
       }
 
