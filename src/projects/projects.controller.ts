@@ -18,6 +18,19 @@ export class ProjectsController {
     return this.projects.findAllByUser(userId);
   }
 
+  @Get('summary')
+  getSummary(@CurrentUser('id') userId: string) {
+    return this.projects.getSummary(userId);
+  }
+
+  @Get(':id/overview')
+  getOverview(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser('id') userId: string,
+  ) {
+    return this.projects.getOverview(id, userId);
+  }
+
   @Get(':id')
   findOne(
     @Param('id', ParseUUIDPipe) id: string,

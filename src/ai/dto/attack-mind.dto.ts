@@ -1,4 +1,4 @@
-import { IsString, IsBoolean, IsOptional, IsObject, IsArray } from 'class-validator';
+import { IsString, IsBoolean, IsOptional, IsObject, IsArray, IsInt } from 'class-validator';
 
 export class AttackMindDto {
   @IsString()
@@ -35,4 +35,13 @@ export class SaveAttackSimulationDto {
   /** Serialized array of AttackPath objects */
   @IsArray()
   paths: unknown[];
+}
+
+export class SubmitAttackMindDto {
+  @IsString() projectId: string;
+  @IsString() diagramId: string;
+  @IsInt() diagramVersion: number;
+  @IsObject() layers: Record<string, unknown>;
+  @IsOptional() @IsString() entryPointNodeId?: string;
+  @IsOptional() @IsBoolean() useExtendedThinking?: boolean;
 }

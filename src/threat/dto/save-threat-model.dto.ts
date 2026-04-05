@@ -34,6 +34,12 @@ export class ThreatItemDto {
 
   @IsEnum(ThreatSeverity)
   severity: ThreatSeverity;
+
+  @IsOptional()
+  cissspDomain?: string;
+
+  @IsOptional()
+  trustBoundaryCrossing?: boolean;
 }
 
 export class SaveThreatModelDto {

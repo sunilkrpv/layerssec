@@ -153,6 +153,15 @@ export class ThreatController {
     return this.threat.listPostureHistory(projectId, userId);
   }
 
+  // GET /api/posture-scores/:id
+  @Get('posture-scores/:id')
+  getPostureScore(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser('id') userId: string,
+  ) {
+    return this.threat.getPostureScore(id, userId);
+  }
+
   // ── Attack Simulations ───────────────────────────────────────────────────
 
   // POST /api/projects/:projectId/attack-simulations
@@ -175,6 +184,15 @@ export class ThreatController {
     return this.threat.listAttackSimulations(projectId, userId);
   }
 
+  // GET /api/attack-simulations/:id
+  @Get('attack-simulations/:id')
+  getAttackSimulation(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser('id') userId: string,
+  ) {
+    return this.threat.getAttackSimulation(id, userId);
+  }
+
   // DELETE /api/attack-simulations/:id
   @Delete('attack-simulations/:id')
   @HttpCode(HttpStatus.NO_CONTENT)
@@ -183,5 +201,28 @@ export class ThreatController {
     @CurrentUser('id') userId: string,
   ) {
     return this.threat.deleteAttackSimulation(id, userId);
+  }
+
+  // POST /api/projects/:projectId/intel-report
+  @Post('projects/:projectId/intel-report')
+  async exportIntelReport(
+    @Param('projectId', ParseUUIDPipe) projectId: string,
+    @CurrentUser('id') userId: string,
+    @Body() dto: {
+      threatModelId: string;
+      postureScoreId: string;
+      attackSimulationId?: string;
+      executiveSummary?: string;
+      priorityActions?: Array<{ rank: number; severity: string; source: string; title: string; detail: string }>;
+    },
+    @Res() res: Response,
+  ) {
+    const pdfBuffer = await this.report.generateIntelReport(projectId, userId, dto);
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': 'attachment; filename="security-intel-report.pdf"',
+      'Content-Length': pdfBuffer.length,
+    });
+    res.end(pdfBuffer);
   }
 }

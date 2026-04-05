@@ -144,4 +144,40 @@ export class RagIndexingService {
       this.logger.warn(`Failed to index chat messages: ${String(err)}`);
     }
   }
+
+  /**
+   * Called after each threat agent conversation turn.
+   * Indexes messages with conversationType='threat-analysis' for future RAG retrieval.
+   */
+  async indexThreatChatMessages(
+    projectId: string,
+    userId: string,
+    messages: ChatMessageItem[],
+  ): Promise<void> {
+    if (!this.chroma.isReady) return;
+
+    try {
+      const now = Date.now();
+      const docs: RagDocument[] = messages
+        .filter((m) => m.content.trim().length > 0)
+        .map((m, i) => ({
+          id: `threat_chat_${projectId}_${now}_${i}`,
+          text: `[Threat Analysis ${m.role === 'user' ? 'User' : 'Agent'}]: ${m.content}`,
+          metadata: {
+            userId,
+            projectId,
+            diagramId: '',
+            type: 'threat_chat_message',
+            chatRole: m.role,
+            layerId: m.layerId ?? '__threat_analysis__',
+            layerName: m.layerName ?? 'Threat Analysis',
+            conversationType: 'threat-analysis',
+          },
+        }));
+
+      if (docs.length > 0) await this.chroma.upsert(docs);
+    } catch (err) {
+      this.logger.warn(`Failed to index threat chat messages: ${String(err)}`);
+    }
+  }
 }

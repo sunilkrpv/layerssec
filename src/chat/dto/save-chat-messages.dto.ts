@@ -2,6 +2,7 @@ import { Type } from 'class-transformer';
 import {
   IsArray,
   IsIn,
+  IsInt,
   IsObject,
   IsOptional,
   IsString,
@@ -27,6 +28,22 @@ export class ChatMessageItemDto {
   @IsObject()
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   diagramData?: Record<string, any>;
+
+  @IsOptional()
+  @IsString()
+  provider?: string;
+
+  @IsOptional()
+  @IsString()
+  model?: string;
+
+  @IsOptional()
+  @IsInt()
+  inputTokens?: number;
+
+  @IsOptional()
+  @IsInt()
+  outputTokens?: number;
 }
 
 export class SaveChatMessagesDto {

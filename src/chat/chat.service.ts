@@ -24,6 +24,10 @@ export class ChatService {
         layerId: m.layerId ?? null,
         layerName: m.layerName ?? null,
         diagramData: m.diagramData ?? null,
+        provider: m.provider ?? null,
+        model: m.model ?? null,
+        inputTokens: m.inputTokens ?? null,
+        outputTokens: m.outputTokens ?? null,
       })),
     });
 

@@ -1,7 +1,8 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ChatAnthropic } from '@langchain/anthropic';
 import { ChatOllama } from '@langchain/ollama';
+import { ChatOpenAI } from '@langchain/openai';
 import { AIMessage, HumanMessage, SystemMessage } from '@langchain/core/messages';
 
 export type LlmProvider = 'anthropic' | 'ollama';
@@ -9,6 +10,73 @@ export type LlmProvider = 'anthropic' | 'ollama';
 export interface LlmResponse {
   content: string;
   tokensUsed: number;
+  inputTokens: number;
+  outputTokens: number;
+  provider: string;
+  model: string;
+}
+
+export interface LlmCallConfig {
+  provider?: string;
+  model?: string;
+  maxOutputTokens?: number;
+  /** Ollama only: context window size in tokens. Defaults to OLLAMA_CONTEXT_MAP lookup or 32768. */
+  numCtx?: number;
+  apiKey?: string;
+  baseUrl?: string;
+}
+
+/**
+ * Ollama model → context window (num_ctx) map.
+ *
+ * Keep these values as SMALL as reasonable for each model — num_ctx is the single
+ * biggest lever for inference speed on Ollama. A larger context pre-allocates more
+ * KV-cache memory and dramatically slows every token generation step.
+ * Only set 128K for models that genuinely need it (gpt-oss, llama3.3).
+ */
+const OLLAMA_CONTEXT_MAP: Record<string, number> = {
+  'qwen3:1b':         4096,   // tiny — 4K is plenty
+  'qwen3:4b':         8192,
+  'qwen3:8b':         8192,   // 8K: ~3–4× faster than 32K on CPU
+  'qwen3:14b':        16384,
+  'qwen3:32b':        32768,
+  'gpt-oss:20b':      131072,
+  'gpt-oss:120b':     131072,
+  'llama3.3:70b':     131072,
+  'mistral:7b':        8192,
+  'mistral:instruct':  8192,
+};
+
+/** Resolve num_ctx: explicit config → OLLAMA_NUM_CTX env → catalog → safe default (8192). */
+function resolveNumCtx(
+  model: string,
+  explicitNumCtx?: number,
+  envNumCtx?: number,
+): number {
+  if (explicitNumCtx) return explicitNumCtx;
+  if (envNumCtx) return envNumCtx;
+  // Exact match, then prefix match (handles quantized tags like "qwen3:8b-q4_K_M")
+  if (OLLAMA_CONTEXT_MAP[model]) return OLLAMA_CONTEXT_MAP[model];
+  const prefix = Object.keys(OLLAMA_CONTEXT_MAP).find((k) => model.startsWith(k));
+  return prefix ? OLLAMA_CONTEXT_MAP[prefix] : 8192;
+}
+
+/**
+ * qwen3 models have built-in chain-of-thought thinking that fires on every request
+ * unless explicitly disabled. The thinking tokens are hidden from the output but
+ * still consume compute — for complex prompts (AttackMind, PostureScore) this easily
+ * adds 100 K+ internal tokens and pushes latency over 4 minutes on CPU.
+ *
+ * Injecting "/no_think" anywhere in the conversation disables this per Qwen3 spec.
+ * We prepend it to the system prompt so every call site benefits automatically.
+ */
+function applyOllamaOptimizations(systemPrompt: string, provider: string, model: string): string {
+  if (provider !== 'ollama') return systemPrompt;
+  // Disable qwen3 thinking mode
+  if (model.toLowerCase().startsWith('qwen3:')) {
+    return `/no_think\n\n${systemPrompt}`;
+  }
+  return systemPrompt;
 }
 
 /**
@@ -25,9 +93,9 @@ export interface LlmResponse {
 export class LlmService {
   private readonly logger = new Logger(LlmService.name);
   /** Used for invoke() — JSON-constrained for diagram generation */
-  private readonly llm: ChatAnthropic | ChatOllama;
+  private readonly llm: ChatAnthropic | ChatOllama | ChatOpenAI;
   /** Used for stream()/streamConversation() — no JSON constraint so markdown works */
-  private readonly llmText: ChatAnthropic | ChatOllama;
+  private readonly llmText: ChatAnthropic | ChatOllama | ChatOpenAI;
   /** Anthropic-only: used for invokeWithThinking() — extended thinking enabled */
   private readonly llmThinking: ChatAnthropic | null = null;
 
@@ -40,22 +108,25 @@ export class LlmService {
     if (this.provider === 'ollama') {
       this.modelName = config.get<string>('OLLAMA_MODEL') ?? 'qwen3:8b';
       const baseUrl = config.get<string>('OLLAMA_BASE_URL') ?? 'http://localhost:11434';
+      const envNumCtx = config.get<number>('OLLAMA_NUM_CTX');
+      const numCtx = resolveNumCtx(this.modelName, undefined, envNumCtx);
 
       this.llm = new ChatOllama({
         baseUrl,
         model: this.modelName,
         temperature: 0,
-        format: 'json', // JSON-constrained for diagram generation
+        numCtx,
+        format: 'json',
       });
 
       this.llmText = new ChatOllama({
         baseUrl,
         model: this.modelName,
         temperature: 0,
-        // No format constraint — allows markdown/plain text responses
+        numCtx,
       });
 
-      this.logger.log(`LLM provider: Ollama — ${this.modelName} @ ${baseUrl}`);
+      this.logger.log(`LLM provider: Ollama — ${this.modelName} @ ${baseUrl} (numCtx=${numCtx})`);
     } else {
       this.modelName = config.get<string>('ANTHROPIC_MODEL') ?? 'claude-sonnet-4-6';
 
@@ -83,95 +154,150 @@ export class LlmService {
     }
   }
 
+  private resolveLlm(config?: LlmCallConfig): {
+    llm: ChatAnthropic | ChatOllama | ChatOpenAI;
+    llmText: ChatAnthropic | ChatOllama | ChatOpenAI;
+    resolvedProvider: string;
+    resolvedModel: string;
+  } {
+    const hasCustom = config && (config.model || config.apiKey || config.baseUrl || config.provider || config.maxOutputTokens);
+    if (!hasCustom) {
+      return { llm: this.llm, llmText: this.llmText, resolvedProvider: this.provider, resolvedModel: this.modelName };
+    }
+    const effectiveProvider = config.provider ?? this.provider;
+
+    if (effectiveProvider === 'ollama') {
+      const model = config.model ?? this.modelName;
+      const baseUrl = config.baseUrl ?? this.config.get<string>('OLLAMA_BASE_URL') ?? 'http://localhost:11434';
+      const envNumCtx = this.config.get<number>('OLLAMA_NUM_CTX');
+      const numCtx = resolveNumCtx(model, config.numCtx, envNumCtx);
+      this.logger.debug(`Ollama resolveLlm — model=${model} baseUrl=${baseUrl} numCtx=${numCtx}`);
+      const llm = new ChatOllama({ baseUrl, model, temperature: 0, numCtx, format: 'json' });
+      const llmText = new ChatOllama({ baseUrl, model, temperature: 0, numCtx });
+      return { llm, llmText, resolvedProvider: 'ollama', resolvedModel: model };
+    }
+
+    if (effectiveProvider === 'openai') {
+      const model = config.model ?? 'gpt-4o';
+      const apiKey = config.apiKey ?? this.config.get<string>('OPENAI_API_KEY');
+      const maxTokens = config.maxOutputTokens ?? 4096;
+      const baseURL = config.baseUrl ?? this.config.get<string>('OPENAI_BASE_URL') ?? undefined;
+      const llm = new ChatOpenAI({ apiKey, model, maxTokens, temperature: 0, ...(baseURL && { configuration: { baseURL } }) });
+      return { llm, llmText: llm, resolvedProvider: 'openai', resolvedModel: model };
+    }
+
+    // anthropic (default + replicate fallback)
+    const model = config.model ?? this.modelName;
+    const apiKey = config.apiKey ?? this.config.get<string>('ANTHROPIC_API_KEY');
+    const maxTokens = config.maxOutputTokens ?? 4096;
+    const llm = new ChatAnthropic({ apiKey, model, maxTokens, temperature: 0 });
+    return { llm, llmText: llm, resolvedProvider: 'anthropic', resolvedModel: model };
+  }
+
   /**
    * Send a system + user message pair using Claude extended thinking.
    * Falls back to regular invoke() for Ollama (no extended thinking support).
    * budgetTokens controls how much the model is allowed to "think" before responding.
    */
-  async invokeWithThinking(systemPrompt: string, userMessage: string): Promise<LlmResponse> {
-    if (this.provider !== 'anthropic' || !this.llmThinking) {
-      this.logger.warn('Extended thinking requested but provider is not Anthropic — falling back to standard invoke');
-      return this.invoke(systemPrompt, userMessage);
+  async invokeWithThinking(systemPrompt: string, userMessage: string, config?: LlmCallConfig): Promise<LlmResponse> {
+    const effectiveProvider = config?.provider ?? this.provider;
+    if (effectiveProvider !== 'anthropic') {
+      this.logger.warn(`Extended thinking requested but effective provider is '${effectiveProvider}' — falling back to standard invoke`);
+      return this.invoke(systemPrompt, userMessage, config);
     }
 
-    this.logger.debug(`invokeWithThinking — ${this.modelName}`);
-    this.logger.debug(`system-prompt — ${systemPrompt}`);
-    this.logger.debug(`user-message — ${userMessage}`);
+    // Build a per-request thinking instance when the user has a custom key/model, else use the singleton
+    let thinkingLlm: ChatAnthropic;
+    if (config?.model || config?.apiKey) {
+      const model = config.model ?? this.modelName;
+      const apiKey = config.apiKey ?? this.config.get<string>('ANTHROPIC_API_KEY');
+      const maxTokens = Math.max(config.maxOutputTokens ?? 0, 16000);
+      thinkingLlm = new ChatAnthropic({ apiKey, model, maxTokens, temperature: 1, thinking: { type: 'enabled', budget_tokens: 10000 } });
+    } else if (this.llmThinking) {
+      thinkingLlm = this.llmThinking;
+    } else {
+      this.logger.warn('No thinking-capable Anthropic instance available — falling back to standard invoke');
+      return this.invoke(systemPrompt, userMessage, config);
+    }
 
-    const response = await this.llmThinking!.invoke([
+    const resolvedModel = config?.model ?? this.modelName;
+    this.logger.debug(`invokeWithThinking — ${resolvedModel}`);
+
+    const response = await thinkingLlm.invoke([
       new SystemMessage(systemPrompt),
       new HumanMessage(userMessage),
     ]);
 
-    // extractText filters out thinking blocks (type='thinking') — only 'text' blocks pass through
     const content = this.extractText(response.content);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const usage = (response as any).usage_metadata as { total_tokens?: number } | undefined;
+    const usage = (response as any).usage_metadata as { total_tokens?: number; input_tokens?: number; output_tokens?: number } | undefined;
     const tokensUsed = usage?.total_tokens ?? 0;
+    const inputTokens = usage?.input_tokens ?? 0;
+    const outputTokens = usage?.output_tokens ?? 0;
 
-    this.logger.debug(`invokeWithThinking response: ${content.slice(0, 200)}…`);
     this.logger.debug(`invokeWithThinking tokens used: ${tokensUsed}`);
-
-    return { content, tokensUsed };
+    return { content, tokensUsed, inputTokens, outputTokens, provider: 'anthropic', model: resolvedModel };
   }
 
   /**
    * Send a system + user message pair to the configured LLM and return the
    * text content along with the total token count (0 when unavailable).
    */
-  async invoke(systemPrompt: string, userMessage: string): Promise<LlmResponse> {
+  async invoke(systemPrompt: string, userMessage: string, config?: LlmCallConfig): Promise<LlmResponse> {
+    const { llm, resolvedProvider, resolvedModel } = this.resolveLlm(config);
+    const effectiveSystemPrompt = applyOllamaOptimizations(systemPrompt, resolvedProvider, resolvedModel);
 
-    this.logger.debug(`system-prompt ${this.modelName} — ${systemPrompt}`);
+    this.logger.debug(`system-prompt ${resolvedModel} — ${effectiveSystemPrompt}`);
     this.logger.debug(`user-message — ${userMessage}`);
-    
-    const response = await this.llm.invoke([
-      new SystemMessage(systemPrompt),
-      new HumanMessage(userMessage),
-    ]);
+
+    let response: Awaited<ReturnType<typeof llm.invoke>>;
+    try {
+      response = await llm.invoke([
+        new SystemMessage(effectiveSystemPrompt),
+        new HumanMessage(userMessage),
+      ]);
+    } catch (err) {
+      this.rethrowConnectionError(err, resolvedProvider, resolvedModel);
+    }
 
     const content = this.extractText(response.content);
 
     // usage_metadata is populated by LangChain for both Anthropic and Ollama
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const usage = (response as any).usage_metadata as
-      | { total_tokens?: number }
+      | { total_tokens?: number; input_tokens?: number; output_tokens?: number }
       | undefined;
     const tokensUsed = usage?.total_tokens ?? 0;
-
-  //   const content = {
-  //     "nodes": [{
-  //     "id": "client",
-  //     "type": "client",
-  //     "position": { "x": 60, "y": 280 },
-  //     "data": {
-  //       "label": "Web Client",
-  //       "description": "User interface for requesting and previewing presentations",
-  //       "technology": "React"
-  //     }
-  //   }
-  // ]}.toString();
-  // const tokensUsed = 42; // Placeholder token count
+    const inputTokens = usage?.input_tokens ?? 0;
+    const outputTokens = usage?.output_tokens ?? 0;
 
     this.logger.debug(`LLM response content: ${content}`);
     this.logger.debug(`LLM tokens used: ${tokensUsed}`);
-    this.logger.debug(`LLM used model: ${this.modelName}`);
-    this.logger.debug(`LLM provider: ${this.provider}`);
+    this.logger.debug(`LLM used model: ${resolvedModel}`);
+    this.logger.debug(`LLM provider: ${resolvedProvider}`);
 
-    return { content, tokensUsed };
+    return { content, tokensUsed, inputTokens, outputTokens, provider: resolvedProvider, model: resolvedModel };
   }
 
   /**
    * Stream a system + user message pair, yielding text chunks as they arrive.
    * Uses llmText (no JSON constraint) so responses are markdown/plain text.
    */
-  async *stream(systemPrompt: string, userMessage: string): AsyncGenerator<string> {
-    const chunks = await this.llmText.stream([
-      new SystemMessage(systemPrompt),
-      new HumanMessage(userMessage),
-    ]);
-    for await (const chunk of chunks) {
-      const text = this.extractText(chunk.content);
-      if (text) yield text;
+  async *stream(systemPrompt: string, userMessage: string, config?: LlmCallConfig): AsyncGenerator<string> {
+    const { llmText, resolvedProvider, resolvedModel } = this.resolveLlm(config);
+    const effectiveSystemPrompt = applyOllamaOptimizations(systemPrompt, resolvedProvider, resolvedModel);
+    try {
+      const chunks = await llmText.stream([
+        new SystemMessage(effectiveSystemPrompt),
+        new HumanMessage(userMessage),
+      ]);
+      for await (const chunk of chunks) {
+        const text = this.extractText(chunk.content);
+        if (text) yield text;
+      }
+    } catch (err) {
+      this.rethrowConnectionError(err, resolvedProvider, resolvedModel);
+      throw err;
     }
   }
 
@@ -183,20 +309,40 @@ export class LlmService {
     systemPrompt: string,
     history: Array<{ role: 'user' | 'assistant'; content: string }>,
     userMessage: string,
+    config?: LlmCallConfig,
   ): AsyncGenerator<string> {
-    
+    const { llmText, resolvedProvider, resolvedModel } = this.resolveLlm(config);
+    const effectiveSystemPrompt = applyOllamaOptimizations(systemPrompt, resolvedProvider, resolvedModel);
     const msgs = [
-      new SystemMessage(systemPrompt),
+      new SystemMessage(effectiveSystemPrompt),
       ...history.map((m) =>
         m.role === 'user' ? new HumanMessage(m.content) : new AIMessage(m.content),
       ),
       new HumanMessage(userMessage),
     ];
-    const chunks = await this.llmText.stream(msgs);
+    const chunks = await llmText.stream(msgs);
     for await (const chunk of chunks) {
       const text = this.extractText(chunk.content);
       if (text) yield text;
     }
+  }
+
+  /**
+   * If the error is a low-level network/fetch failure (Ollama not reachable),
+   * throw a descriptive ServiceUnavailableException instead of a generic 500.
+   */
+  private rethrowConnectionError(err: unknown, provider: string, model: string): never {
+    const msg = err instanceof Error ? err.message : String(err);
+    const isFetchError = msg.includes('fetch failed') || msg.includes('ECONNREFUSED') || msg.includes('ENOTFOUND');
+    if (isFetchError && provider === 'ollama') {
+      const baseUrl = this.config.get<string>('OLLAMA_BASE_URL') ?? 'http://localhost:11434';
+      throw new ServiceUnavailableException(
+        `Ollama is not reachable at ${baseUrl}. ` +
+        `Make sure Ollama is running ("ollama serve") and the model is pulled ("ollama pull ${model}"). ` +
+        `If running in Docker, use http://host.docker.internal:11434 as the base URL.`,
+      );
+    }
+    throw err as Error;
   }
 
   private extractText(content: unknown): string {

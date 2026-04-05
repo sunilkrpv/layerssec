@@ -18,6 +18,8 @@ model User {
   aiInteractions AiInteraction[]
   threatModels    ThreatModel[]
   createdThreats  Threat[]        @relation("ThreatCreatedBy")
+  aiSettings      UserAiSettings?
+  aiJobs          AiJob[]
   createdAt       DateTime        @default(now()) @map("created_at")
   updatedAt       DateTime        @updatedAt @map("updated_at")
 
@@ -35,6 +37,7 @@ model Project {
   threatModels      ThreatModel[]
   postureScores     PostureScore[]
   attackSimulations AttackSimulation[]
+  aiJobs            AiJob[]
   isPublic     Boolean       @default(false) @map("is_public")
   tags         String[]      @default([])
   createdAt    DateTime      @default(now()) @map("created_at")
@@ -73,9 +76,11 @@ model AiInteraction {
   diagramId  String?  @map("diagram_id") @db.Uuid
   prompt     String
   response   Json
-  tokensUsed Int      @map("tokens_used")
-  model      String
-  durationMs Int?     @map("duration_ms")
+  tokensUsed   Int      @map("tokens_used")
+  inputTokens  Int?     @map("input_tokens")
+  outputTokens Int?     @map("output_tokens")
+  model        String
+  durationMs   Int?     @map("duration_ms")
   createdAt  DateTime @default(now()) @map("created_at")
 
   @@index([userId])
@@ -91,6 +96,10 @@ model ChatMessage {
   layerId     String?  @map("layer_id")
   layerName   String?  @map("layer_name")
   diagramData Json?    @map("diagram_data")
+  provider     String?
+  model        String?
+  inputTokens  Int?     @map("input_tokens")
+  outputTokens Int?     @map("output_tokens")
   createdAt   DateTime @default(now()) @map("created_at")
 
   @@index([projectId])
@@ -185,18 +194,19 @@ model PostureScore {
 }
 
 model AttackSimulation {
-  id           String   @id @default(uuid()) @db.Uuid
-  projectId    String   @map("project_id") @db.Uuid
-  diagramId    String   @map("diagram_id") @db.Uuid
-  name         String
-  entryPointId String?  @map("entry_point_id")
-  paths        Json
-  savedBy      String   @map("saved_by") @db.Uuid
-  createdAt    DateTime @default(now()) @map("created_at")
+  id               String   @id @default(uuid()) @db.Uuid
+  projectId        String   @map("project_id") @db.Uuid
+  diagramId        String   @map("diagram_id") @db.Uuid
+  diagramVersion   Int      @map("diagram_version") @default(1)
+  name             String
+  entryPointNodeId String?  @map("entry_point_node_id")
+  content          String   @db.Text
+  useExtended      Boolean  @default(false) @map("use_extended")
+  savedBy          String   @map("saved_by") @db.Uuid
+  createdAt        DateTime @default(now()) @map("created_at")
 
-  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  diagram Diagram @relation(fields: [diagramId], references: [id], onDelete: Cascade)
-
+  project          Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  diagram          Diagram  @relation(fields: [diagramId], references: [id], onDelete: Cascade)
   @@index([projectId])
   @@map("attack_simulations")
 }
@@ -225,4 +235,70 @@ model Threat {
 
   @@index([threatModelId])
   @@map("threats")
+}
+
+enum AiProvider {
+  ANTHROPIC
+  OPENAI
+  OLLAMA
+  REPLICATE
+}
+
+enum AiJobType {
+  THREAT_ANALYSIS
+  POSTURE_SCORE
+  ATTACK_SIMULATION
+  DECLUTTER
+}
+
+enum AiJobStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+model AiJob {
+  id           String      @id @default(uuid()) @db.Uuid
+  userId       String      @map("user_id") @db.Uuid
+  projectId    String?     @map("project_id") @db.Uuid
+  diagramId    String?     @map("diagram_id")
+  layerId      String?     @map("layer_id")
+  type         AiJobType
+  status       AiJobStatus @default(PENDING)
+  progress     Int         @default(0)
+  /// ID of the resulting record (threatModelId, postureScoreId, attackSimulationId)
+  resultRef    String?     @map("result_ref")
+  errorMessage String?     @map("error_message")
+  createdAt    DateTime    @default(now()) @map("created_at")
+  startedAt    DateTime?   @map("started_at")
+  completedAt  DateTime?   @map("completed_at")
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([projectId])
+  @@map("ai_jobs")
+}
+
+model UserAiSettings {
+  id              String     @id @default(uuid()) @db.Uuid
+  userId          String     @unique @map("user_id") @db.Uuid
+  user            User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider        AiProvider @default(ANTHROPIC)
+  model           String     @default("claude-sonnet-4-6")
+  maxInputTokens  Int?       @map("max_input_tokens")
+  maxOutputTokens Int?       @map("max_output_tokens")
+  ollamaBaseUrl         String?  @map("ollama_base_url")
+  openAiBaseUrl         String?  @map("open_ai_base_url")
+  /// AES-256-GCM encrypted: iv:authTag:ciphertext (base64). Never expose plaintext.
+  encryptedAnthropicKey String?  @map("encrypted_anthropic_key")
+  /// AES-256-GCM encrypted: iv:authTag:ciphertext (base64). Never expose plaintext.
+  encryptedOpenAiKey    String?  @map("encrypted_open_ai_key")
+  createdAt             DateTime @default(now()) @map("created_at")
+  updatedAt             DateTime @updatedAt @map("updated_at")
+
+  @@map("user_ai_settings")
 }

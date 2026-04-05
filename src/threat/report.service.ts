@@ -590,4 +590,276 @@ export class ReportService {
     };
     return map[cat] ?? '';
   }
+
+  // ── Intel Report ─────────────────────────────────────────────────────────────
+
+  async generateIntelReport(
+    projectId: string,
+    userId: string,
+    params: {
+      threatModelId: string;
+      postureScoreId: string;
+      attackSimulationId?: string;
+      executiveSummary?: string;
+      priorityActions?: Array<{ rank: number; severity: string; source: string; title: string; detail: string }>;
+    },
+  ): Promise<Buffer> {
+    const project = await this.prisma.project.findUnique({
+      where: { id: projectId },
+      select: { ownerId: true, name: true },
+    });
+    if (!project) throw new NotFoundException('Project not found');
+    if (project.ownerId !== userId) throw new ForbiddenException();
+
+    const [threatModel, postureScore, attackSim] = await Promise.all([
+      this.prisma.threatModel.findUnique({
+        where: { id: params.threatModelId },
+        include: {
+          threats: {
+            select: { title: true, severity: true, strideCategory: true, targetLabel: true, status: true },
+            orderBy: [{ severity: 'asc' }, { createdAt: 'asc' }],
+          },
+        },
+      }),
+      this.prisma.postureScore.findUnique({
+        where: { id: params.postureScoreId },
+        select: { score: true, summary: true, topRecs: true, analyzedAt: true },
+      }),
+      params.attackSimulationId
+        ? this.prisma.attackSimulation.findUnique({
+            where: { id: params.attackSimulationId },
+            select: { name: true, entryPointNodeId: true, content: true, createdAt: true },
+          })
+        : Promise.resolve(null),
+    ]);
+
+    if (!threatModel || !postureScore) throw new NotFoundException('Required analysis data not found');
+
+    const threats = threatModel.threats;
+    const activeThreats = threats.filter(t => t.status !== 'MITIGATED' && t.status !== 'FALSE_POSITIVE');
+    const criticalCount = activeThreats.filter(t => t.severity === 'CRITICAL').length;
+    const highCount = activeThreats.filter(t => t.severity === 'HIGH').length;
+    const mediumCount = activeThreats.filter(t => t.severity === 'MEDIUM').length;
+    const lowCount = activeThreats.filter(t => t.severity === 'LOW').length;
+    const threatScore = Math.min(100, criticalCount * 40 + highCount * 20 + mediumCount * 5 + lowCount * 1);
+    const postureRisk = 100 - postureScore.score;
+    const attackModifier = attackSim ? 10 : 0;
+    const compositeRisk = (threatScore * 0.45) + (postureRisk * 0.35) + (attackModifier * 0.20);
+    const riskLevel = compositeRisk >= 70 ? 'CRITICAL' : compositeRisk >= 45 ? 'HIGH' : compositeRisk >= 20 ? 'MEDIUM' : 'LOW';
+    const RISK_COLOR: Record<string, string> = { CRITICAL: '#b91c1c', HIGH: '#c2410c', MEDIUM: '#b45309', LOW: '#15803d' };
+    const RISK_BG: Record<string, string> = { CRITICAL: '#fef2f2', HIGH: '#fff7ed', MEDIUM: '#fffbeb', LOW: '#f0fdf4' };
+
+    const reportDate = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+
+    return new Promise((resolve, reject) => {
+      const chunks: Buffer[] = [];
+      const doc = new PDFDocument({ size: 'A4', margin: 50, bufferPages: true });
+      doc.on('data', (chunk: Buffer) => chunks.push(chunk));
+      doc.on('end', () => resolve(Buffer.concat(chunks)));
+      doc.on('error', reject);
+
+      const W = doc.page.width - 100;
+      const riskColor = RISK_COLOR[riskLevel];
+      const riskBg = RISK_BG[riskLevel];
+
+      // ── Page 1: Cover ─────────────────────────────────────────────────────
+
+      // Header band
+      doc.rect(50, 50, W, 4).fill(BRAND_BLUE);
+      doc.moveDown(1.5);
+
+      doc.fontSize(22).font('Helvetica-Bold').fillColor(BRAND_DARK).text('Security Intelligence Report', 50, 80);
+      doc.fontSize(13).font('Helvetica').fillColor('#64748b').text(project.name, 50, 108);
+      doc.fontSize(10).fillColor('#94a3b8').text(reportDate, 50, 124);
+
+      // Risk level badge
+      const badgeY = 155;
+      doc.roundedRect(50, badgeY, 180, 52, 8).fill(riskBg);
+      doc.roundedRect(50, badgeY, 180, 52, 8).stroke(riskColor);
+      doc.fontSize(9).font('Helvetica').fillColor('#64748b').text('OVERALL RISK', 62, badgeY + 10);
+      doc.fontSize(20).font('Helvetica-Bold').fillColor(riskColor).text(riskLevel, 62, badgeY + 22);
+
+      // Score badge
+      doc.roundedRect(245, badgeY, 110, 52, 8).fill('#f5f3ff');
+      doc.roundedRect(245, badgeY, 110, 52, 8).stroke('#7c3aed');
+      doc.fontSize(9).font('Helvetica').fillColor('#64748b').text('POSTURE SCORE', 257, badgeY + 10);
+      doc.fontSize(20).font('Helvetica-Bold').fillColor('#7c3aed').text(`${postureScore.score}/100`, 257, badgeY + 22);
+
+      // Threat counts badge
+      doc.roundedRect(370, badgeY, 175, 52, 8).fill('#fafafa');
+      doc.roundedRect(370, badgeY, 175, 52, 8).stroke('#e2e8f0');
+      const countY = badgeY + 8;
+      doc.fontSize(8).font('Helvetica-Bold').fillColor(RISK_COLOR['CRITICAL']).text(`${criticalCount} CRITICAL`, 382, countY);
+      doc.fontSize(8).fillColor(RISK_COLOR['HIGH']).text(`${highCount} HIGH`, 382, countY + 12);
+      doc.fontSize(8).fillColor(RISK_COLOR['MEDIUM']).text(`${mediumCount} MEDIUM`, 450, countY);
+      doc.fontSize(8).fillColor(RISK_COLOR['LOW']).text(`${lowCount} LOW`, 450, countY + 12);
+
+      // Inputs table
+      const infoY = 225;
+      doc.fontSize(9).font('Helvetica').fillColor('#94a3b8').text('ANALYSIS INPUTS', 50, infoY);
+      doc.rect(50, infoY + 14, W, 1).fill('#e2e8f0');
+      doc.fontSize(10).fillColor('#475569').font('Helvetica-Bold').text('Threat Model:', 50, infoY + 22);
+      doc.font('Helvetica').fillColor(BRAND_DARK).text(threatModel.name, 150, infoY + 22);
+      doc.fontSize(10).fillColor('#475569').font('Helvetica-Bold').text('Posture Score:', 50, infoY + 38);
+      doc.font('Helvetica').fillColor(BRAND_DARK).text(
+        new Date(postureScore.analyzedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }),
+        150, infoY + 38,
+      );
+      doc.fontSize(10).fillColor('#475569').font('Helvetica-Bold').text('Attack Mind:', 50, infoY + 54);
+      doc.font('Helvetica').fillColor(BRAND_DARK).text(attackSim ? attackSim.name : 'Not included', 150, infoY + 54);
+
+      // ── Page 2: Executive Summary + Priority Actions ──────────────────────
+
+      doc.addPage();
+
+      doc.fontSize(14).font('Helvetica-Bold').fillColor(BRAND_DARK).text('Executive Summary', 50, 60);
+      doc.rect(50, 78, W, 2).fill(BRAND_BLUE);
+
+      const summaryText = params.executiveSummary
+        ?? `This architecture has an overall ${riskLevel} risk posture. Threat analysis identified ${criticalCount + highCount} critical/high severity open threats, the security posture score is ${postureScore.score}/100, and ${attackSim ? 'an attack simulation was included.' : 'no attack simulation was provided.'}`;
+
+      doc.moveDown(0.5);
+      doc.fontSize(10).font('Helvetica').fillColor('#334155').text(summaryText, 50, 88, { width: W, lineGap: 4 });
+
+      let currentY = doc.y + 20;
+
+      if (params.priorityActions && params.priorityActions.length > 0) {
+        doc.fontSize(14).font('Helvetica-Bold').fillColor(BRAND_DARK).text('Priority Actions', 50, currentY);
+        currentY += 18;
+        doc.rect(50, currentY, W, 2).fill(BRAND_BLUE);
+        currentY += 10;
+
+        const SOURCE_COLOR: Record<string, string> = { threat: '#dc2626', posture: '#7c3aed', attack: '#ea580c' };
+
+        for (const action of params.priorityActions) {
+          if (currentY > doc.page.height - 80) { doc.addPage(); currentY = 60; }
+          const sevColor = RISK_COLOR[action.severity.toUpperCase()] ?? '#475569';
+          const srcColor = SOURCE_COLOR[action.source] ?? '#475569';
+
+          // Rank circle
+          doc.circle(60, currentY + 8, 8).fill(BRAND_DARK);
+          doc.fontSize(8).font('Helvetica-Bold').fillColor('white').text(String(action.rank), 56, currentY + 4);
+
+          // Severity badge
+          doc.roundedRect(75, currentY, 55, 14, 3).fill(sevColor);
+          doc.fontSize(7).fillColor('white').text(action.severity.toUpperCase(), 78, currentY + 3.5);
+
+          // Source badge
+          doc.roundedRect(136, currentY, 48, 14, 3).fill(srcColor);
+          doc.fontSize(7).fillColor('white').text(action.source.toUpperCase(), 139, currentY + 3.5);
+
+          // Title + detail
+          doc.fontSize(10).font('Helvetica-Bold').fillColor(BRAND_DARK).text(action.title, 190, currentY, { width: W - 140 });
+          const titleHeight = doc.heightOfString(action.title, { width: W - 140 });
+          doc.fontSize(9).font('Helvetica').fillColor('#64748b').text(action.detail, 190, currentY + titleHeight + 2, { width: W - 140 });
+          const detailHeight = doc.heightOfString(action.detail, { width: W - 140 });
+
+          currentY += Math.max(28, titleHeight + detailHeight + 10);
+        }
+      }
+
+      // ── Page 3: Threat Model Summary ─────────────────────────────────────
+
+      doc.addPage();
+      currentY = 60;
+
+      doc.fontSize(14).font('Helvetica-Bold').fillColor(BRAND_DARK).text('Threat Model Summary', 50, currentY);
+      currentY += 18;
+      doc.rect(50, currentY, W, 2).fill(BRAND_BLUE);
+      currentY += 10;
+
+      doc.fontSize(9).font('Helvetica').fillColor('#64748b')
+        .text(`${threatModel.name} — ${activeThreats.length} open threats (${criticalCount} critical, ${highCount} high)`, 50, currentY);
+      currentY += 18;
+
+      // Table header
+      const cols = [50, 130, 220, 320, 420];
+      const colWidths = [75, 85, 95, 95, 75];
+      doc.rect(50, currentY, W, 16).fill('#f1f5f9');
+      const headers = ['Severity', 'STRIDE', 'Node', 'Title', 'Status'];
+      headers.forEach((h, i) => {
+        doc.fontSize(8).font('Helvetica-Bold').fillColor('#475569').text(h, cols[i] + 3, currentY + 4, { width: colWidths[i] });
+      });
+      currentY += 16;
+
+      // Top 10 open threats
+      const topThreats = activeThreats.slice(0, 10);
+      for (const t of topThreats) {
+        if (currentY > doc.page.height - 60) { doc.addPage(); currentY = 60; }
+        const rowBg = topThreats.indexOf(t) % 2 === 0 ? '#ffffff' : '#f8fafc';
+        doc.rect(50, currentY, W, 20).fill(rowBg);
+        const sevColor = RISK_COLOR[t.severity] ?? '#475569';
+        doc.roundedRect(cols[0] + 2, currentY + 4, 60, 12, 2).fill(sevColor);
+        doc.fontSize(7).font('Helvetica-Bold').fillColor('white').text(t.severity, cols[0] + 5, currentY + 6.5, { width: 54 });
+        doc.fontSize(8).font('Helvetica').fillColor('#334155')
+          .text(t.strideCategory?.replace('_', ' ') ?? '', cols[1] + 3, currentY + 6, { width: colWidths[1] - 6 })
+          .text((t.targetLabel ?? '').slice(0, 20), cols[2] + 3, currentY + 6, { width: colWidths[2] - 6 })
+          .text(t.title.slice(0, 30), cols[3] + 3, currentY + 6, { width: colWidths[3] - 6 })
+          .text(t.status ?? '', cols[4] + 3, currentY + 6, { width: colWidths[4] - 6 });
+        currentY += 20;
+      }
+
+      // ── Page 4: Posture Score ─────────────────────────────────────────────
+
+      doc.addPage();
+      currentY = 60;
+
+      doc.fontSize(14).font('Helvetica-Bold').fillColor(BRAND_DARK).text('Security Posture Analysis', 50, currentY);
+      currentY += 18;
+      doc.rect(50, currentY, W, 2).fill('#7c3aed');
+      currentY += 15;
+
+      doc.fontSize(36).font('Helvetica-Bold').fillColor('#7c3aed').text(`${postureScore.score}`, 50, currentY);
+      doc.fontSize(14).font('Helvetica').fillColor('#94a3b8').text('/ 100', 103, currentY + 14);
+      currentY += 52;
+
+      doc.fontSize(10).font('Helvetica').fillColor('#334155').text(postureScore.summary, 50, currentY, { width: W, lineGap: 4 });
+      currentY = doc.y + 15;
+
+      if (Array.isArray(postureScore.topRecs) && postureScore.topRecs.length > 0) {
+        doc.fontSize(11).font('Helvetica-Bold').fillColor(BRAND_DARK).text('Top Recommendations', 50, currentY);
+        currentY += 16;
+        (postureScore.topRecs as string[]).forEach((rec, i) => {
+          if (currentY > doc.page.height - 60) { doc.addPage(); currentY = 60; }
+          doc.fontSize(10).font('Helvetica').fillColor('#334155').text(`${i + 1}. ${rec}`, 50, currentY, { width: W, lineGap: 3 });
+          currentY = doc.y + 8;
+        });
+      }
+
+      // ── Page 5: Attack Surface ────────────────────────────────────────────
+
+      if (attackSim) {
+        doc.addPage();
+        currentY = 60;
+
+        doc.fontSize(14).font('Helvetica-Bold').fillColor(BRAND_DARK).text('Attack Surface Analysis', 50, currentY);
+        currentY += 18;
+        doc.rect(50, currentY, W, 2).fill('#ea580c');
+        currentY += 15;
+
+        doc.fontSize(10).font('Helvetica-Bold').fillColor('#64748b').text('Entry Point:', 50, currentY);
+        doc.font('Helvetica').fillColor(BRAND_DARK).text(attackSim.entryPointNodeId ?? 'Auto-selected', 120, currentY);
+        currentY += 20;
+
+        // Strip markdown markers for PDF rendering
+        const plainContent = attackSim.content
+          .slice(0, 3000)
+          .replace(/^#{1,6}\s+/gm, '')
+          .replace(/^\*\*(.+?)\*\*/gm, '$1')
+          .replace(/^[-*]\s+/gm, '• ')
+          .trim();
+
+        const paragraphs = plainContent.split(/\n{2,}/);
+        for (const para of paragraphs) {
+          if (currentY > doc.page.height - 60) { doc.addPage(); currentY = 60; }
+          const trimmed = para.trim();
+          if (!trimmed) continue;
+          doc.fontSize(10).font('Helvetica').fillColor('#334155').text(trimmed, 50, currentY, { width: W, lineGap: 3 });
+          currentY = doc.y + 10;
+        }
+      }
+
+      doc.end();
+    });
+  }
 }

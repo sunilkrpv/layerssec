@@ -255,6 +255,20 @@ export class ThreatService {
 
   // ── Attack Simulations ────────────────────────────────────────────────────
 
+  async getPostureScore(id: string, userId: string) {
+    const record = await this.prisma.postureScore.findUnique({
+      where: { id },
+      select: {
+        id: true, projectId: true, diagramId: true, diagramVersion: true,
+        score: true, summary: true, topRecs: true, layerScores: true,
+        useExtended: true, analyzedAt: true,
+      },
+    });
+    if (!record) throw new NotFoundException('Posture score not found');
+    await this.verifyProjectOwnership(record.projectId, userId);
+    return record;
+  }
+
   async saveAttackSimulation(projectId: string, userId: string, dto: SaveAttackSimulationDto) {
     await this.verifyProjectOwnership(projectId, userId);
 
@@ -263,8 +277,8 @@ export class ThreatService {
         projectId,
         diagramId: dto.diagramId,
         name: dto.name,
-        entryPointId: dto.entryPointId,
-        paths: dto.paths as unknown as import('@prisma/client').Prisma.InputJsonValue,
+        entryPointNodeId: dto.entryPointId ?? null,
+        content: typeof dto.paths === 'string' ? dto.paths : JSON.stringify(dto.paths),
         savedBy: userId,
       },
     });
@@ -280,12 +294,25 @@ export class ThreatService {
         id: true,
         name: true,
         diagramId: true,
-        entryPointId: true,
-        paths: true,
+        entryPointNodeId: true,
+        content: true,
         savedBy: true,
         createdAt: true,
       },
     });
+  }
+
+  async getAttackSimulation(id: string, userId: string) {
+    const record = await this.prisma.attackSimulation.findUnique({
+      where: { id },
+      select: {
+        id: true, projectId: true, diagramId: true, diagramVersion: true,
+        name: true, entryPointNodeId: true, content: true, useExtended: true, createdAt: true,
+      },
+    });
+    if (!record) throw new NotFoundException('Attack simulation not found');
+    await this.verifyProjectOwnership(record.projectId, userId);
+    return record;
   }
 
   async deleteAttackSimulation(simulationId: string, userId: string) {

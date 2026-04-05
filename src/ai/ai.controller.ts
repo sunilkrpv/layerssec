@@ -13,6 +13,11 @@ import { ContextualAskDto } from './dto/contextual-ask.dto';
 import { ThreatAnalysisDto } from './dto/threat-analysis.dto';
 import { PostureScoreDto } from './dto/posture-score.dto';
 import { AttackMindDto } from './dto/attack-mind.dto';
+import { DeclutterDto } from './dto/declutter.dto';
+import { SubmitThreatAnalysisDto } from '../jobs/dto/submit-threat-analysis.dto';
+import { SubmitPostureScoreDto } from '../jobs/dto/submit-posture-score.dto';
+import { SubmitAttackMindDto } from './dto/attack-mind.dto';
+import { ThreatChatDto } from './dto/threat-chat.dto';
 
 @Controller('ai')
 @UseGuards(JwtAuthGuard)
@@ -82,6 +87,11 @@ export class AiController {
     return this.ai.attackMind(userId, dto, res);
   }
 
+  @Post('declutter')
+  declutter(@CurrentUser('id') userId: string, @Body() dto: DeclutterDto) {
+    return this.ai.declutter(userId, dto);
+  }
+
   @Post('chat/contextual-ask')
   contextualAsk(
     @CurrentUser('id') userId: string,
@@ -89,5 +99,64 @@ export class AiController {
     @Res() res: Response,
   ) {
     return this.ai.contextualAsk(userId, dto, res);
+  }
+
+  /** Multi-turn threat agent chat — streams typed SSE events. */
+  @Post('threat-analysis/chat')
+  threatAgentChat(
+    @CurrentUser('id') userId: string,
+    @Body() dto: ThreatChatDto,
+    @Res() res: Response,
+  ) {
+    return this.ai.threatAgentChat(userId, dto, res);
+  }
+
+  // ── Async job submission endpoints ───────────────────────────────────────
+
+  /** Submit threat analysis as a background job. Returns { jobId } immediately. */
+  @Post('threat-analysis/submit')
+  submitThreatAnalysis(
+    @CurrentUser('id') userId: string,
+    @Body() dto: SubmitThreatAnalysisDto,
+  ) {
+    return this.ai.submitThreatAnalysis(userId, dto);
+  }
+
+  /** Submit posture score as a background job. Returns { jobId } immediately. */
+  @Post('posture-score/submit')
+  submitPostureScore(
+    @CurrentUser('id') userId: string,
+    @Body() dto: SubmitPostureScoreDto,
+  ) {
+    return this.ai.submitPostureScore(userId, dto);
+  }
+
+  /** SSE: submit posture score job + stream progress until complete. */
+  @Post('posture-score/stream')
+  postureScoreStream(
+    @CurrentUser('id') userId: string,
+    @Body() dto: SubmitPostureScoreDto,
+    @Res() res: Response,
+  ) {
+    return this.ai.postureScoreStream(userId, dto, res);
+  }
+
+  /** SSE: submit attack mind job + stream progress until complete. */
+  @Post('attack-mind/stream')
+  attackMindStream(
+    @CurrentUser('id') userId: string,
+    @Body() dto: SubmitAttackMindDto,
+    @Res() res: Response,
+  ) {
+    return this.ai.attackMindStream(userId, dto, res);
+  }
+
+  /** Synthesize executive summary + priority actions from all three security analysis inputs. */
+  @Post('intel-synthesis')
+  intelSynthesis(
+    @CurrentUser('id') userId: string,
+    @Body() dto: { projectId: string; threatModelId: string; postureScoreId: string; attackSimulationId?: string },
+  ) {
+    return this.ai.intelSynthesis(userId, dto);
   }
 }

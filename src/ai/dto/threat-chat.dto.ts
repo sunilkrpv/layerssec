@@ -1,5 +1,13 @@
-import { IsArray, IsOptional, IsString, ValidateNested } from 'class-validator';
+import { IsArray, IsIn, IsOptional, IsString, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
+
+class MessageDto {
+  @IsIn(['user', 'assistant'])
+  role: 'user' | 'assistant';
+
+  @IsString()
+  content: string;
+}
 
 class NodeInputDto {
   @IsString()
@@ -41,7 +49,7 @@ class EdgeInputDto {
   label?: string;
 }
 
-class TrustBoundaryDto {
+class TrustBoundaryInputDto {
   @IsString()
   id: string;
 
@@ -54,7 +62,10 @@ class TrustBoundaryDto {
   trustLevel?: string;
 }
 
-export class ThreatAnalysisDto {
+export class ThreatChatDto {
+  @IsString()
+  projectId: string;
+
   @IsString()
   diagramId: string;
 
@@ -64,6 +75,11 @@ export class ThreatAnalysisDto {
   @IsOptional()
   @IsString()
   layerName?: string;
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => MessageDto)
+  messages: MessageDto[];
 
   @IsArray()
   @ValidateNested({ each: true })
@@ -78,6 +94,6 @@ export class ThreatAnalysisDto {
   @IsOptional()
   @IsArray()
   @ValidateNested({ each: true })
-  @Type(() => TrustBoundaryDto)
-  trustBoundaries?: TrustBoundaryDto[];
+  @Type(() => TrustBoundaryInputDto)
+  trustBoundaries?: TrustBoundaryInputDto[];
 }
