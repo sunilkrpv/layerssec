@@ -75,6 +75,7 @@ import {
 } from '@/lib/fileStore';
 import { CanvasContext } from '@/lib/canvasContext';
 import { LINE_NODE_TYPES } from '@/lib/nodeConfig';
+import { advanceToNudge, loadPipelineState, type PipelinePhase } from '@/lib/pipelineState';
 
 // ─── helper: synchronously capture current canvas state ──────────────────────
 function captureCanvas(
@@ -329,6 +330,11 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
   // Security Posture Score panel
   const [showPosturePanel, setShowPosturePanel] = useState(false);
   const [latestPostureScore, setLatestPostureScore] = useState<number | null>(null);
+
+  // Pipeline nudge state
+  const [pipelinePhase, setPipelinePhase] = useState<PipelinePhase>(() =>
+    projectId !== 'local' ? loadPipelineState(projectId).phase : 'idle'
+  );
 
   // Attack Mind Simulator panel
   const [showAttackMindPanel, setShowAttackMindPanel] = useState(false);
@@ -763,6 +769,13 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
    * This covers both the /projects/:uuid route AND the case where a cloud project
    * was opened via the Projects modal from the /projects/local route.
    */
+  const handleDiagramReady = useCallback(() => {
+    if (projectId !== 'local' && isLoggedIn()) {
+      advanceToNudge(projectId);
+      setPipelinePhase('nudge');
+    }
+  }, [projectId]);
+
   const handleSaveFile = useCallback(async () => {
     const diagId = backendDiagramIdRef.current;
 
@@ -777,6 +790,7 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
         const data = buildProjectSnapshot();
         await apiUpdateDiagram(diagId, data);
         setLastSaved(new Date());
+        handleDiagramReady();
         setError(null);
       } catch (err: unknown) {
         setError(err instanceof Error ? err.message : 'Save failed.');
@@ -807,7 +821,7 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
     } finally {
       setIsSaving(false);
     }
-  }, [fileHandle, buildProjectSnapshot]);
+  }, [fileHandle, buildProjectSnapshot, handleDiagramReady]);
   useEffect(() => { saveFileRef.current = handleSaveFile; }, [handleSaveFile]);
 
   // ── Auth handlers ─────────────────────────────────────────────────────────
@@ -1606,6 +1620,7 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
       }) as GenerateResponse;
       setGeneratingStatus('Rendering diagram...');
       rfInstanceRef.current?.loadDiagram(diagram);
+      handleDiagramReady();
       setTimeout(() => {
         (rfInstanceRef.current as ReactFlowInstance | null)?.fitView({ padding: 0.15 });
       }, 100);
@@ -1618,7 +1633,7 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
       setIsGenerating(false);
       setGeneratingStatus('');
     }
-  }, [currentLayerId, isReadOnly, layers, projectId]);
+  }, [currentLayerId, handleDiagramReady, isReadOnly, layers, projectId]);
 
   // ── AI Declutter ──────────────────────────────────────────────────────────
 
@@ -1945,6 +1960,8 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
             isCloudProject={!!backendDiagramId && projectId !== 'local'}
             onPublish={() => setShowPublishModal(true)}
             onOpenDiff={projectId !== 'local' ? () => setShowVersionCompare(true) : undefined}
+            // @ts-expect-error Task 9 adds this prop
+            pipelinePhase={pipelinePhase}
           />
 
           {/* ── Layer breadcrumb bar ─────────────────────────────────────── */}
@@ -2191,6 +2208,8 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
                 diagramLayers={layers}
                 projectId={projectId !== 'local' ? projectId : undefined}
                 onShowSecurityIntel={projectId !== 'local' && isLoggedIn() ? () => router.push(`/projects/${projectId}/intel`) : undefined}
+                onDiagramReady={handleDiagramReady}
+                onPipelinePhaseChange={setPipelinePhase}
                 isLoading={isGenerating}
                 status={generatingStatus}
                 onClose={() => setShowChatPanel(false)}

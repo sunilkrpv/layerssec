@@ -12,6 +12,7 @@ import remarkGfm from 'remark-gfm';
 import { useTheme } from '@/lib/themeContext';
 import ThreatResultCard from '@/components/ThreatResultCard';
 import ThreatHistoryPanel from '@/components/ThreatHistoryPanel';
+import { PipelineNudge } from './PipelineNudge';
 import type { ThreatItem, ThreatChatPayload, ThreatChatEvent, KeyFinding, PostureScoreJobResult, PostureScoreStreamEvent, AttackMindJobResult, AttackMindStreamEvent } from '@/lib/api';
 
 const MiniDiagramPreview = dynamic(() => import('./MiniDiagramPreview'), { ssr: false });
@@ -102,6 +103,10 @@ interface AIChatPanelProps {
   projectId?: string;
   /** Navigate to Security Intel page */
   onShowSecurityIntel?: () => void;
+  /** Called after diagram generation or manual save — advances pipeline to nudge */
+  onDiagramReady?: () => void;
+  /** Callback when pipeline phase changes (for Toolbar indicator) */
+  onPipelinePhaseChange?: (phase: import('@/lib/pipelineState').PipelinePhase) => void;
   isLoading: boolean;
   status?: string;
   onClose: () => void;
@@ -410,6 +415,8 @@ export default function AIChatPanel({
   diagramLayers,
   projectId,
   onShowSecurityIntel,
+  onDiagramReady,
+  onPipelinePhaseChange,
   isLoading,
   status,
   onClose,
@@ -1386,6 +1393,21 @@ export default function AIChatPanel({
         <>
           <div className="relative flex-1 overflow-y-auto px-4 py-4">
             <div className="space-y-4">
+              {projectId && diagramId && (
+                <PipelineNudge
+                  projectId={projectId}
+                  diagramId={diagramId}
+                  diagramVersion={diagramVersion ?? 1}
+                  diagramLayers={diagramLayers}
+                  threatNodes={diagramNodes ?? []}
+                  threatEdges={diagramEdges ?? []}
+                  layerId={layerId ?? 'root'}
+                  layerName={layerName}
+                  onShowSecurityIntel={onShowSecurityIntel}
+                  onPhaseChange={onPipelinePhaseChange}
+                  isDark={isDark}
+                />
+              )}
               {/* Idle state */}
               {postureState === 'idle' && (
                 <div className="flex flex-col items-center gap-4 py-10 text-center">
