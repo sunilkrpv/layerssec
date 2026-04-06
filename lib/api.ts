@@ -1006,6 +1006,26 @@ export function apiSubmitThreatAnalysis(payload: {
   });
 }
 
+// ── Pipeline Status ───────────────────────────────────────────────────────────
+
+export interface PipelineJobStatus {
+  id: string;
+  status: 'PENDING' | 'RUNNING' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
+  resultRef: string | null;
+  errorMessage: string | null;
+  createdAt: string;
+  completedAt: string | null;
+}
+
+export interface PipelineStatusResponse {
+  threatJob: PipelineJobStatus | null;
+  postureJob: PipelineJobStatus | null;
+}
+
+export function apiGetPipelineStatus(projectId: string): Promise<PipelineStatusResponse> {
+  return apiFetch<PipelineStatusResponse>(`/api/ai/projects/${projectId}/pipeline-status`);
+}
+
 /** Submit a posture score as a background job — returns { jobId } immediately. */
 export function apiSubmitPostureScore(payload: {
   projectId: string;
@@ -1013,10 +1033,18 @@ export function apiSubmitPostureScore(payload: {
   diagramVersion: number;
   layers: unknown;
   useExtendedThinking?: boolean;
+  threatModelId?: string;
 }): Promise<{ jobId: string }> {
   return apiFetch<{ jobId: string }>('/api/ai/posture-score/submit', {
     method: 'POST',
-    body: JSON.stringify(payload),
+    body: JSON.stringify({
+      projectId: payload.projectId,
+      diagramId: payload.diagramId,
+      diagramVersion: payload.diagramVersion,
+      layers: payload.layers,
+      useExtendedThinking: payload.useExtendedThinking,
+      threatModelId: payload.threatModelId,
+    }),
   });
 }
 
