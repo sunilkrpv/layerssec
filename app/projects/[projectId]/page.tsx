@@ -7,10 +7,12 @@ import dynamic from 'next/dynamic';
 const DiagramPage = dynamic(() => import('@/components/DiagramPage'), { ssr: false });
 
 interface PageProps {
-  params: { projectId: string };
-  searchParams: { view?: string };
+  params: Promise<{ projectId: string }>;
+  searchParams: Promise<{ view?: string }>;
 }
 
-export default function ProjectPage({ params, searchParams }: PageProps) {
+export default async function ProjectPage(props: PageProps) {
+  const searchParams = await props.searchParams;
+  const params = await props.params;
   return <DiagramPage projectId={params.projectId} viewDiagramId={searchParams.view} />;
 }

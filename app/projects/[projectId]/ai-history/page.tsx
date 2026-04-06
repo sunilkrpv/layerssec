@@ -3,9 +3,10 @@ import dynamic from 'next/dynamic';
 const AIHistoryPage = dynamic(() => import('@/components/AIHistoryPage'), { ssr: false });
 
 interface PageProps {
-  params: { projectId: string };
+  params: Promise<{ projectId: string }>;
 }
 
-export default function Page({ params }: PageProps) {
+export default async function Page(props: PageProps) {
+  const params = await props.params;
   return <AIHistoryPage projectId={params.projectId} />;
 }
