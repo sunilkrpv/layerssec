@@ -53,6 +53,8 @@ interface ToolbarProps {
   onPublish?: () => void;
   /** Open the diff view */
   onOpenDiff?: () => void;
+  /** Current security pipeline phase — shows dot indicator on Shield icon */
+  pipelinePhase?: 'idle' | 'nudge' | 'threat_running' | 'threat_done' | 'posture_running' | 'complete';
 }
 
 function ToolBtn({
@@ -128,6 +130,7 @@ export default function Toolbar({
   isCloudProject,
   onPublish,
   onOpenDiff,
+  pipelinePhase,
 }: ToolbarProps) {
   const [threatMenuOpen, setThreatMenuOpen] = useState(false);
   const threatBtnRef = useRef<HTMLButtonElement>(null);
@@ -435,6 +438,27 @@ export default function Toolbar({
             )}
           </div>
         </>
+      )}
+
+      {/* ── Security pipeline phase indicator ────────────────────────────── */}
+      {pipelinePhase && pipelinePhase !== 'idle' && (
+        <div
+          className="relative flex h-7 w-7 items-center justify-center rounded text-slate-500 dark:text-slate-400"
+          title={
+            pipelinePhase === 'nudge' ? 'Security analysis ready — open AI panel'
+            : pipelinePhase === 'threat_running' ? 'Threat analysis running…'
+            : pipelinePhase === 'threat_done' ? 'Threat analysis complete — run posture score'
+            : pipelinePhase === 'posture_running' ? 'Scoring security posture…'
+            : 'Security pipeline complete'
+          }
+        >
+          <Shield size={14} />
+          <span className={`absolute right-0 top-0 h-2 w-2 rounded-full ${
+            pipelinePhase === 'complete' ? 'bg-emerald-500'
+            : pipelinePhase === 'nudge' || pipelinePhase === 'threat_done' ? 'bg-indigo-500'
+            : 'bg-amber-400 animate-pulse'
+          }`} />
+        </div>
       )}
 
       {/* ── Last saved indicator (editing mode only, trailing) ────────────── */}

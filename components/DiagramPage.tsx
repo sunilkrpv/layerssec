@@ -1960,7 +1960,6 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
             isCloudProject={!!backendDiagramId && projectId !== 'local'}
             onPublish={() => setShowPublishModal(true)}
             onOpenDiff={projectId !== 'local' ? () => setShowVersionCompare(true) : undefined}
-            // @ts-expect-error Task 9 adds this prop
             pipelinePhase={pipelinePhase}
           />
 
