@@ -3,4 +3,5 @@ node_modules
 .prd
 .env.local
 docs/superpowers
+.claude/worktrees
 tsconfig.tsbuildinfo

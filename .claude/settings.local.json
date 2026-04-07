@@ -51,12 +51,20 @@
       "Bash(DATABASE_URL=\"postgresql://postgres:postgres@localhost:5432/drafter?schema=public\" DIRECT_URL=\"postgresql://postgres:postgres@localhost:5432/drafter?schema=public\" npx prisma db push)",
       "Bash(docker compose:*)",
       "Bash(sed -n '760,790p' /Users/sunil/Development/github/drafter/components/ThreatsDashboardPage.tsx)",
-      "Bash(sed -n '900,990p' /Users/sunil/Development/github/drafter/components/ThreatsDashboardPage.tsx)"
+      "Bash(sed -n '900,990p' /Users/sunil/Development/github/drafter/components/ThreatsDashboardPage.tsx)",
+      "Bash(git -C /Users/sunil/Development/github/drafter log --oneline -3)",
+      "Bash(npm info:*)",
+      "Bash(npx @next/codemod@canary next-async-request-api ./app --no-interactive --force)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git -C /Users/sunil/Development/github/drafter/.claude/worktrees/agent-a4abfaeb log --oneline -5)",
+      "Bash(echo \"EXIT: $?\")"
     ],
     "additionalDirectories": [
       "/Users/sunil/Development/github/drafter/.next/types/app/projects/[projectId]/threats/report",
       "/Users/sunil/Development/github/drafter/docs/superpowers",
-      "/Users/sunil/Development/github/drafter/app/projects/[projectId]"
+      "/Users/sunil/Development/github/drafter/app/projects/[projectId]",
+      "/Users/sunil/Development/github/drafter/docs/superpowers/plans"
     ]
   }
 }
