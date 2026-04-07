@@ -1227,6 +1227,10 @@ export interface PostureScoreJobResult {
   summary: string;
   topRecs: string[];
   layerCount: number;
+  /** Raw LLM architectural score before threat penalty; equals score when no threat model linked */
+  rawLlmScore?: number;
+  /** Points deducted for unmitigated threats (CRITICAL×4 + HIGH×2 + MEDIUM×0.5) */
+  threatPenalty?: number;
 }
 
 export type PostureScoreStreamEvent =

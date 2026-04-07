@@ -5,7 +5,7 @@ import dynamic from 'next/dynamic';
 import {
   Sparkles, Send, Loader2, X, ScanSearch, Lock, ShieldAlert, Save, History,
   Layers, Shield, CheckCircle2, AlertTriangle, AlertCircle, ArrowRight,
-  BarChart2, Cpu, ChevronDown,
+  BarChart2, Cpu, ChevronDown, Info,
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -315,8 +315,13 @@ function PostureProgressCard({ result }: { result?: PostureScoreJobResult }) {
       </div>
     );
   }
+
+  const hasThreatPenalty = (result.threatPenalty ?? 0) > 0;
+  // Strip the bracket prefix we embed in summary when a penalty is applied
+  const cleanSummary = result.summary.replace(/^\[Architecture score:.*?\]\s*/, '');
   const scoreColor = result.score >= 70 ? 'text-emerald-600' : result.score >= 40 ? 'text-amber-600' : 'text-red-500';
   const scoreBg = result.score >= 70 ? 'bg-emerald-50 ring-emerald-200' : result.score >= 40 ? 'bg-amber-50 ring-amber-200' : 'bg-red-50 ring-red-200';
+
   return (
     <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
       <div className="flex items-center gap-3 border-b border-slate-100 bg-slate-50 px-3 py-2 dark:border-slate-700 dark:bg-slate-800/60">
@@ -329,8 +334,38 @@ function PostureProgressCard({ result }: { result?: PostureScoreJobResult }) {
         </div>
         <CheckCircle2 size={11} className="flex-shrink-0 text-emerald-500" />
       </div>
+
+      {/* Scoring methodology info — always visible so users understand how the score is composed */}
+      <div className="border-b border-slate-100 bg-slate-50/60 px-3 py-2 dark:border-slate-700/60 dark:bg-slate-800/30">
+        {hasThreatPenalty ? (
+          <div className="flex items-start gap-1.5">
+            <Info size={10} className="mt-0.5 shrink-0 text-amber-500" />
+            <p className="text-[10px] leading-relaxed text-slate-500 dark:text-slate-400">
+              <span className="font-semibold text-slate-600 dark:text-slate-300">
+                Architecture score {result.rawLlmScore}/100
+              </span>
+              {' '}— minus{' '}
+              <span className="font-semibold text-amber-600 dark:text-amber-400">
+                {result.threatPenalty} pts threat penalty
+              </span>
+              {' '}for unmitigated STRIDE threats
+              {' '}(CRITICAL ×4 · HIGH ×2 · MEDIUM ×0.5).
+              {' '}Mitigate threats to raise this score.
+            </p>
+          </div>
+        ) : (
+          <div className="flex items-start gap-1.5">
+            <Info size={10} className="mt-0.5 shrink-0 text-slate-400" />
+            <p className="text-[10px] leading-relaxed text-slate-400 dark:text-slate-500">
+              Score based on architectural patterns across 5 CISSP dimensions.
+              {' '}Run threat analysis first to include a threat-adjusted penalty in this score.
+            </p>
+          </div>
+        )}
+      </div>
+
       <div className="px-3 py-2">
-        <p className="mb-2 text-xs leading-relaxed text-slate-600 dark:text-slate-300 line-clamp-2">{result.summary}</p>
+        <p className="mb-2 text-xs leading-relaxed text-slate-600 dark:text-slate-300 line-clamp-2">{cleanSummary}</p>
         {result.topRecs.length > 0 && (
           <ul className="mb-2 space-y-1">
             {result.topRecs.slice(0, 3).map((rec, i) => (
