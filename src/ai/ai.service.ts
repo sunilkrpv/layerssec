@@ -695,6 +695,36 @@ export class AiService {
     return { jobId: job.id };
   }
 
+  async getPipelineStatus(userId: string, projectId: string) {
+    const project = await this.prisma.project.findUnique({
+      where: { id: projectId },
+      select: { ownerId: true },
+    });
+    if (!project) throw new NotFoundException('Project not found');
+    if (project.ownerId !== userId) throw new ForbiddenException();
+
+    const [threatJob, postureJob] = await Promise.all([
+      this.prisma.aiJob.findFirst({
+        where: { projectId, type: AiJobType.THREAT_ANALYSIS },
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true, status: true, resultRef: true,
+          errorMessage: true, createdAt: true, completedAt: true,
+        },
+      }),
+      this.prisma.aiJob.findFirst({
+        where: { projectId, type: AiJobType.POSTURE_SCORE },
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true, status: true, resultRef: true,
+          errorMessage: true, createdAt: true, completedAt: true,
+        },
+      }),
+    ]);
+
+    return { threatJob, postureJob };
+  }
+
   // ── Threat Agent Chat (multi-turn, typed SSE) ────────────────────────────────
 
   async threatAgentChat(userId: string, dto: ThreatChatDto, res: Response): Promise<void> {

@@ -1,7 +1,7 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Logger } from '@nestjs/common';
 import { Job } from 'bullmq';
-import { AiJobStatus } from '@prisma/client';
+import { AiJobStatus, ThreatStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { LlmService } from '../../ai/llm.service';
 import { UserSettingsService } from '../../user-settings/user-settings.service';
@@ -25,6 +25,8 @@ export interface PostureScoreJobResult {
   summary: string;
   topRecs: string[];
   layerCount: number;
+  rawLlmScore: number;
+  threatPenalty: number;
 }
 
 @Processor(POSTURE_SCORE_QUEUE)
@@ -49,9 +51,55 @@ export class PostureScoreProcessor extends WorkerHost {
     });
 
     try {
+      // ── Threat-aware scoring ──────────────────────────────────────────────
+      // Phase 1: optionally load unmitigated threat counts from a linked ThreatModel.
+      // Phase 2: LLM scores the architecture on structural patterns (0–100).
+      // Phase 3: deterministic penalty applied post-LLM so the final score reflects
+      //          actual identified risk — not just architecture quality.
+      //
+      // Penalty coefficients (per unmitigated threat):
+      //   CRITICAL: -4 pts   HIGH: -2 pts   MEDIUM: -0.5 pts
+      // Rationale: these are linear so 6 CRITICAL + 12 HIGH = -24 - 24 = -48 pts off
+      // a structural 92 → final 44, which correctly represents a high-risk posture.
+      // The penalty is capped so the score cannot go below 0.
+
+      interface ThreatCounts { CRITICAL: number; HIGH: number; MEDIUM: number; LOW: number }
+      const threatCounts: ThreatCounts = { CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0 };
+      let threatContext = '';
+
+      if (dto.threatModelId) {
+        try {
+          const model = await this.prisma.threatModel.findUnique({
+            where: { id: dto.threatModelId },
+            select: { threats: { select: { severity: true, status: true } } },
+          });
+          if (model) {
+            const open = model.threats.filter(
+              (t) => t.status === ThreatStatus.IDENTIFIED || t.status === ThreatStatus.IN_PROGRESS,
+            );
+            for (const t of open) {
+              const sev = t.severity as keyof ThreatCounts;
+              if (sev in threatCounts) threatCounts[sev]++;
+            }
+            const parts = (Object.entries(threatCounts) as [keyof ThreatCounts, number][])
+              .filter(([, n]) => n > 0)
+              .map(([sev, n]) => `${n} ${sev}`)
+              .join(', ');
+            const total = open.length;
+            threatContext = total > 0
+              ? `\n\nThis architecture has ${total} unmitigated threats from STRIDE analysis (${parts}). ` +
+                `Score the structural patterns as usual — a deterministic penalty will be applied afterward ` +
+                `based on these threat counts. Do not pre-adjust your scores.`
+              : '';
+          }
+        } catch {
+          // Non-fatal — proceed without threat context
+        }
+      }
+
       const userMessage = buildPostureScorePrompt({
         layers: dto.layers as Parameters<typeof buildPostureScorePrompt>[0]['layers'],
-      });
+      }) + threatContext;
 
       const settings = await this.userSettings.getAiSettings(userId);
       const providerLower = settings.provider?.toLowerCase() as 'anthropic' | 'openai' | 'ollama' | undefined;
@@ -83,12 +131,39 @@ export class PostureScoreProcessor extends WorkerHost {
       const normalized = normalizePostureResult(JSON.parse(raw) as Record<string, unknown>);
       const { aggregate, layerScores } = normalized;
 
+      // ── Phase 3: deterministic threat penalty ─────────────────────────────
+      // Applied after LLM scoring so it cannot be gamed by prompt phrasing.
+      // The LLM scores structural patterns; this penalty encodes identified risk.
+      const PENALTY = { CRITICAL: 4, HIGH: 2, MEDIUM: 0.5, LOW: 0 } as const;
+      const rawLlmScore = aggregate.score;
+      const threatPenalty = dto.threatModelId
+        ? Math.round(
+            threatCounts.CRITICAL * PENALTY.CRITICAL +
+            threatCounts.HIGH     * PENALTY.HIGH +
+            threatCounts.MEDIUM   * PENALTY.MEDIUM,
+          )
+        : 0;
+      const finalScore = Math.max(0, rawLlmScore - threatPenalty);
+
+      if (threatPenalty > 0) {
+        this.logger.log(
+          `[PostureScore] job=${aiJobId} threatPenalty=${threatPenalty} ` +
+          `(${threatCounts.CRITICAL}C/${threatCounts.HIGH}H/${threatCounts.MEDIUM}M) ` +
+          `llmScore=${rawLlmScore} → finalScore=${finalScore}`,
+        );
+        aggregate.summary =
+          `[Architecture score: ${rawLlmScore}/100. Threat penalty: -${threatPenalty} ` +
+          `(${threatCounts.CRITICAL} critical, ${threatCounts.HIGH} high, ${threatCounts.MEDIUM} medium unmitigated threats).] ` +
+          aggregate.summary;
+      }
+      aggregate.score = finalScore;
+
       const saved = await this.prisma.postureScore.create({
         data: {
           projectId: dto.projectId,
           diagramId: dto.diagramId,
           diagramVersion: dto.diagramVersion,
-          score: aggregate.score,
+          score: finalScore,
           dimensions: aggregate.dimensions as unknown as import('@prisma/client').Prisma.InputJsonValue,
           deductions: aggregate.deductions as unknown as import('@prisma/client').Prisma.InputJsonValue,
           additions: aggregate.additions as unknown as import('@prisma/client').Prisma.InputJsonValue,
@@ -128,10 +203,12 @@ export class PostureScoreProcessor extends WorkerHost {
 
       return {
         postureScoreId: saved.id,
-        score: saved.score,
+        score: finalScore,
         summary: aggregate.summary,
         topRecs: (aggregate.topRecs as string[]).slice(0, 3),
         layerCount: Array.isArray(layerScores) ? layerScores.length : 0,
+        rawLlmScore,
+        threatPenalty,
       };
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);

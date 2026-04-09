@@ -184,3 +184,50 @@ npm run db:generate         # regenerate Prisma Client after schema change
 - `.env.local` — local development (gitignored); loaded first by `ConfigModule.forRoot(envFilePath: ['.env.local', '.env'])` and all `db:*` / `start:*` scripts via `dotenv -e .env.local --`
 - `.env` — placeholder/production template (gitignored)
 - `.env.example` — committed template with all required keys (`AI_PROVIDER`, `ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL`, `OLLAMA_BASE_URL`, `OLLAMA_MODEL`, `DATABASE_URL`, `JWT_SECRET`)
+
+---
+
+## Security Scoring Rule — Posture Score + Threat Model Integration
+
+**This rule is mandatory for any future change to `PostureScoreProcessor` or posture scoring logic.**
+
+The Security Posture Score is computed in two phases that MUST be kept separate:
+
+### Phase 1 — LLM structural score (0–100)
+The LLM evaluates the diagram's architectural patterns across 5 CISSP dimensions:
+- Attack Surface, Identity Posture, Data Protection, Network Segmentation, Resilience & Monitoring
+- This score reflects *design quality* — are the right patterns present?
+- The LLM should NOT be asked to pre-adjust for threat counts; it will anchor on hints and produce unreliable results
+
+### Phase 2 — Deterministic threat penalty (post-LLM, non-negotiable)
+Applied in `PostureScoreProcessor` after the LLM returns, using unmitigated threat counts from the linked `ThreatModel`:
+
+```
+penalty = (CRITICAL_count × 4) + (HIGH_count × 2) + (MEDIUM_count × 0.5)
+final_score = max(0, llm_score − penalty)
+```
+
+**Penalty coefficients are not configurable via prompts.** They are constants in code:
+```typescript
+const PENALTY = { CRITICAL: 4, HIGH: 2, MEDIUM: 0.5, LOW: 0 } as const;
+```
+
+**Why deterministic, not LLM-driven:**
+- LLM anchoring bias means a hint ("score lower") produces only marginal adjustments (~5–10 pts)
+- 6 CRITICAL + 12 HIGH threats on a structurally clean architecture would otherwise score 92/100 — a meaningless result that misleads users
+- The penalty formula is transparent and auditable; users can see exactly why the score dropped
+
+**What this means in practice:**
+- An architecture with excellent security patterns but 6 CRITICAL unmitigated STRIDE threats scores: `92 − (6×4) − (12×2) = 44` — correctly reflecting the real risk posture
+- Mitigating threats directly raises the score — creating a meaningful feedback loop
+- The `PostureScoreJobResult` returns BOTH `rawLlmScore` (architecture quality) and `threatPenalty` (identified risk) so the frontend can explain the breakdown to users
+
+**Fields to maintain in `PostureScoreJobResult`:**
+- `score` — final threat-adjusted score (what is stored and displayed)
+- `rawLlmScore` — LLM structural score before penalty (for UI transparency)
+- `threatPenalty` — points deducted (for UI transparency)
+
+**Do not:**
+- Remove the penalty step or make it optional when a `threatModelId` is provided
+- Replace the deterministic penalty with a prompt instruction to the LLM
+- Change penalty coefficients without updating this document and the frontend info message in `PostureProgressCard`

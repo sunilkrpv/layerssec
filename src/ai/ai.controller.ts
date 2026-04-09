@@ -1,4 +1,4 @@
-import { Controller, Post, Body, UseGuards, Res } from '@nestjs/common';
+import { Controller, Post, Get, Param, Body, UseGuards, Res } from '@nestjs/common';
 import { Response } from 'express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -129,6 +129,14 @@ export class AiController {
     @Body() dto: SubmitPostureScoreDto,
   ) {
     return this.ai.submitPostureScore(userId, dto);
+  }
+
+  @Get('projects/:projectId/pipeline-status')
+  getPipelineStatus(
+    @Param('projectId') projectId: string,
+    @CurrentUser('id') userId: string,
+  ) {
+    return this.ai.getPipelineStatus(userId, projectId);
   }
 
   /** SSE: submit posture score job + stream progress until complete. */

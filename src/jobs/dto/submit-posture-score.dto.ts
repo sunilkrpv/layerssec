@@ -17,4 +17,9 @@ export class SubmitPostureScoreDto {
   @IsBoolean()
   @IsOptional()
   useExtendedThinking?: boolean;
+
+  /** Optional: link to a saved ThreatModel to enrich the posture score with threat findings */
+  @IsString()
+  @IsOptional()
+  threatModelId?: string;
 }
