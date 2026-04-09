@@ -1,36 +1,65 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Drafter
 
-## Getting Started
+A web-based layered architecture diagramming tool with AI-powered diagram generation, STRIDE threat modeling, and security posture scoring.
 
-First, run the development server:
+**Key features:**
+- Layered canvas — drill into any node to create sub-layers
+- 22 node types (cloud services, shapes, trust boundaries)
+- AI diagram generation and chat via Anthropic Claude
+- STRIDE threat analysis with severity scoring
+- Security posture score with deterministic threat penalty
+- Project versioning (publish → checkout → diff)
+- PDF threat report export
+
+Built with Next.js 16, React Flow 11, and Tailwind CSS. Requires [drafter-rest](../drafter-rest) as the backend.
+
+---
+
+## Run Locally
+
+### Prerequisites
+- Node.js >= 20.9.0
+- [drafter-rest](../drafter-rest) running on port 4000
+
+### Setup
+
+```bash
+npm install
+```
+
+Create `.env.local`:
+
+```env
+NEXT_PUBLIC_API_URL=http://localhost:4000
+```
+
+### Start
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Run with Docker
 
-## Learn More
+Docker is managed from the `drafter-rest` repo — see its [README](../drafter-rest/README.md#run-with-docker). The frontend container is built and orchestrated from there via `docker compose`.
 
-To learn more about Next.js, take a look at the following resources:
+To build the frontend image standalone:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+docker build \
+  --build-arg NEXT_PUBLIC_API_URL=http://localhost:4000 \
+  -t drafter-frontend .
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+---
 
-## Deploy on Vercel
+## Verify
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+npx tsc --noEmit   # must be 0 errors
+npm run build      # must complete successfully
+```
