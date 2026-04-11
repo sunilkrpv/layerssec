@@ -47,7 +47,7 @@ export default function FileLoadPrompt({
           Open Project File
         </h2>
         <p className="mb-1 text-center text-sm text-slate-600">
-          This link points to a specific layer in a Drafter project.
+          This link points to a specific layer in a Layers project.
         </p>
         <div className="mx-auto mb-6 flex max-w-xs items-center gap-1.5 rounded-lg bg-slate-50 px-3 py-2">
           <FileJson size={13} className="flex-shrink-0 text-slate-400" />

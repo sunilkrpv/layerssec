@@ -5,9 +5,10 @@ import { useRouter } from 'next/navigation';
 import {
   ShieldCheck, ArrowLeft, Loader2, AlertCircle,
   Search, Filter, Bot, User, Trash2, ShieldOff,
-  ExternalLink, Plus, Layers, Sun, Moon, Monitor, LogOut, X, FileText,
+  ExternalLink, Plus, Sun, Moon, Monitor, LogOut, X, FileText,
   Sparkles, Clock,
 } from 'lucide-react';
+import LayersLogo from '@/components/LayersLogo';
 import {
   apiListProjectThreats, apiUpdateThreat, apiDeleteThreat,
   apiCreateThreat, apiListThreatModels, apiGetProject, apiExportThreatReport,
@@ -196,7 +197,7 @@ function StrideHeatMap({ threats, activeStride, activeSeverity, onCellClick }: H
 
       {/* Active filter hint */}
       {(activeStride !== 'ALL' || activeSeverity !== 'ALL') && (
-        <p className="mt-3 text-center text-[10px] text-indigo-500 dark:text-indigo-400">
+        <p className="mt-3 text-center text-[10px] text-blue-500 dark:text-blue-400">
           Filtering: {activeSeverity !== 'ALL' ? activeSeverity : 'all'} × {activeStride !== 'ALL' ? STRIDE_LABEL[activeStride] : 'all STRIDE'}
           {' · '}
           <button
@@ -387,7 +388,7 @@ Be concise and developer-actionable. Avoid generic advice.`,
             <span className="text-slate-300 dark:text-slate-600">·</span>
             <span className={`inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] font-medium ${
               threat.identifiedBy === 'AI'
-                ? 'text-indigo-600 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-900/40 border-indigo-200 dark:border-indigo-700'
+                ? 'text-blue-600 dark:text-blue-300 bg-indigo-50 dark:bg-indigo-900/40 border-indigo-200 dark:border-indigo-700'
                 : 'text-teal-600 dark:text-teal-300 bg-teal-50 dark:bg-teal-900/40 border-teal-200 dark:border-teal-700'
             }`}>
               {threat.identifiedBy === 'AI' ? <Bot size={9} /> : <User size={9} />}
@@ -508,17 +509,17 @@ Be concise and developer-actionable. Avoid generic advice.`,
           <div className="rounded-xl border border-indigo-100 dark:border-indigo-800/40 bg-indigo-50/50 dark:bg-indigo-950/30 p-3.5">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-1.5">
-                <Sparkles size={13} className="text-indigo-500" />
-                <p className="text-xs font-semibold text-indigo-700 dark:text-indigo-300">AI Mitigation Advice</p>
+                <Sparkles size={13} className="text-blue-500" />
+                <p className="text-xs font-semibold text-blue-700 dark:text-blue-300">AI Mitigation Advice</p>
               </div>
               {aiLoading ? (
-                <span className="flex items-center gap-1 text-[11px] text-indigo-500">
+                <span className="flex items-center gap-1 text-[11px] text-blue-500">
                   <Loader2 size={11} className="animate-spin" /> Generating…
                 </span>
               ) : (
                 <button
                   onClick={handleGetAiAdvice}
-                  className="flex items-center gap-1 rounded-md bg-indigo-600 px-2.5 py-1 text-[11px] font-medium text-white hover:bg-indigo-500 transition"
+                  className="flex items-center gap-1 rounded-md bg-blue-600 px-2.5 py-1 text-[11px] font-medium text-white hover:bg-blue-500 transition"
                 >
                   <Sparkles size={10} />
                   {aiText ? 'Regenerate' : 'Get advice'}
@@ -526,7 +527,7 @@ Be concise and developer-actionable. Avoid generic advice.`,
               )}
             </div>
             {!aiText && !aiLoading && !aiError && (
-              <p className="text-xs text-indigo-400/80 dark:text-indigo-500/70">
+              <p className="text-xs text-indigo-400/80 dark:text-blue-500/70">
                 Ask AI for code-level mitigations, security patterns, and compliance controls for this specific threat.
               </p>
             )}
@@ -553,7 +554,7 @@ Be concise and developer-actionable. Avoid generic advice.`,
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={(e) => e.stopPropagation()}
-                className="font-mono text-[10px] text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1"
+                className="font-mono text-[10px] text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
               >
                 {threat.layerId.slice(-8)} <ExternalLink size={9} />
               </a>
@@ -912,8 +913,8 @@ export default function ThreatsDashboardPage({ projectId }: Props) {
       {/* ── Top bar ───────────────────────────────────────────────────────── */}
       <header className="flex h-9 flex-shrink-0 items-center border-b border-slate-200 bg-slate-50 px-3 dark:border-slate-700 dark:bg-slate-900">
         <div className="mr-4 flex items-center gap-1.5 pl-1">
-          <Layers size={14} className="text-blue-600" />
-          <span className="text-sm font-bold text-slate-800 dark:text-slate-100">Drafter</span>
+          <LayersLogo size={14} className="text-blue-600" />
+          <span className="text-sm font-bold text-slate-800 dark:text-slate-100">Layers</span>
         </div>
 
         <button
@@ -1128,7 +1129,7 @@ export default function ThreatsDashboardPage({ projectId }: Props) {
                         >
                           <td className="max-w-[220px] py-3 pl-3 pr-4">
                             <div className="flex items-start gap-2">
-                              <div className={`mt-1 h-3.5 w-0.5 flex-shrink-0 rounded-full transition-colors ${isSelected ? 'bg-indigo-500' : 'bg-transparent group-hover:bg-slate-300 dark:group-hover:bg-slate-600'}`} />
+                              <div className={`mt-1 h-3.5 w-0.5 flex-shrink-0 rounded-full transition-colors ${isSelected ? 'bg-blue-500' : 'bg-transparent group-hover:bg-slate-300 dark:group-hover:bg-slate-600'}`} />
                               <div className="min-w-0">
                                 <p className="font-medium text-slate-900 dark:text-slate-100 truncate">{t.title}</p>
                                 <p className="text-xs text-slate-400 dark:text-slate-500 truncate mt-0.5">{t.description}</p>
@@ -1182,7 +1183,7 @@ export default function ThreatsDashboardPage({ projectId }: Props) {
                           <td className="px-4 py-3 hidden xl:table-cell">
                             <span className={`inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] font-medium ${
                               t.identifiedBy === 'AI'
-                                ? 'text-indigo-600 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-900/40 border-indigo-200 dark:border-indigo-700'
+                                ? 'text-blue-600 dark:text-blue-300 bg-indigo-50 dark:bg-indigo-900/40 border-indigo-200 dark:border-indigo-700'
                                 : 'text-teal-600 dark:text-teal-300 bg-teal-50 dark:bg-teal-900/40 border-teal-200 dark:border-teal-700'
                             }`}>
                               {t.identifiedBy === 'AI' ? <Bot size={9} /> : <User size={9} />}

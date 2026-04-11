@@ -289,7 +289,7 @@ function ThreatProgressCard({ result }: { result?: ThreatMessage['analysisResult
           onClick={(e) => {
             e.preventDefault();
             // DiagramPage wires this via window event or router
-            window.dispatchEvent(new CustomEvent('drafter:open-threat-model', { detail: { modelId: result.modelId } }));
+            window.dispatchEvent(new CustomEvent('layers:open-threat-model', { detail: { modelId: result.modelId } }));
           }}
           className="flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400"
         >
@@ -378,7 +378,7 @@ function PostureProgressCard({ result }: { result?: PostureScoreJobResult }) {
         )}
         <a
           href="#"
-          onClick={(e) => { e.preventDefault(); window.dispatchEvent(new CustomEvent('drafter:open-posture-history')); }}
+          onClick={(e) => { e.preventDefault(); window.dispatchEvent(new CustomEvent('layers:open-posture-history')); }}
           className="flex items-center gap-1 text-xs font-medium text-purple-600 hover:text-purple-500 dark:text-purple-400"
         >
           View history <ArrowRight size={10} />
@@ -418,7 +418,7 @@ function AttackMindProgressCard({ result }: { result?: AttackMindJobResult }) {
         <p className="mb-2 text-xs leading-relaxed text-slate-600 dark:text-slate-300 line-clamp-3">{result.summary}</p>
         <a
           href="#"
-          onClick={(e) => { e.preventDefault(); window.dispatchEvent(new CustomEvent('drafter:open-attack-sim', { detail: { simulationId: result.simulationId } })); }}
+          onClick={(e) => { e.preventDefault(); window.dispatchEvent(new CustomEvent('layers:open-attack-sim', { detail: { simulationId: result.simulationId } })); }}
           className="flex items-center gap-1 text-xs font-medium text-orange-600 hover:text-orange-500 dark:text-orange-400"
         >
           View full simulation <ArrowRight size={10} />
@@ -1079,7 +1079,7 @@ export default function AIChatPanel({
                 {messages.map((msg, i) =>
                   msg.role === 'user' ? (
                     <div key={i} className="flex justify-end">
-                      <div className="max-w-[82%] rounded-2xl rounded-tr-sm bg-indigo-600 px-4 py-2.5 text-sm leading-relaxed text-white shadow-sm">
+                      <div className="max-w-[82%] rounded-2xl rounded-tr-sm bg-blue-600 px-4 py-2.5 text-sm leading-relaxed text-white shadow-sm">
                         {msg.content}
                       </div>
                     </div>
@@ -1129,7 +1129,7 @@ export default function AIChatPanel({
                       <span className="text-[11px] text-slate-500 dark:text-slate-400">Add to:</span>
                       <button
                         onClick={handleCurrentLayer}
-                        className="rounded-xl bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-indigo-500"
+                        className="rounded-xl bg-blue-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-blue-500"
                       >
                         Current layer
                       </button>
@@ -1208,7 +1208,7 @@ export default function AIChatPanel({
                   <button
                     onClick={handleSaveThreatModel}
                     disabled={isSavingModel}
-                    className="flex items-center gap-1 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-indigo-500 disabled:opacity-50"
+                    className="flex items-center gap-1 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-blue-500 disabled:opacity-50"
                   >
                     {isSavingModel ? <Loader2 size={11} className="animate-spin" /> : <Save size={11} />}
                     Save
@@ -1235,7 +1235,7 @@ export default function AIChatPanel({
                 <button
                   onClick={handleSubmit}
                   disabled={!input.trim() || isBusy || (!isReadOnly && !!pendingDiagram)}
-                  className="mb-0.5 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-sm transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="mb-0.5 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white shadow-sm transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   {isBusy ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
                 </button>
@@ -1367,7 +1367,7 @@ export default function AIChatPanel({
             {threatState === 'complete' && (
               <div className="flex gap-2">
                 <button
-                  onClick={() => window.dispatchEvent(new CustomEvent('drafter:open-threat-panel'))}
+                  onClick={() => window.dispatchEvent(new CustomEvent('layers:open-threat-panel'))}
                   className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-slate-100 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-300"
                 >
                   View Threat Model
@@ -1498,7 +1498,7 @@ export default function AIChatPanel({
                 {onShowSecurityIntel && (
                   <button
                     onClick={onShowSecurityIntel}
-                    className="flex w-full items-center justify-center gap-1 text-[11px] text-indigo-500 hover:text-indigo-700 dark:text-indigo-400"
+                    className="flex w-full items-center justify-center gap-1 text-[11px] text-blue-500 hover:text-blue-700 dark:text-blue-400"
                   >
                     View Security Intel →
                   </button>
@@ -1603,7 +1603,7 @@ export default function AIChatPanel({
                 {onShowSecurityIntel && (
                   <button
                     onClick={onShowSecurityIntel}
-                    className="flex w-full items-center justify-center gap-1 text-[11px] text-indigo-500 hover:text-indigo-700 dark:text-indigo-400"
+                    className="flex w-full items-center justify-center gap-1 text-[11px] text-blue-500 hover:text-blue-700 dark:text-blue-400"
                   >
                     View Security Intel →
                   </button>

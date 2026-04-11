@@ -19,6 +19,8 @@ ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 ENV NEXT_TELEMETRY_DISABLED=1
 
 RUN npm run build
+# Ensure public/ exists so the runner COPY doesn't fail on projects with no static assets
+RUN mkdir -p /app/public
 
 # Stage 3: Production runner
 FROM node:20-alpine AS runner

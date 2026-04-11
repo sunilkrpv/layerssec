@@ -55,7 +55,7 @@ export function isLoggedIn(): boolean {
 }
 
 // ── Local (no-login) mode ─────────────────────────────────────────────────────
-const LOCAL_MODE_KEY = 'drafter_local_mode';
+const LOCAL_MODE_KEY = 'layers_local_mode';
 
 export function setLocalMode(): void {
   if (typeof window === 'undefined') return;

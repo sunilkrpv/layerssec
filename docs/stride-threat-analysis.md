@@ -1,6 +1,6 @@
 # STRIDE Threat Analysis
 
-Drafter's threat analysis engine applies the STRIDE methodology to your architecture diagram. It identifies threats per node and data flow, streams results in real time, and lets you save, manage, and export findings.
+Layers threat analysis engine applies the STRIDE methodology to your architecture diagram. It identifies threats per node and data flow, streams results in real time, and lets you save, manage, and export findings.
 
 > **Requires:** A cloud project (not local mode) with a signed-in account.
 

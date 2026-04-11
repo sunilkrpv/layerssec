@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { Layers } from 'lucide-react';
+import LayersLogo from '@/components/LayersLogo';
 import { isLoggedIn } from '@/lib/authStore';
 import {
   apiGetProjectsSummary, apiListActivity,
@@ -135,7 +135,7 @@ export default function AppShell() {
   if (authed === null) {
     return (
       <div className="flex h-screen items-center justify-center bg-slate-50 dark:bg-slate-950">
-        <Layers size={24} className="animate-pulse text-blue-500" />
+        <LayersLogo size={24} className="animate-pulse text-blue-500" />
       </div>
     );
   }

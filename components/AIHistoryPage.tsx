@@ -9,6 +9,7 @@ import {
   User, X, Zap, AlertTriangle, GitBranch, Sun, Moon, Monitor, LogOut,
   BarChart2, Cpu,
 } from 'lucide-react';
+import LayersLogo from '@/components/LayersLogo';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import {
@@ -85,7 +86,7 @@ const mdComponents = {
     <strong className="font-semibold text-gray-900 dark:text-white">{children}</strong>
   ),
   em: ({ children }: { children?: React.ReactNode }) => (
-    <em className="italic text-indigo-600 dark:text-indigo-200">{children}</em>
+    <em className="italic text-blue-600 dark:text-indigo-200">{children}</em>
   ),
   ul: ({ children }: { children?: React.ReactNode }) => (
     <ul className="mb-2 ml-4 list-disc space-y-0.5 text-sm">{children}</ul>
@@ -179,7 +180,7 @@ function ThinkingDots() {
       {[0, 1, 2].map((i) => (
         <span
           key={i}
-          className="h-1.5 w-1.5 rounded-full bg-indigo-400"
+          className="h-1.5 w-1.5 rounded-full bg-blue-400"
           style={{ animation: 'thinking-dot 1.2s ease-in-out infinite', animationDelay: `${i * 0.2}s` }}
         />
       ))}
@@ -257,7 +258,7 @@ function ApplyDiagramModal({ diagram, attachedLayer, allLayers, onApply, onClose
           <>
             <div className="border-b border-gray-100 px-5 py-4 dark:border-white/10">
               <div className="flex items-center gap-2">
-                <Zap size={15} className="text-indigo-500" />
+                <Zap size={15} className="text-blue-500" />
                 <h2 className="text-sm font-semibold text-gray-900 dark:text-white">Apply AI Diagram</h2>
               </div>
               <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
@@ -268,8 +269,8 @@ function ApplyDiagramModal({ diagram, attachedLayer, allLayers, onApply, onClose
             <div className="space-y-3 p-5">
               {/* Override existing — only shown when a layer is attached */}
               {attachedLayer ? (
-                <label className={`flex cursor-pointer items-start gap-3 rounded-xl border p-4 transition ${mode === 'override' ? 'border-indigo-400 bg-indigo-50 dark:border-indigo-500/50 dark:bg-indigo-900/20' : 'border-gray-200 hover:bg-gray-50 dark:border-white/10 dark:hover:bg-white/5'}`}>
-                  <input type="radio" className="mt-0.5 accent-indigo-600" checked={mode === 'override'} onChange={() => setMode('override')} />
+                <label className={`flex cursor-pointer items-start gap-3 rounded-xl border p-4 transition ${mode === 'override' ? 'border-indigo-400 bg-blue-50 dark:border-blue-500/50 dark:bg-indigo-900/20' : 'border-gray-200 hover:bg-gray-50 dark:border-white/10 dark:hover:bg-white/5'}`}>
+                  <input type="radio" className="mt-0.5 accent-blue-600" checked={mode === 'override'} onChange={() => setMode('override')} />
                   <div>
                     <div className="flex items-center gap-1.5 text-sm font-medium text-gray-800 dark:text-white">
                       <AlertTriangle size={13} className="text-amber-500" />
@@ -287,8 +288,8 @@ function ApplyDiagramModal({ diagram, attachedLayer, allLayers, onApply, onClose
               )}
 
               {/* Create new layer */}
-              <label className={`flex cursor-pointer items-start gap-3 rounded-xl border p-4 transition ${mode === 'new' ? 'border-indigo-400 bg-indigo-50 dark:border-indigo-500/50 dark:bg-indigo-900/20' : 'border-gray-200 hover:bg-gray-50 dark:border-white/10 dark:hover:bg-white/5'}`}>
-                <input type="radio" className="mt-0.5 accent-indigo-600" checked={mode === 'new'} onChange={() => setMode('new')} />
+              <label className={`flex cursor-pointer items-start gap-3 rounded-xl border p-4 transition ${mode === 'new' ? 'border-indigo-400 bg-blue-50 dark:border-blue-500/50 dark:bg-indigo-900/20' : 'border-gray-200 hover:bg-gray-50 dark:border-white/10 dark:hover:bg-white/5'}`}>
+                <input type="radio" className="mt-0.5 accent-blue-600" checked={mode === 'new'} onChange={() => setMode('new')} />
                 <div className="flex-1">
                   <div className="flex items-center gap-1.5 text-sm font-medium text-gray-800 dark:text-white">
                     <GitBranch size={13} className="text-green-500" />
@@ -299,7 +300,7 @@ function ApplyDiagramModal({ diagram, attachedLayer, allLayers, onApply, onClose
                   </p>
                   {mode === 'new' && (
                     <input
-                      className="mt-2 w-full rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs text-gray-800 outline-none focus:ring-1 focus:ring-indigo-400 dark:border-white/20 dark:bg-white/10 dark:text-white"
+                      className="mt-2 w-full rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs text-gray-800 outline-none focus:ring-1 focus:ring-blue-400 dark:border-white/20 dark:bg-white/10 dark:text-white"
                       value={newLayerName}
                       onChange={(e) => setNewLayerName(e.target.value)}
                       placeholder="New layer name"
@@ -317,7 +318,7 @@ function ApplyDiagramModal({ diagram, attachedLayer, allLayers, onApply, onClose
               <button
                 onClick={handleChooseNext}
                 disabled={mode === 'new' && !newLayerName.trim()}
-                className="rounded-lg bg-indigo-600 px-4 py-1.5 text-sm font-medium text-white transition hover:bg-indigo-500 disabled:opacity-40"
+                className="rounded-lg bg-blue-600 px-4 py-1.5 text-sm font-medium text-white transition hover:bg-blue-500 disabled:opacity-40"
               >
                 {mode === 'override' ? 'Apply & Override' : 'Next: Link to Shape →'}
               </button>
@@ -347,9 +348,9 @@ function ApplyDiagramModal({ diagram, attachedLayer, allLayers, onApply, onClose
                     <button
                       key={`${shape.layerId}-${shape.nodeId}`}
                       onClick={() => setSelectedShape((prev) => prev?.nodeId === shape.nodeId ? null : shape)}
-                      className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left transition ${selectedShape?.nodeId === shape.nodeId ? 'bg-indigo-50 ring-1 ring-indigo-300 dark:bg-indigo-900/30 dark:ring-indigo-600' : 'hover:bg-gray-50 dark:hover:bg-white/5'}`}
+                      className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left transition ${selectedShape?.nodeId === shape.nodeId ? 'bg-blue-50 ring-1 ring-blue-300 dark:bg-blue-900/30 dark:ring-blue-600' : 'hover:bg-gray-50 dark:hover:bg-white/5'}`}
                     >
-                      <div className={`flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border-2 ${selectedShape?.nodeId === shape.nodeId ? 'border-indigo-600 bg-indigo-600' : 'border-gray-300 dark:border-white/20'}`}>
+                      <div className={`flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border-2 ${selectedShape?.nodeId === shape.nodeId ? 'border-blue-600 bg-blue-600' : 'border-gray-300 dark:border-white/20'}`}>
                         {selectedShape?.nodeId === shape.nodeId && <Check size={10} className="text-white" />}
                       </div>
                       <div className="min-w-0 flex-1">
@@ -373,7 +374,7 @@ function ApplyDiagramModal({ diagram, attachedLayer, allLayers, onApply, onClose
                 <button
                   onClick={handleLinkConfirm}
                   disabled={!selectedShape}
-                  className="rounded-lg bg-indigo-600 px-4 py-1.5 text-sm font-medium text-white transition hover:bg-indigo-500 disabled:opacity-40"
+                  className="rounded-lg bg-blue-600 px-4 py-1.5 text-sm font-medium text-white transition hover:bg-blue-500 disabled:opacity-40"
                 >
                   Create &amp; Link
                 </button>
@@ -412,7 +413,7 @@ function LayerTreeNode({
     <>
       <div
         ref={rowRef}
-        className={`group flex cursor-pointer items-center gap-1 rounded-lg py-1 pr-1 text-xs transition ${isAttached ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300' : 'text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-white/5'}`}
+        className={`group flex cursor-pointer items-center gap-1 rounded-lg py-1 pr-1 text-xs transition ${isAttached ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' : 'text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-white/5'}`}
         style={{ paddingLeft: `${depth * 12 + 4}px` }}
         title={layer.name}
       >
@@ -428,7 +429,7 @@ function LayerTreeNode({
         </button>
 
         {/* Layer icon + name */}
-        <Layers size={11} className="flex-shrink-0 text-indigo-400 dark:text-indigo-500" />
+        <Layers size={11} className="flex-shrink-0 text-indigo-400 dark:text-blue-500" />
         <span className="min-w-0 flex-1 truncate font-medium">{layer.name || 'Untitled'}</span>
 
         {/* Node count */}
@@ -458,7 +459,7 @@ function LayerTreeNode({
             title={isAttached ? 'Detach from chat' : 'Attach to chat'}
             className="rounded p-0.5 hover:bg-gray-200 dark:hover:bg-white/10"
           >
-            <Paperclip size={10} className={isAttached ? 'text-indigo-500' : 'text-gray-400'} />
+            <Paperclip size={10} className={isAttached ? 'text-blue-500' : 'text-gray-400'} />
           </button>
         </div>
       </div>
@@ -530,7 +531,7 @@ function LayerPreviewPopup({ layer, anchorRect, isAttached, onAttach, onClose }:
       <div className="border-t border-gray-100 px-3 py-2 dark:border-white/10">
         <button
           onClick={onAttach}
-          className={`flex w-full items-center justify-center gap-1.5 rounded-lg py-1.5 text-xs font-medium transition ${isAttached ? 'bg-indigo-50 text-indigo-600 ring-1 ring-indigo-200 hover:bg-indigo-100 dark:bg-indigo-900/30 dark:text-indigo-400 dark:ring-indigo-700' : 'bg-indigo-600 text-white hover:bg-indigo-500'}`}
+          className={`flex w-full items-center justify-center gap-1.5 rounded-lg py-1.5 text-xs font-medium transition ${isAttached ? 'bg-blue-50 text-blue-600 ring-1 ring-indigo-200 hover:bg-indigo-100 dark:bg-blue-900/30 dark:text-blue-400 dark:ring-indigo-700' : 'bg-blue-600 text-white hover:bg-blue-500'}`}
         >
           <Paperclip size={11} />
           {isAttached ? 'Detach from chat' : 'Attach to chat context'}
@@ -552,16 +553,16 @@ function DiagramBubble({ diagram, onApply }: DiagramBubbleProps) {
   const [maximized, setMaximized] = useState(false);
   return (
     <>
-      <div className="mt-2 rounded-xl border border-indigo-200 bg-indigo-50/50 dark:border-indigo-800/40 dark:bg-indigo-900/10">
+      <div className="mt-2 rounded-xl border border-indigo-200 bg-blue-50/50 dark:border-indigo-800/40 dark:bg-indigo-900/10">
         <div className="flex items-center gap-2 border-b border-indigo-100 px-3 py-2 dark:border-indigo-800/30">
-          <Zap size={12} className="text-indigo-500" />
-          <span className="text-[11px] font-semibold text-indigo-700 dark:text-indigo-400">
+          <Zap size={12} className="text-blue-500" />
+          <span className="text-[11px] font-semibold text-blue-700 dark:text-blue-400">
             AI Diagram — {diagram.nodes.length} nodes, {diagram.edges.length} edges
           </span>
           <div className="ml-auto flex items-center gap-1">
             <button
               onClick={() => setExpanded((v) => !v)}
-              className="rounded px-2 py-0.5 text-[10px] font-medium text-indigo-500 transition hover:bg-indigo-100 dark:hover:bg-indigo-900/40"
+              className="rounded px-2 py-0.5 text-[10px] font-medium text-blue-500 transition hover:bg-indigo-100 dark:hover:bg-indigo-900/40"
             >
               {expanded ? 'Hide' : 'Preview'}
             </button>
@@ -569,14 +570,14 @@ function DiagramBubble({ diagram, onApply }: DiagramBubbleProps) {
               <button
                 onClick={() => setMaximized(true)}
                 title="Expand to full view"
-                className="rounded p-1 text-indigo-400 transition hover:bg-indigo-100 hover:text-indigo-600 dark:hover:bg-indigo-900/40"
+                className="rounded p-1 text-indigo-400 transition hover:bg-indigo-100 hover:text-blue-600 dark:hover:bg-indigo-900/40"
               >
                 <Maximize2 size={12} />
               </button>
             )}
             <button
               onClick={onApply}
-              className="rounded-lg bg-indigo-600 px-2.5 py-0.5 text-[10px] font-medium text-white transition hover:bg-indigo-500"
+              className="rounded-lg bg-blue-600 px-2.5 py-0.5 text-[10px] font-medium text-white transition hover:bg-blue-500"
             >
               Copy to canvas
             </button>
@@ -608,7 +609,7 @@ function DiagramBubble({ diagram, onApply }: DiagramBubbleProps) {
             <div className="ml-auto flex items-center gap-2">
               <button
                 onClick={onApply}
-                className="rounded-lg bg-indigo-500 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-indigo-400"
+                className="rounded-lg bg-blue-500 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-blue-400"
               >
                 Copy to canvas
               </button>
@@ -922,8 +923,8 @@ export default function AIHistoryPage({ projectId }: AIHistoryPageProps) {
       <header className="flex h-9 flex-shrink-0 items-center border-b border-slate-200 bg-slate-50 px-3 dark:border-slate-700 dark:bg-slate-900">
         {/* Logo */}
         <div className="mr-4 flex items-center gap-1.5 pl-1">
-          <Layers size={14} className="text-blue-600" />
-          <span className="text-sm font-bold text-slate-800 dark:text-slate-100">Drafter</span>
+          <LayersLogo size={14} className="text-blue-600" />
+          <span className="text-sm font-bold text-slate-800 dark:text-slate-100">Layers</span>
         </div>
 
         {/* Back + page context */}
@@ -1047,7 +1048,7 @@ export default function AIHistoryPage({ projectId }: AIHistoryPageProps) {
           {/* Message list */}
           <div className="flex-1 overflow-y-auto bg-white px-4 py-4 dark:bg-gray-950">
             {isLoading && (
-              <div className="flex items-center justify-center py-20 text-sm text-gray-400 dark:text-indigo-300/60">
+              <div className="flex items-center justify-center py-20 text-sm text-gray-400 dark:text-blue-300/60">
                 Loading history…
               </div>
             )}
@@ -1057,10 +1058,10 @@ export default function AIHistoryPage({ projectId }: AIHistoryPageProps) {
             {!isLoading && !error && uiItems.length === 0 && (
               <div className="flex flex-col items-center justify-center gap-3 py-20 text-center">
                 <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100 ring-1 ring-gray-200 dark:bg-white/10 dark:ring-white/20">
-                  <MessageSquare size={24} className="text-gray-400 dark:text-indigo-300/60" />
+                  <MessageSquare size={24} className="text-gray-400 dark:text-blue-300/60" />
                 </div>
                 <p className="text-sm font-medium text-gray-500 dark:text-indigo-200/70">No AI conversations yet</p>
-                <p className="max-w-xs text-xs text-gray-400 dark:text-indigo-300/40">
+                <p className="max-w-xs text-xs text-gray-400 dark:text-blue-300/40">
                   Attach a layer from the sidebar, then ask a question or request changes.
                 </p>
               </div>
@@ -1073,7 +1074,7 @@ export default function AIHistoryPage({ projectId }: AIHistoryPageProps) {
                     return (
                       <div key={`sep-${i}`} className="flex items-center gap-3 py-3">
                         <div className="h-px flex-1 bg-gray-200 dark:bg-white/10" />
-                        <span className="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-widest text-gray-400 dark:text-indigo-300/40">
+                        <span className="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-widest text-gray-400 dark:text-blue-300/40">
                           <PlusCircle size={10} /> New conversation
                         </span>
                         <div className="h-px flex-1 bg-gray-200 dark:bg-white/10" />
@@ -1123,8 +1124,8 @@ export default function AIHistoryPage({ projectId }: AIHistoryPageProps) {
                     const { text: displayText } = splitDiagramContent(item.content);
                     return (
                       <div key={`streaming-${i}`} className="flex items-start gap-3">
-                        <div className="mt-0.5 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg bg-indigo-100 ring-1 ring-indigo-200 dark:bg-indigo-500/30 dark:ring-indigo-400/40">
-                          <Sparkles size={12} className="text-indigo-500 dark:text-blue-300" />
+                        <div className="mt-0.5 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg bg-indigo-100 ring-1 ring-indigo-200 dark:bg-blue-500/30 dark:ring-indigo-400/40">
+                          <Sparkles size={12} className="text-blue-500 dark:text-blue-300" />
                         </div>
                         <div className="max-w-[85%] min-w-0">
                           <div className="rounded-2xl rounded-tl-sm bg-gray-100 px-4 py-2.5 text-gray-700 ring-1 ring-gray-200 dark:bg-white/[0.06] dark:text-indigo-100/90 dark:ring-white/10">
@@ -1160,7 +1161,7 @@ export default function AIHistoryPage({ projectId }: AIHistoryPageProps) {
                       {showDateSep && (
                         <div className="flex items-center gap-3 py-2">
                           <div className="h-px flex-1 bg-gray-200 dark:bg-white/10" />
-                          <span className="text-[10px] font-medium uppercase tracking-widest text-gray-400 dark:text-indigo-300/40">
+                          <span className="text-[10px] font-medium uppercase tracking-widest text-gray-400 dark:text-blue-300/40">
                             {formatDate(msg.createdAt)}
                           </span>
                           <div className="h-px flex-1 bg-gray-200 dark:bg-white/10" />
@@ -1177,21 +1178,21 @@ export default function AIHistoryPage({ projectId }: AIHistoryPageProps) {
                                 </span>
                               </div>
                             )}
-                            <div className="rounded-2xl rounded-tr-sm bg-indigo-600 px-4 py-2.5 text-sm text-white">
+                            <div className="rounded-2xl rounded-tr-sm bg-blue-600 px-4 py-2.5 text-sm text-white">
                               {msg.content}
                             </div>
-                            <div className="mt-1 text-right text-[10px] text-gray-400 dark:text-indigo-300/40">
+                            <div className="mt-1 text-right text-[10px] text-gray-400 dark:text-blue-300/40">
                               {formatTime(msg.createdAt)}
                             </div>
                           </div>
-                          <div className="mt-0.5 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-indigo-100 ring-1 ring-indigo-200 dark:bg-indigo-500/30 dark:ring-indigo-400/30">
-                            <User size={13} className="text-indigo-600 dark:text-indigo-200" />
+                          <div className="mt-0.5 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-indigo-100 ring-1 ring-indigo-200 dark:bg-blue-500/30 dark:ring-indigo-400/30">
+                            <User size={13} className="text-blue-600 dark:text-indigo-200" />
                           </div>
                         </div>
                       ) : (
                         <div className="flex items-start gap-3">
-                          <div className="mt-0.5 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg bg-indigo-100 ring-1 ring-indigo-200 dark:bg-indigo-500/30 dark:ring-indigo-400/40">
-                            <Sparkles size={12} className="text-indigo-500 dark:text-blue-300" />
+                          <div className="mt-0.5 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg bg-indigo-100 ring-1 ring-indigo-200 dark:bg-blue-500/30 dark:ring-indigo-400/40">
+                            <Sparkles size={12} className="text-blue-500 dark:text-blue-300" />
                           </div>
                           <div className="max-w-[85%] min-w-0">
                             {msg.layerName && (
@@ -1213,16 +1214,16 @@ export default function AIHistoryPage({ projectId }: AIHistoryPageProps) {
                               )}
                             </div>
                             <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                              <span className="text-[10px] text-gray-400 dark:text-indigo-300/40">
+                              <span className="text-[10px] text-gray-400 dark:text-blue-300/40">
                                 {formatTime(msg.createdAt)}
                               </span>
                               {msg.model && (
-                                <span className="rounded-full border border-slate-200 bg-white px-1.5 py-0.5 font-mono text-[9px] text-slate-500 dark:border-white/10 dark:bg-white/5 dark:text-indigo-300/50">
+                                <span className="rounded-full border border-slate-200 bg-white px-1.5 py-0.5 font-mono text-[9px] text-slate-500 dark:border-white/10 dark:bg-white/5 dark:text-blue-300/50">
                                   {msg.provider ? `${msg.provider}/` : ''}{msg.model}
                                 </span>
                               )}
                               {(msg.inputTokens || msg.outputTokens) && (
-                                <span className="rounded-full border border-slate-200 bg-white px-1.5 py-0.5 text-[9px] text-slate-400 dark:border-white/10 dark:bg-white/5 dark:text-indigo-300/40">
+                                <span className="rounded-full border border-slate-200 bg-white px-1.5 py-0.5 text-[9px] text-slate-400 dark:border-white/10 dark:bg-white/5 dark:text-blue-300/40">
                                   {msg.inputTokens ? `↑${msg.inputTokens}` : ''}
                                   {msg.inputTokens && msg.outputTokens ? ' ' : ''}
                                   {msg.outputTokens ? `↓${msg.outputTokens}` : ''}
@@ -1247,7 +1248,7 @@ export default function AIHistoryPage({ projectId }: AIHistoryPageProps) {
               <div className="flex items-center gap-2 border-b border-gray-100 px-4 py-2 dark:border-white/5">
                 <Paperclip size={11} className="flex-shrink-0 text-indigo-400" />
                 <span className="text-xs text-gray-500 dark:text-gray-400">Context:</span>
-                <span className="flex items-center gap-1 rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-medium text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300">
+                <span className="flex items-center gap-1 rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-medium text-blue-700 dark:bg-indigo-900/40 dark:text-blue-300">
                   <Layers size={10} />
                   {attachedLayer.name}
                   <span className="text-[9px] text-indigo-400">({attachedLayer.nodes.length} nodes)</span>
@@ -1270,12 +1271,12 @@ export default function AIHistoryPage({ projectId }: AIHistoryPageProps) {
                 onKeyDown={handleKeyDown}
                 disabled={isStreaming || isLoading}
                 placeholder={attachedLayer ? `Ask about or request changes to "${attachedLayer.name}"…` : 'Send a message… (Enter to send, Shift+Enter for newline)'}
-                className="flex-1 resize-none rounded-xl bg-gray-100 px-4 py-2.5 text-sm text-gray-800 placeholder-gray-400 outline-none ring-1 ring-gray-300 transition focus:ring-indigo-400/70 disabled:opacity-50 dark:bg-white/[0.06] dark:text-white dark:placeholder-indigo-300/40 dark:ring-white/15 dark:focus:ring-indigo-400/50"
+                className="flex-1 resize-none rounded-xl bg-gray-100 px-4 py-2.5 text-sm text-gray-800 placeholder-gray-400 outline-none ring-1 ring-gray-300 transition focus:ring-blue-400/70 disabled:opacity-50 dark:bg-white/[0.06] dark:text-white dark:placeholder-indigo-300/40 dark:ring-white/15 dark:focus:ring-blue-400/50"
               />
               <button
                 onClick={() => void handleSend()}
                 disabled={!input.trim() || isStreaming || isLoading}
-                className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-40"
+                className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 {isStreaming ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
               </button>

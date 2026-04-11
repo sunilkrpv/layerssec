@@ -4,11 +4,12 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Activity, Shield, Sword, BarChart2, Wand2, X, RotateCcw,
-  Search, Settings, LogOut, Layers, ExternalLink,
+  Search, Settings, LogOut, ExternalLink,
   CheckCircle2, XCircle, Clock, Loader2, Filter,
   FolderOpen, Home, ChevronDown, ChevronRight,
   Zap, Brain,
 } from 'lucide-react';
+import LayersLogo from '@/components/LayersLogo';
 import {
   apiListActivity, apiCancelJob,
   type AiJobListItem, type AiJobType, type AiJobStatus, type AiActivityFilters,
@@ -102,8 +103,8 @@ function Sidebar({ activeType, onTypeFilter, typeCounts, user, onSignOut }: Side
     <div className="flex h-full w-[220px] shrink-0 flex-col border-r border-slate-200 bg-slate-100 text-slate-700 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
       {/* Logo */}
       <div className="flex h-12 shrink-0 items-center gap-2 border-b border-slate-200 px-4 dark:border-slate-800">
-        <Layers size={16} className="text-blue-600 dark:text-blue-500" />
-        <span className="text-sm font-bold text-slate-900 dark:text-white">Drafter</span>
+        <LayersLogo size={16} className="text-blue-600 dark:text-blue-500" />
+        <span className="text-sm font-bold text-slate-900 dark:text-white">Layers</span>
         <span className="ml-1 rounded bg-slate-200 px-1.5 py-0.5 text-[10px] text-slate-500 dark:bg-slate-800 dark:text-slate-400">Observability</span>
       </div>
 

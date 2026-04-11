@@ -1,6 +1,6 @@
 # AI Assistant
 
-Drafter's AI Assistant (powered by Claude) can generate diagrams from plain English, evaluate your architecture, answer questions, and maintain a searchable conversation history for each project.
+Layers AI Assistant (powered by Claude) can generate diagrams from plain English, evaluate your architecture, answer questions, and maintain a searchable conversation history for each project.
 
 Press **`Cmd+I`** or click the **AI** button in the toolbar to open the assistant panel.
 

@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Minus, LogIn, LogOut, User, Sun, Moon, Monitor, Lock, Layers, LayoutDashboard } from 'lucide-react';
+import { Minus, LogIn, LogOut, User, Sun, Moon, Monitor, Lock, LayoutDashboard } from 'lucide-react';
+import LayersLogo from '@/components/LayersLogo';
 import { useTheme } from '@/lib/themeContext';
 import type { Theme } from '@/lib/themeStore';
 
@@ -157,8 +158,8 @@ export default function MenuBar({
       <div className="flex h-9 flex-shrink-0 items-center border-b border-slate-200 bg-slate-50 px-3 dark:border-slate-700 dark:bg-slate-900">
         {/* Logo */}
         <div className="mr-2 flex items-center gap-1.5 pl-1">
-          <Layers size={14} className="text-blue-600" />
-          <span className="text-sm font-bold text-slate-800 dark:text-slate-100">Drafter</span>
+          <LayersLogo size={14} className="text-blue-600" />
+          <span className="text-sm font-bold text-slate-800 dark:text-slate-100">Layers</span>
         </div>
 
         {/* Dashboard back-link — only for cloud projects */}
@@ -314,9 +315,9 @@ export default function MenuBar({
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-600">
-              <Layers size={28} className="text-white" />
+              <LayersLogo size={28} className="text-white" />
             </div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Drafter</h1>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Layers</h1>
             <p className="mt-1 text-base font-medium text-slate-500 dark:text-slate-400">v0.1 Alpha</p>
             <p className="mx-auto mt-4 max-w-xs text-sm text-slate-600 dark:text-slate-300">
               A layered AI-powered diagramming tool. Build architecture diagrams, drill into nodes,

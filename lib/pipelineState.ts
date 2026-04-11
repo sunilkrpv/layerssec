@@ -1,6 +1,6 @@
 // lib/pipelineState.ts
 // Persists pipeline phase per project in localStorage.
-// Key: `drafter_pipeline_${projectId}`
+// Key: `layers_pipeline_${projectId}`
 
 export type PipelinePhase =
   | 'idle'            // No pipeline started
@@ -20,7 +20,7 @@ export interface PipelineState {
   nudgeDismissed?: boolean;
 }
 
-const key = (projectId: string) => `drafter_pipeline_${projectId}`;
+const key = (projectId: string) => `layers_pipeline_${projectId}`;
 
 export function loadPipelineState(projectId: string): PipelineState {
   if (typeof window === 'undefined') return { phase: 'idle' };

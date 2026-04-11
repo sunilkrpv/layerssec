@@ -3,9 +3,10 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  Layers, Sparkles, GitBranch, Shield, FileText,
+  Sparkles, GitBranch, Shield, FileText,
   ArrowRight, Sword, BarChart2,
 } from 'lucide-react';
+import LayersLogo from '@/components/LayersLogo';
 import { apiLogin, apiRegister, apiGetMe } from '@/lib/api';
 import { saveTokens, saveUser, isLoggedIn } from '@/lib/authStore';
 
@@ -230,15 +231,15 @@ export default function LoginPage() {
         <div className="relative">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 backdrop-blur-sm ring-1 ring-white/20">
-              <Layers size={20} className="text-blue-300" />
+              <LayersLogo size={20} className="text-blue-300" />
             </div>
-            <span className="text-xl font-bold tracking-tight text-white">Drafter</span>
+            <span className="text-xl font-bold tracking-tight text-white">Layers</span>
             <span className="ml-1 rounded-full border border-indigo-400/40 bg-indigo-400/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-widest text-indigo-300">
-              Beta
+              ALPHA
             </span>
           </div>
           <p className="mt-3 text-[11px] font-semibold uppercase tracking-widest text-indigo-400">
-            AI-Powered Architecture &amp; Threat Modelling
+            AI-Powered Security-first architecture threat modeling, Posture scoring &amp; Attack Simulation
           </p>
         </div>
 
@@ -287,8 +288,8 @@ export default function LoginPage() {
 
           {/* Mobile logo */}
           <div className="mb-8 flex items-center gap-2 lg:hidden">
-            <Layers size={22} className="text-blue-600" />
-            <span className="text-xl font-bold text-slate-800">Drafter</span>
+            <LayersLogo size={22} className="text-blue-600" />
+            <span className="text-xl font-bold text-slate-800">Layers</span>
           </div>
 
           <div className="mb-6">
@@ -331,7 +332,7 @@ export default function LoginPage() {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Your name"
-                  className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm text-slate-800 placeholder-slate-400 transition focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+                  className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm text-slate-800 placeholder-slate-400 transition focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
                 />
               </div>
             )}
@@ -345,7 +346,7 @@ export default function LoginPage() {
                 placeholder="you@example.com"
                 required
                 autoComplete="email"
-                className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm text-slate-800 placeholder-slate-400 transition focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+                className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm text-slate-800 placeholder-slate-400 transition focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
               />
             </div>
 
@@ -359,7 +360,7 @@ export default function LoginPage() {
                 required
                 minLength={6}
                 autoComplete={tab === 'login' ? 'current-password' : 'new-password'}
-                className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm text-slate-800 placeholder-slate-400 transition focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+                className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm text-slate-800 placeholder-slate-400 transition focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
               />
             </div>
 
@@ -372,7 +373,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={isLoading}
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isLoading ? (
                 <span className="flex items-center gap-2">
@@ -393,7 +394,7 @@ export default function LoginPage() {
             <button
               type="button"
               onClick={() => switchTab(tab === 'login' ? 'register' : 'login')}
-              className="font-semibold text-indigo-600 hover:text-indigo-700 hover:underline"
+              className="font-semibold text-blue-600 hover:text-blue-700 hover:underline"
             >
               {tab === 'login' ? 'Register' : 'Sign In'}
             </button>

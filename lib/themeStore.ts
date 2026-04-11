@@ -1,6 +1,6 @@
 export type Theme = 'light' | 'dark' | 'system';
 
-const THEME_KEY = 'drafter_theme';
+const THEME_KEY = 'layers_theme';
 
 export function getStoredTheme(): Theme {
   if (typeof window === 'undefined') return 'system';

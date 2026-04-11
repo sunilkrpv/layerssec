@@ -28,7 +28,7 @@ export async function pickAndReadFile(): Promise<{
     const [handle] = await (window as Window & typeof globalThis & {
       showOpenFilePicker: (opts?: object) => Promise<FileSystemFileHandle[]>;
     }).showOpenFilePicker({
-      types: [{ description: 'Drafter Project', accept: { 'application/json': ['.json'] } }],
+      types: [{ description: 'Layers Project', accept: { 'application/json': ['.json'] } }],
       multiple: false,
     });
 
@@ -67,14 +67,14 @@ export async function writeToHandle(
  */
 export async function pickSaveAndWrite(
   data: ProjectFile,
-  suggestedName = 'drafter-project.json',
+  suggestedName = 'layers-project.json',
 ): Promise<FileSystemFileHandle | null> {
   try {
     const handle = await (window as Window & typeof globalThis & {
       showSaveFilePicker: (opts?: object) => Promise<FileSystemFileHandle>;
     }).showSaveFilePicker({
       suggestedName,
-      types: [{ description: 'Drafter Project', accept: { 'application/json': ['.json'] } }],
+      types: [{ description: 'Layers Project', accept: { 'application/json': ['.json'] } }],
     });
     await writeToHandle(handle, data);
     return handle;
@@ -87,7 +87,7 @@ export async function pickSaveAndWrite(
 // ─── Fallback download ────────────────────────────────────────────────────────
 
 /** Trigger a browser download of the project JSON (fallback for browsers without File API). */
-export function downloadProjectFile(data: ProjectFile, filename = 'drafter-project.json'): void {
+export function downloadProjectFile(data: ProjectFile, filename = 'layers-project.json'): void {
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');

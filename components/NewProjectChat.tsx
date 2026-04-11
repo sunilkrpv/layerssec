@@ -3,9 +3,10 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  Layers, Send, ArrowRight, Shield, Zap, BarChart3, X, Loader2,
+  Send, ArrowRight, Shield, Zap, BarChart3, X, Loader2,
   Sparkles, ExternalLink,
 } from 'lucide-react';
+import LayersLogo from '@/components/LayersLogo';
 import { apiCreateProject, apiCreateDiagram, apiChatGenerate } from '@/lib/api';
 import { generateId } from '@/lib/diagramUtils';
 import { cn } from '@/lib/utils';
@@ -57,7 +58,7 @@ function ChatBubble({ message }: { message: Message }) {
     <div className={cn('flex', isAI ? 'justify-start' : 'justify-end')}>
       {isAI && (
         <div className="mr-2.5 mt-1 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-blue-600">
-          <Layers size={13} className="text-white" />
+          <LayersLogo size={13} className="text-white" />
         </div>
       )}
       <div
@@ -335,7 +336,7 @@ export default function NewProjectChat({ onDismiss, onCreated }: NewProjectChatP
         {thinking && (
           <div className="flex justify-start">
             <div className="mr-2.5 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-blue-600">
-              <Layers size={13} className="text-white" />
+              <LayersLogo size={13} className="text-white" />
             </div>
             <div className="rounded-2xl rounded-tl-sm bg-slate-100 px-4 py-3 dark:bg-slate-800">
               <ThinkingDots label={thinkingLabel} />
@@ -451,7 +452,7 @@ export default function NewProjectChat({ onDismiss, onCreated }: NewProjectChatP
     <div className="flex h-screen flex-col bg-white dark:bg-slate-950">
       <header className="flex h-12 flex-shrink-0 items-center border-b border-slate-200 px-6 dark:border-slate-800">
         <div className="flex items-center gap-2">
-          <Layers size={16} className="text-blue-500" />
+          <LayersLogo size={16} className="text-blue-500" />
           <span className="text-[14px] font-bold text-slate-800 dark:text-slate-100">New Project</span>
         </div>
         <button

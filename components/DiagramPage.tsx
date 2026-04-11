@@ -232,26 +232,26 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
       setShowProjectsModal(false);
       router.replace('/login');
     };
-    window.addEventListener('drafter:unauthorized', handle401);
-    return () => window.removeEventListener('drafter:unauthorized', handle401);
+    window.addEventListener('layers:unauthorized', handle401);
+    return () => window.removeEventListener('layers:unauthorized', handle401);
   }, [router]);
 
   // ── Threat panel window events (from AIChatPanel buttons) ─────────────────
   useEffect(() => {
     const handleOpenThreatPanel = () => setShowThreatModelPanel(true);
-    window.addEventListener('drafter:open-threat-panel', handleOpenThreatPanel);
-    window.addEventListener('drafter:open-threat-model', handleOpenThreatPanel);
+    window.addEventListener('layers:open-threat-panel', handleOpenThreatPanel);
+    window.addEventListener('layers:open-threat-model', handleOpenThreatPanel);
     return () => {
-      window.removeEventListener('drafter:open-threat-panel', handleOpenThreatPanel);
-      window.removeEventListener('drafter:open-threat-model', handleOpenThreatPanel);
+      window.removeEventListener('layers:open-threat-panel', handleOpenThreatPanel);
+      window.removeEventListener('layers:open-threat-model', handleOpenThreatPanel);
     };
   }, []);
 
   // ── Attack Mind window event (from AIChatPanel) ────────────────────────────
   useEffect(() => {
-    const openAttackSim = () => { /* optionally handle drafter:open-attack-sim */ };
-    window.addEventListener('drafter:open-attack-sim', openAttackSim);
-    return () => window.removeEventListener('drafter:open-attack-sim', openAttackSim);
+    const openAttackSim = () => { /* optionally handle layers:open-attack-sim */ };
+    window.addEventListener('layers:open-attack-sim', openAttackSim);
+    return () => window.removeEventListener('layers:open-attack-sim', openAttackSim);
   }, []);
 
   // ── Global keyboard shortcuts (Cmd+L: layers panel, Cmd+P: projects modal) ─
@@ -600,7 +600,7 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
           setIsReadOnly(false);
         }
       } catch (err) {
-        // 401 is dispatched as drafter:unauthorized and handled globally
+        // 401 is dispatched as layers:unauthorized and handled globally
         if (err instanceof Error && err.name === 'ApiUnauthorizedError') return;
         console.error('[Auto-load] Failed to load project:', err);
         setError('Failed to load project — saves may not work. Please refresh the page.');
@@ -1796,7 +1796,7 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
     setLayers((prev) => {
       const updated = flushCurrentLayer(prev, currentLayerId, snapshot);
       saveAllLayers(updated);
-      downloadJson({ layers: updated, navStack }, 'drafter-project.json');
+      downloadJson({ layers: updated, navStack }, 'layers-project.json');
       return updated;
     });
   }, [currentLayerId, flushCurrentLayer, navStack]);
@@ -2015,7 +2015,7 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
               <div className="relative flex items-center gap-2">
                 <span className="text-xs font-semibold text-white">Published version</span>
                 {publishedVersionCount > 0 && (
-                  <span className="rounded-full bg-indigo-500/30 px-1.5 py-0.5 text-[10px] font-semibold text-indigo-200 ring-1 ring-indigo-400/30">
+                  <span className="rounded-full bg-blue-500/30 px-1.5 py-0.5 text-[10px] font-semibold text-indigo-200 ring-1 ring-indigo-400/30">
                     v{publishedVersionCount}
                   </span>
                 )}
@@ -2371,7 +2371,7 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
                 </button>
                 <button
                   onClick={() => { setShowCheckoutConfirm(false); handleCheckoutFromEditor(); }}
-                  className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+                  className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
                 >
                   Check Out
                 </button>

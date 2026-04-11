@@ -6,7 +6,7 @@ This guide walks you through signing in, creating your first project, and drawin
 
 ## 1. Sign In or Continue Locally
 
-When you open Drafter you'll see the startup modal:
+When you open Layers you'll see the startup modal:
 
 | Option | When to use |
 |--------|-------------|
@@ -15,7 +15,7 @@ When you open Drafter you'll see the startup modal:
 | **Continue** | Resume the last diagram you were working on |
 | **My Cloud Projects** | Browse and open projects saved to your account |
 
-> **Local vs Cloud** — Local diagrams are stored in your browser's `localStorage` and in files you save manually. Cloud projects are stored on the Drafter backend and can be versioned, published, and shared. AI security features (Posture Score, Attack Mind) require a cloud project.
+> **Local vs Cloud** — Local diagrams are stored in your browser's `localStorage` and in files you save manually. Cloud projects are stored on the Layers backend and can be versioned, published, and shared. AI security features (Posture Score, Attack Mind) require a cloud project.
 
 To use cloud features, click **Sign In** in the top-right corner and create an account.
 

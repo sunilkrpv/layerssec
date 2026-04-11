@@ -1,6 +1,6 @@
-# Drafter — Documentation
+# Layers — Documentation
 
-Drafter is a layered architecture diagramming tool with built-in AI and security analysis features. Use it to design systems, drill into sub-components, model threats, and assess your security posture.
+Layers is a Security-first architecture threat modeling, posture scoring and attack simulation tool. It is a layered architecture diagramming tool with built-in AI and security analysis features. Use it to design systems, drill into sub-components, model threats, and assess your security posture.
 
 ## Guides
 

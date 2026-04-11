@@ -4,6 +4,8 @@ const nextConfig = {
   serverExternalPackages: ['@anthropic-ai/sdk'],
   // Enable standalone output for Docker deployments
   output: 'standalone',
+
+  devIndicators: false
 };
 
 export default nextConfig;

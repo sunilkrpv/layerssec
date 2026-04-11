@@ -10,8 +10,8 @@ const geistSans = localFont({
 });
 
 export const metadata: Metadata = {
-  title: 'Drafter - Architecture Diagramming',
-  description: 'AI-powered 2D architecture diagramming tool',
+  title: 'Layers - Threat Modeling & Security Posture Scoring',
+  description: 'AI based Security-first architecture threat modeling, posture scoring and attack simulation',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -21,7 +21,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem('drafter_theme')||'system';var d=t==='dark'||(t==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(d)document.documentElement.classList.add('dark')}catch(e){}})()`,
+            __html: `(function(){try{var t=localStorage.getItem('layers_theme')||'system';var d=t==='dark'||(t==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(d)document.documentElement.classList.add('dark')}catch(e){}})()`,
           }}
         />
       </head>

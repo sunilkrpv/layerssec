@@ -1,5 +1,5 @@
 /**
- * Typed API client for drafter-rest backend.
+ * Typed API client for layers-rest backend.
  * Base URL is read from NEXT_PUBLIC_API_URL (defaults to http://localhost:4000).
  */
 
@@ -25,7 +25,7 @@ function storeNewTokens(accessToken: string, refreshToken: string): void {
 
 function dispatchUnauthorized(): void {
   if (typeof window !== 'undefined') {
-    window.dispatchEvent(new CustomEvent('drafter:unauthorized'));
+    window.dispatchEvent(new CustomEvent('layers:unauthorized'));
   }
 }
 
@@ -360,7 +360,7 @@ export function apiSaveChatMessages(
   });
 }
 
-/** Chat-specific generate endpoint — uses Drafter system prompt and saves to chat history. */
+/** Chat-specific generate endpoint — uses Layers system prompt and saves to chat history. */
 export function apiChatGenerate(payload: {
   prompt: string;
   projectId?: string;

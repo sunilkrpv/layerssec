@@ -1,14 +1,14 @@
-# Drafter — Project Intelligence
+# Layers — Project Intelligence
 
 ## Overview
-Drafter is a web-based layered diagramming tool built with **Next.js 14 App Router**, **React Flow 11**, and **Anthropic Claude** (AI diagram generation). Users build architecture diagrams, drill into nodes to create sub-layers, and export as PNG or JSON.
+Layers is a web-based layered diagramming tool built with **Next.js 16 App Router**, **React Flow 11**, and **Anthropic Claude** (AI diagram generation). Users build architecture diagrams, drill into nodes to create sub-layers, and export as PNG or JSON.
 
 ## Stack
-- **Framework**: Next.js 14 App Router (`app/` directory, `'use client'` components)
+- **Framework**: Next.js 16 App Router (`app/` directory, `'use client'` components)
 - **Canvas**: React Flow 11 (`reactflow`) — nodes, edges, handles, NodeResizer
 - **AI**: Anthropic Claude API — streaming via `app/api/generate/route.ts` and `app/api/evaluate/route.ts`
 - **Styling**: Tailwind CSS v3 (`darkMode: 'class'`)
-- **Storage**: `localStorage` via `lib/layerStore.ts` (no database); cloud via drafter-rest backend
+- **Storage**: `localStorage` via `lib/layerStore.ts` (no database); cloud via layers-rest backend
 - **Icons**: `lucide-react`
 
 ---
@@ -47,17 +47,17 @@ style={{ borderColor: data.borderColor || undefined, backgroundColor: data.fillC
 ```
 
 ### Theme System
-- `lib/themeStore.ts` — `Theme = 'light' | 'dark' | 'system'`, `THEME_KEY = 'drafter_theme'`
+- `lib/themeStore.ts` — `Theme = 'light' | 'dark' | 'system'`, `THEME_KEY = 'layers_theme'`
 - `lib/themeContext.ts` — `useTheme()` hook; `components/ThemeProvider.tsx` applies/removes `dark` class on `<html>`
 - FOUC prevention: inline `<script>` in `app/layout.tsx` runs before React hydrates
 - MenuBar right side cycles light → dark → system (Sun/Moon/Monitor icons)
 - Components use `dark:` Tailwind variants (e.g. `dark:bg-slate-800 dark:text-slate-100`)
 
 ### Cloud Persistence
-- Backend: drafter-rest (NestJS); base URL from `NEXT_PUBLIC_API_URL`
-- `lib/api.ts` — `apiFetch` with `Authorization: Bearer` header; dispatches `drafter:unauthorized` on 401
+- Backend: layers-rest (NestJS); base URL from `NEXT_PUBLIC_API_URL`
+- `lib/api.ts` — `apiFetch` with `Authorization: Bearer` header; dispatches `layers:unauthorized` on 401
 - `lib/authStore.ts` — `saveTokens/clearTokens/getAccessToken/getStoredUser`
-- Each Drafter project = one NestJS `Project` + one NestJS `Diagram` (`canvasData` = `ProjectFile`)
+- Each Layers project = one NestJS `Project` + one NestJS `Diagram` (`canvasData` = `ProjectFile`)
 - Versioning: diagrams have `status` (draft/published); endpoints: `publish`, `checkout`, `listVersions`, `getDraft`
 - **Checkout rule**: "Check Out" button only shown for the **latest** published version AND only when no draft exists. Both frontend (`ProjectsListPage`) and backend (`DiagramsService.checkout`) enforce this — backend throws 400 for non-latest version, 409 for existing draft.
 - DiagramPage: debounced `apiUpdateDiagram` 2s after last change; blocked when `isReadOnly`
@@ -111,7 +111,7 @@ All secondary pages (AI History, Threats Dashboard, etc.) **must** use this exac
     {/* Logo */}
     <div className="mr-4 flex items-center gap-1.5 pl-1">
       <Layers size={14} className="text-blue-600" />
-      <span className="text-sm font-bold text-slate-800 dark:text-slate-100">Drafter</span>
+      <span className="text-sm font-bold text-slate-800 dark:text-slate-100">Layers</span>
     </div>
     {/* Back button */}
     <button onClick={() => router.push(`/projects/${projectId}`)} className="flex items-center gap-1.5 rounded px-3 py-1 text-sm text-slate-700 hover:bg-slate-200 ...">
@@ -186,7 +186,7 @@ Key rules: `h-9` header, `bg-slate-50 dark:bg-slate-900` header bg, `h-4 w-px` s
 | `lib/canvasContext.ts` | React context shared with all node components |
 | `lib/nodeConfig.ts` | `PALETTE_ITEMS`, `LINE_NODE_TYPES` |
 | `lib/diagramUtils.ts` | `generateId`, `toReactFlowNodes/Edges`, `EDGE_MARKER`, `EDGE_MARKER_START` |
-| `lib/api.ts` | Typed API client for drafter-rest (auth, projects, diagrams, versioning) |
+| `lib/api.ts` | Typed API client for layers-rest (auth, projects, diagrams, versioning) |
 | `lib/authStore.ts` | localStorage token/user management |
 | `lib/themeStore.ts` / `lib/themeContext.ts` | Theme persistence and `useTheme()` hook |
 | `lib/fileStore.ts` | File System Access API utilities |

@@ -5,11 +5,12 @@ import { useRouter } from 'next/navigation';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import {
-  Shield, ArrowLeft, Layers, Sun, Moon, Monitor, LogOut, User,
+  Shield, ArrowLeft, Sun, Moon, Monitor, LogOut, User,
   Sparkles, ChevronDown, ChevronRight, ChevronUp, BarChart2, Cpu, ListChecks,
   Clipboard, ClipboardCheck, FileText, Loader2, AlertCircle, AlertTriangle,
   Swords, CheckCircle2, ArrowRight,
 } from 'lucide-react';
+import LayersLogo from '@/components/LayersLogo';
 import {
   apiGetProject, apiListThreatModels, apiGetThreatModel,
   apiGetPostureScoreHistory, apiListAttackSimulations,
@@ -226,7 +227,7 @@ function AttackPathCard({ path, index }: { path: AttackPath; index: number }) {
                           {step.successLikelihood}
                         </span>
                       </div>
-                      <p className="mt-0.5 text-xs font-medium text-indigo-600 dark:text-indigo-400">{step.attackTechnique}</p>
+                      <p className="mt-0.5 text-xs font-medium text-blue-600 dark:text-blue-400">{step.attackTechnique}</p>
                       <p className="mt-0.5 text-xs leading-relaxed text-slate-500 dark:text-slate-400">{step.description}</p>
                     </div>
                   </div>
@@ -465,8 +466,8 @@ export default function SecurityIntelPage({ projectId }: Props) {
       {/* ── Top bar ─────────────────────────────────────────────────────── */}
       <header className="flex h-9 flex-shrink-0 items-center border-b border-slate-200 bg-slate-50 px-3 dark:border-slate-700 dark:bg-slate-900">
         <div className="mr-4 flex items-center gap-1.5 pl-1">
-          <Layers size={14} className="text-blue-600" />
-          <span className="text-sm font-bold text-slate-800 dark:text-slate-100">Drafter</span>
+          <LayersLogo size={14} className="text-blue-600" />
+          <span className="text-sm font-bold text-slate-800 dark:text-slate-100">Layers</span>
         </div>
 
         <button
@@ -480,7 +481,7 @@ export default function SecurityIntelPage({ projectId }: Props) {
         <div className="mx-1 h-4 w-px bg-slate-200 dark:bg-slate-700" />
 
         <div className="flex items-center gap-1.5">
-          <Shield size={12} className="text-indigo-500" />
+          <Shield size={12} className="text-blue-500" />
           <span className="text-sm text-slate-600 dark:text-slate-300">
             {projectName ? `${projectName} — Security Intel` : 'Security Intel'}
           </span>
@@ -559,7 +560,7 @@ export default function SecurityIntelPage({ projectId }: Props) {
                     {threatModels.length === 0 ? (
                       <p className="text-xs text-slate-400 dark:text-slate-500">
                         No saved threat models.{' '}
-                        <button onClick={() => router.push(`/projects/${projectId}`)} className="text-indigo-500 underline">
+                        <button onClick={() => router.push(`/projects/${projectId}`)} className="text-blue-500 underline">
                           Run STRIDE analysis
                         </button>
                       </p>
@@ -586,7 +587,7 @@ export default function SecurityIntelPage({ projectId }: Props) {
                     {postureScores.length === 0 ? (
                       <p className="text-xs text-slate-400 dark:text-slate-500">
                         No posture scores.{' '}
-                        <button onClick={() => router.push(`/projects/${projectId}`)} className="text-indigo-500 underline">
+                        <button onClick={() => router.push(`/projects/${projectId}`)} className="text-blue-500 underline">
                           Run posture analysis
                         </button>
                       </p>
@@ -613,7 +614,7 @@ export default function SecurityIntelPage({ projectId }: Props) {
                     {attackSims.length === 0 ? (
                       <p className="text-xs text-slate-400 dark:text-slate-500">
                         No simulations.{' '}
-                        <button onClick={() => router.push(`/projects/${projectId}`)} className="text-indigo-500 underline">
+                        <button onClick={() => router.push(`/projects/${projectId}`)} className="text-blue-500 underline">
                           Run Attack Mind
                         </button>
                       </p>
@@ -638,7 +639,7 @@ export default function SecurityIntelPage({ projectId }: Props) {
                   <button
                     onClick={handleGenerateIntel}
                     disabled={!canGenerate || threatModels.length === 0 || postureScores.length === 0}
-                    className="flex items-center gap-2 rounded-lg bg-indigo-600 px-5 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-40"
+                    className="flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     {intelState === 'synthesizing' ? (
                       <><Loader2 size={14} className="animate-spin" /> Synthesizing…</>
@@ -788,7 +789,7 @@ export default function SecurityIntelPage({ projectId }: Props) {
                         {activeThreats.length > 7 && (
                           <button
                             onClick={() => router.push(`/projects/${projectId}/threats`)}
-                            className="text-xs text-indigo-500 hover:text-indigo-700"
+                            className="text-xs text-blue-500 hover:text-blue-700"
                           >
                             View all {activeThreats.length} threats →
                           </button>
@@ -837,7 +838,7 @@ export default function SecurityIntelPage({ projectId }: Props) {
                   <SectionCard className="p-10">
                     <div className="flex flex-col items-center gap-3 text-center">
                       <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-50 ring-1 ring-indigo-200 dark:bg-indigo-950/30 dark:ring-indigo-800">
-                        <Shield size={24} className="text-indigo-500" />
+                        <Shield size={24} className="text-blue-500" />
                       </div>
                       <p className="text-sm font-medium text-slate-600 dark:text-slate-300">No security analyses yet</p>
                       <p className="max-w-xs text-xs text-slate-400 dark:text-slate-500">
@@ -845,7 +846,7 @@ export default function SecurityIntelPage({ projectId }: Props) {
                       </p>
                       <button
                         onClick={() => router.push(`/projects/${projectId}`)}
-                        className="mt-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+                        className="mt-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
                       >
                         Open Diagram Editor
                       </button>

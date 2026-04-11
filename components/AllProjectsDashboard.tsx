@@ -43,7 +43,7 @@ const FEATURE_META: Record<string, { label: string; icon: React.ReactNode; color
 };
 
 const AVATAR_COLORS = [
-  'bg-indigo-500', 'bg-violet-500', 'bg-emerald-500', 'bg-amber-500',
+  'bg-blue-500', 'bg-violet-500', 'bg-emerald-500', 'bg-amber-500',
   'bg-rose-500', 'bg-sky-500', 'bg-teal-500', 'bg-orange-500',
 ];
 

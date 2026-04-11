@@ -35,8 +35,8 @@ export default function StartupModal({
       <div className="w-full max-w-sm rounded-2xl bg-white p-8 shadow-2xl">
         {/* Brand */}
         <div className="mb-6 text-center">
-          <div className="mb-2 text-3xl font-black tracking-tight text-slate-900">Drafter</div>
-          <p className="text-sm text-slate-500">Architecture diagramming tool</p>
+          <div className="mb-2 text-3xl font-black tracking-tight text-slate-900">Layers</div>
+          <p className="text-sm text-slate-500">Security-first architecture threat modeling</p>
         </div>
 
         <div className="flex flex-col gap-3">

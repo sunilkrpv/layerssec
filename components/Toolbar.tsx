@@ -342,7 +342,7 @@ export default function Toolbar({
                     onClick={() => { onOpenPostureScore(); setThreatMenuOpen(false); }}
                     className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm hover:bg-slate-50 dark:hover:bg-slate-700/50"
                   >
-                    <ShieldCheck size={14} className="flex-shrink-0 text-indigo-500" />
+                    <ShieldCheck size={14} className="flex-shrink-0 text-blue-500" />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <p className="text-xs font-medium text-slate-800 dark:text-slate-200">Posture Score</p>
@@ -427,7 +427,7 @@ export default function Toolbar({
                     onClick={() => { onShowSecurityIntel(); setAiMenuOpen(false); }}
                     className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm hover:bg-slate-50 dark:hover:bg-slate-700/50"
                   >
-                    <Shield size={14} className="flex-shrink-0 text-indigo-500" />
+                    <Shield size={14} className="flex-shrink-0 text-blue-500" />
                     <div>
                       <p className="text-xs font-medium text-slate-800 dark:text-slate-200">Security Intel</p>
                       <p className="text-[10px] text-slate-400 dark:text-slate-500">Unified risk summary &amp; report</p>
@@ -455,7 +455,7 @@ export default function Toolbar({
           <Shield size={14} />
           <span className={`absolute right-0 top-0 h-2 w-2 rounded-full ${
             pipelinePhase === 'complete' ? 'bg-emerald-500'
-            : pipelinePhase === 'nudge' || pipelinePhase === 'threat_done' ? 'bg-indigo-500'
+            : pipelinePhase === 'nudge' || pipelinePhase === 'threat_done' ? 'bg-blue-500'
             : 'bg-amber-400 animate-pulse'
           }`} />
         </div>

@@ -183,7 +183,7 @@ export default function DiffPage() {
         // Reset to root when a new file is loaded
         setActiveLayerId('root');
       } catch {
-        setError(`Failed to parse ${file.name}. Make sure it is a valid Drafter project JSON.`);
+        setError(`Failed to parse ${file.name}. Make sure it is a valid Layers project JSON.`);
       }
     });
   }
@@ -216,7 +216,7 @@ export default function DiffPage() {
         <div className="h-4 w-px bg-slate-200 dark:bg-slate-700" />
         <div className="flex items-center gap-1.5">
           <Share2 size={13} className="text-blue-600" />
-          <span className="text-sm font-bold text-slate-800 dark:text-slate-100">Drafter</span>
+          <span className="text-sm font-bold text-slate-800 dark:text-slate-100">Layers</span>
           <span className="text-sm text-slate-400 dark:text-slate-500">/ Diff</span>
         </div>
 

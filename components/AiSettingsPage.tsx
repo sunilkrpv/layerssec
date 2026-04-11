@@ -370,7 +370,7 @@ function OllamaBanner({ model }: { model: string }) {
         </li>
       </ol>
       <p className="text-[11px] text-amber-600 dark:text-amber-500">
-        The Drafter backend must be able to reach the Ollama server. If running in Docker, use <code className="font-mono text-[11px]">http://host.docker.internal:11434</code>.
+        Layers backend must be able to reach the Ollama server. If running in Docker, use <code className="font-mono text-[11px]">http://host.docker.internal:11434</code>.
       </p>
     </div>
   );
@@ -758,7 +758,7 @@ export default function AiSettingsPage() {
             </div>
           )}
           <p className="mt-2 text-[11px] text-slate-400 dark:text-slate-500">
-            Token counts are recorded for AI calls made through the Drafter backend. Older chat messages do not have token data.
+            Token counts are recorded for AI calls made through the Layers backend. Older chat messages do not have token data.
           </p>
         </section>
       </div>

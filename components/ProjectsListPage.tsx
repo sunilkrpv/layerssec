@@ -6,8 +6,9 @@ import {
   Plus, FolderOpen, Loader2, X, GitBranch,
   Clock, ChevronRight, Lock, FileEdit, AlertCircle,
   GitCompare, CheckCircle2, Circle, Pencil, Trash2,
-  ArrowRightCircle, BookOpen, Sun, Moon, Monitor, LogOut, Search, User, Layers, LayoutDashboard, Activity,
+  ArrowRightCircle, BookOpen, Sun, Moon, Monitor, LogOut, Search, User, LayoutDashboard, Activity,
 } from 'lucide-react';
+import LayersLogo from '@/components/LayersLogo';
 import {
   apiListProjects, apiListProjectVersions, apiCheckoutVersion,
   apiCreateProject, apiUpdateProject, apiDeleteProject,
@@ -19,7 +20,7 @@ import { useTheme } from '@/lib/themeContext';
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 const PROJECT_COLORS = [
-  { bg: 'bg-indigo-50 dark:bg-indigo-900/20', text: 'text-indigo-600 dark:text-indigo-400' },
+  { bg: 'bg-indigo-50 dark:bg-indigo-900/20', text: 'text-blue-600 dark:text-blue-400' },
   { bg: 'bg-violet-50 dark:bg-violet-900/20', text: 'text-violet-600 dark:text-violet-400' },
   { bg: 'bg-emerald-50 dark:bg-emerald-900/20', text: 'text-emerald-600 dark:text-emerald-400' },
   { bg: 'bg-amber-50 dark:bg-amber-900/20', text: 'text-amber-600 dark:text-amber-400' },
@@ -110,8 +111,8 @@ const INFO_ITEMS = [
   },
   {
     icon: ArrowRightCircle,
-    iconBg: 'bg-indigo-100 dark:bg-indigo-900/30',
-    iconColor: 'text-indigo-600 dark:text-indigo-400',
+    iconBg: 'bg-indigo-100 dark:bg-blue-900/30',
+    iconColor: 'text-blue-600 dark:text-blue-400',
     title: 'Check Out',
     desc: 'Creates a new draft from the latest published version. Unavailable if a draft already exists.',
   },
@@ -740,8 +741,8 @@ export default function ProjectsListPage() {
       <header className="flex h-9 flex-shrink-0 items-center border-b border-slate-200 bg-slate-50 px-3 dark:border-slate-700 dark:bg-slate-900">
         {/* Logo */}
         <div className="mr-4 flex items-center gap-1.5 pl-1">
-          <Layers size={14} className="text-blue-600" />
-          <span className="text-sm font-bold text-slate-800 dark:text-slate-100">Drafter</span>
+          <LayersLogo size={14} className="text-blue-600" />
+          <span className="text-sm font-bold text-slate-800 dark:text-slate-100">Layers</span>
         </div>
 
         {/* Dashboard link */}
@@ -817,7 +818,7 @@ export default function ProjectsListPage() {
             <h1 className="text-sm font-semibold text-slate-800 dark:text-slate-100">My Projects</h1>
             <button
               onClick={() => setShowCreateModal(true)}
-              className="flex items-center gap-1.5 rounded-xl bg-indigo-600 px-3.5 py-1.5 text-sm font-medium text-white hover:bg-indigo-700"
+              className="flex items-center gap-1.5 rounded-xl bg-blue-600 px-3.5 py-1.5 text-sm font-medium text-white hover:bg-blue-700"
             >
               <Plus size={13} />
               New Project
@@ -835,7 +836,7 @@ export default function ProjectsListPage() {
               <p className="text-sm text-slate-500 dark:text-slate-400">No projects yet.</p>
               <button
                 onClick={() => setShowCreateModal(true)}
-                className="mt-2 flex items-center gap-1.5 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+                className="mt-2 flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
               >
                 <Plus size={14} />
                 Create your first project
@@ -852,7 +853,7 @@ export default function ProjectsListPage() {
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Search projects…"
-                    className="w-full rounded-lg border border-slate-200 bg-white py-1.5 pl-8 pr-3 text-sm text-slate-800 placeholder-slate-400 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder-slate-500 dark:focus:border-indigo-600 dark:focus:ring-indigo-900/30"
+                    className="w-full rounded-lg border border-slate-200 bg-white py-1.5 pl-8 pr-3 text-sm text-slate-800 placeholder-slate-400 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder-slate-500 dark:focus:border-blue-600 dark:focus:ring-indigo-900/30"
                   />
                 </div>
                 <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white p-1 dark:border-slate-700 dark:bg-slate-900">
@@ -862,7 +863,7 @@ export default function ProjectsListPage() {
                       onClick={() => setStatusFilter(f)}
                       className={`rounded-md px-2.5 py-1 text-xs font-medium capitalize transition-colors ${
                         statusFilter === f
-                          ? 'bg-indigo-600 text-white'
+                          ? 'bg-blue-600 text-white'
                           : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
                       }`}
                     >

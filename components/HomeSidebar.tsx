@@ -7,6 +7,7 @@ import {
   Shield, Search, BarChart2, Sword, Zap,
   Settings, Activity, Sun, Moon, Monitor, ChevronDown,
 } from 'lucide-react';
+import LayersLogo from '@/components/LayersLogo';
 import { type ProjectSummary } from '@/lib/api';
 import { getStoredUser, clearTokens } from '@/lib/authStore';
 import { useTheme } from '@/lib/themeContext';
@@ -16,7 +17,7 @@ import { cn } from '@/lib/utils';
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 const AVATAR_COLORS = [
-  'bg-indigo-500', 'bg-violet-500', 'bg-emerald-500', 'bg-amber-500',
+  'bg-blue-500', 'bg-violet-500', 'bg-emerald-500', 'bg-amber-500',
   'bg-rose-500', 'bg-sky-500', 'bg-teal-500', 'bg-orange-500',
 ];
 
@@ -127,7 +128,7 @@ export default function HomeSidebar({
 
   const [collapsed, setCollapsed] = useState(() => {
     if (typeof window === 'undefined') return false;
-    return localStorage.getItem('drafter_sidebar_collapsed') === 'true';
+    return localStorage.getItem('layers_sidebar_collapsed') === 'true';
   });
   const [projectsOpen, setProjectsOpen] = useState(true);
   const [search, setSearch] = useState('');
@@ -139,7 +140,7 @@ export default function HomeSidebar({
         e.preventDefault();
         setCollapsed((prev) => {
           const next = !prev;
-          localStorage.setItem('drafter_sidebar_collapsed', String(next));
+          localStorage.setItem('layers_sidebar_collapsed', String(next));
           return next;
         });
       }
@@ -151,7 +152,7 @@ export default function HomeSidebar({
   const toggleCollapse = () => {
     const next = !collapsed;
     setCollapsed(next);
-    localStorage.setItem('drafter_sidebar_collapsed', String(next));
+    localStorage.setItem('layers_sidebar_collapsed', String(next));
   };
 
   const cycleTheme = () => {
@@ -192,10 +193,10 @@ export default function HomeSidebar({
         'flex h-14 shrink-0 items-center border-b border-slate-200 dark:border-slate-800',
         collapsed ? 'justify-center px-2' : 'gap-2 px-4',
       )}>
-        <Layers size={18} className="shrink-0 text-blue-600 dark:text-blue-500" />
+        <LayersLogo size={18} className="shrink-0 text-blue-600 dark:text-blue-500" />
         {!collapsed && (
           <>
-            <span className="text-[15px] font-bold text-slate-900 dark:text-white">Drafter</span>
+            <span className="text-[15px] font-bold text-slate-900 dark:text-white">Layers</span>
             <span className="ml-1 rounded bg-slate-200 px-1.5 py-0.5 text-[10px] text-slate-500 dark:bg-slate-800 dark:text-slate-400">
               Security Platform
             </span>

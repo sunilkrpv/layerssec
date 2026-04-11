@@ -1,4 +1,4 @@
-# Drafter
+# Layers
 
 A web-based layered architecture diagramming tool with AI-powered diagram generation, STRIDE threat modeling, and security posture scoring.
 
@@ -11,7 +11,7 @@ A web-based layered architecture diagramming tool with AI-powered diagram genera
 - Project versioning (publish → checkout → diff)
 - PDF threat report export
 
-Built with Next.js 16, React Flow 11, and Tailwind CSS. Requires [drafter-rest](../drafter-rest) as the backend.
+Built with Next.js 16, React Flow 11, and Tailwind CSS. Requires [layers-rest](../layers-rest) as the backend.
 
 ---
 
@@ -19,7 +19,7 @@ Built with Next.js 16, React Flow 11, and Tailwind CSS. Requires [drafter-rest](
 
 ### Prerequisites
 - Node.js >= 20.9.0
-- [drafter-rest](../drafter-rest) running on port 4000
+- [layers-rest](../layers-rest) running on port 4000
 
 ### Setup
 
@@ -45,14 +45,14 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ## Run with Docker
 
-Docker is managed from the `drafter-rest` repo — see its [README](../drafter-rest/README.md#run-with-docker). The frontend container is built and orchestrated from there via `docker compose`.
+Docker is managed from the `layers-rest` repo — see its [README](../layers-rest/README.md#run-with-docker). The frontend container is built and orchestrated from there via `docker compose`.
 
 To build the frontend image standalone:
 
 ```bash
 docker build \
   --build-arg NEXT_PUBLIC_API_URL=http://localhost:4000 \
-  -t drafter-frontend .
+  -t layers-frontend .
 ```
 
 ---

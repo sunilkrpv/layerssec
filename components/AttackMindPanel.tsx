@@ -59,7 +59,7 @@ function PathCard({
   const [open, setOpen] = useState(index === 0);
 
   return (
-    <div className={`rounded-xl border transition-colors ${isSelected ? 'border-indigo-400 dark:border-indigo-500' : 'border-slate-200 dark:border-slate-700'}`}>
+    <div className={`rounded-xl border transition-colors ${isSelected ? 'border-blue-400 dark:border-blue-500' : 'border-slate-200 dark:border-slate-700'}`}>
       {/* Path header */}
       <button
         onClick={() => { setOpen((v) => !v); onSelect(); }}
@@ -102,7 +102,7 @@ function PathCard({
                       isTimelineActive
                         ? 'bg-red-50 dark:bg-red-900/20 ring-1 ring-red-400 dark:ring-red-600'
                         : isHoverActive
-                        ? 'bg-indigo-50 dark:bg-indigo-900/30 ring-1 ring-indigo-300 dark:ring-indigo-600'
+                        ? 'bg-blue-50 dark:bg-blue-900/30 ring-1 ring-blue-300 dark:ring-blue-600'
                         : 'hover:bg-slate-50 dark:hover:bg-slate-700/40'
                     }`}
                     onMouseEnter={() => onStepHover(key, step.nodeIds, step.edgeIds ?? [])}
@@ -301,7 +301,7 @@ function SavedSimulationsList({
             <button
               onClick={() => onLoad(sim)}
               title="Load simulation"
-              className="rounded-lg p-1.5 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-slate-100 dark:hover:bg-slate-700"
+              className="rounded-lg p-1.5 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-700"
             >
               <Eye size={15} />
             </button>
@@ -687,7 +687,7 @@ export default function AttackMindPanel({
                   <div className="flex items-center gap-2 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 px-3 py-2">
                     <Flag size={13} className="text-green-500 shrink-0" />
                     <span className="text-sm text-green-700 dark:text-green-300 flex-1">Simulation saved successfully.</span>
-                    <button onClick={() => setActiveTab('history')} className="text-xs text-indigo-500 hover:text-indigo-600 font-medium shrink-0">View →</button>
+                    <button onClick={() => setActiveTab('history')} className="text-xs text-blue-500 hover:text-blue-600 font-medium shrink-0">View →</button>
                   </div>
                 )}
 
@@ -758,7 +758,7 @@ export default function AttackMindPanel({
                 <button
                   onClick={handleSave}
                   disabled={saving}
-                  className="flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50 shrink-0"
+                  className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50 shrink-0"
                 >
                   {saving ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />}
                   Save

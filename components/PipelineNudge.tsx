@@ -193,7 +193,7 @@ export function PipelineNudge({
       <div className={base}>
         <div className="flex items-start gap-2.5">
           <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-indigo-100 dark:bg-indigo-900/40">
-            <Shield size={14} className="text-indigo-600 dark:text-indigo-400" />
+            <Shield size={14} className="text-blue-600 dark:text-blue-400" />
           </div>
           <div className="flex-1 min-w-0">
             <p className="font-semibold text-slate-700 dark:text-slate-200">Run security analysis?</p>
@@ -203,7 +203,7 @@ export function PipelineNudge({
             <div className="mt-2.5 flex gap-2">
               <button
                 onClick={handleRunThreatAnalysis}
-                className="flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700"
+                className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700"
               >
                 <Sparkles size={11} />
                 Run Threat Analysis
@@ -225,7 +225,7 @@ export function PipelineNudge({
     return (
       <div className={base}>
         <div className="flex items-center gap-2.5">
-          <Loader2 size={16} className="shrink-0 animate-spin text-indigo-500" />
+          <Loader2 size={16} className="shrink-0 animate-spin text-blue-500" />
           <div>
             <p className="font-semibold text-slate-700 dark:text-slate-200">Threat analysis running…</p>
             <p className="mt-0.5 text-xs text-slate-400">Running in background — keep working on your diagram.</p>

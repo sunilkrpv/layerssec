@@ -102,13 +102,13 @@ function LayerScoreRow({
   const bgBar = scoreBgClass(ls.score);
 
   return (
-    <div className={`rounded-lg border transition-colors ${isActive ? 'border-indigo-400 dark:border-indigo-500 bg-indigo-50/50 dark:bg-indigo-900/10' : 'border-slate-200 dark:border-slate-700'}`}>
+    <div className={`rounded-lg border transition-colors ${isActive ? 'border-indigo-400 dark:border-blue-500 bg-indigo-50/50 dark:bg-indigo-900/10' : 'border-slate-200 dark:border-slate-700'}`}>
       <button onClick={onClick} className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left">
         {expanded
           ? <ChevronDown size={14} className="shrink-0 text-slate-400" />
           : <ChevronRight size={14} className="shrink-0 text-slate-400" />}
-        <Layers size={13} className={isActive ? 'text-indigo-500 shrink-0' : 'text-slate-400 shrink-0'} />
-        <span className={`flex-1 text-sm font-medium truncate ${isActive ? 'text-indigo-700 dark:text-indigo-300' : 'text-slate-700 dark:text-slate-200'}`}>
+        <Layers size={13} className={isActive ? 'text-blue-500 shrink-0' : 'text-slate-400 shrink-0'} />
+        <span className={`flex-1 text-sm font-medium truncate ${isActive ? 'text-blue-700 dark:text-blue-300' : 'text-slate-700 dark:text-slate-200'}`}>
           {ls.layerName}
           {isActive && <span className="ml-1.5 text-xs text-indigo-400">(current)</span>}
         </span>
@@ -319,7 +319,7 @@ export default function PostureScorePanel({
       <button
         onClick={handleCompute}
         disabled={loading}
-        className="flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+        className="flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
       >
         {loading ? <Loader2 size={15} className="animate-spin" /> : <Play size={15} />}
         {loading ? 'Analyzing all layers…' : result ? 'Re-run Analysis' : 'Run Analysis'}
@@ -334,7 +334,7 @@ export default function PostureScorePanel({
     >
       {/* ── Header ── */}
       <div className={`flex h-10 shrink-0 items-center gap-2.5 border-b px-4 ${isDark ? 'border-slate-700 bg-slate-800' : 'border-slate-200 bg-slate-50'}`}>
-        <ShieldCheck size={15} className="text-indigo-500" />
+        <ShieldCheck size={15} className="text-blue-500" />
         <span className="flex-1 text-sm font-semibold">Security Posture Score</span>
         <button onClick={onClose} className="rounded p-1 text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700">
           <X size={15} />
@@ -349,7 +349,7 @@ export default function PostureScorePanel({
             onClick={() => setActiveTab(tab)}
             className={`flex flex-1 items-center justify-center gap-1.5 py-2 text-sm font-medium transition-colors border-b-2 ${
               activeTab === tab
-                ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400'
+                ? 'border-blue-500 text-blue-600 dark:text-blue-400'
                 : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
             }`}
           >
@@ -367,7 +367,7 @@ export default function PostureScorePanel({
             {/* Loading */}
             {loading && (
               <div className="flex flex-col items-center justify-center gap-4 py-16">
-                <Loader2 size={36} className="animate-spin text-indigo-500" />
+                <Loader2 size={36} className="animate-spin text-blue-500" />
                 <div className="text-center">
                   <p className="text-sm font-medium text-slate-600 dark:text-slate-300">
                     {useExtended ? 'Running extended analysis…' : 'Analyzing all layers…'}
@@ -408,7 +408,7 @@ export default function PostureScorePanel({
                     </div>
                   <button
                     onClick={handleCompute}
-                    className="mt-4 flex items-center gap-2 mx-auto rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 transition-colors"
+                    className="mt-4 flex items-center gap-2 mx-auto rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 transition-colors"
                   >
                     <Play size={15} />
                     Run Analysis
@@ -427,7 +427,7 @@ export default function PostureScorePanel({
                     {history.length > 3 && (
                       <button
                         onClick={() => setActiveTab('history')}
-                        className="mt-1 w-full text-center text-xs text-indigo-500 hover:text-indigo-600 py-1"
+                        className="mt-1 w-full text-center text-xs text-blue-500 hover:text-blue-600 py-1"
                       >
                         View all {history.length} analyses →
                       </button>
@@ -448,7 +448,7 @@ export default function PostureScorePanel({
                     <span className="text-xs text-amber-700 dark:text-amber-300 flex-1">
                       Showing historical result from {new Date(result.analyzedAt).toLocaleString()} · v{result.diagramVersion}
                     </span>
-                    <button onClick={handleCompute} className="text-xs text-indigo-500 hover:text-indigo-600 font-medium shrink-0">
+                    <button onClick={handleCompute} className="text-xs text-blue-500 hover:text-blue-600 font-medium shrink-0">
                       Refresh
                     </button>
                   </div>
@@ -479,7 +479,7 @@ export default function PostureScorePanel({
                     'border-red-300 bg-red-50 dark:border-red-800 dark:bg-red-900/20'
                   }`}>
                     <div className="flex items-center gap-2 mb-2">
-                      <Layers size={13} className="text-indigo-500 shrink-0" />
+                      <Layers size={13} className="text-blue-500 shrink-0" />
                       <span className="text-sm font-semibold text-slate-700 dark:text-slate-200 truncate">{currentLayerScore.layerName}</span>
                       <span className="text-base font-bold ml-auto shrink-0" style={{ color: scoreColor(currentLayerScore.score) }}>
                         {currentLayerScore.score}
@@ -565,7 +565,7 @@ export default function PostureScorePanel({
                     <ol className="flex flex-col gap-2">
                       {(result.topRecs as string[]).map((rec, i) => (
                         <li key={i} className="flex items-start gap-2.5 text-sm text-slate-600 dark:text-slate-300">
-                          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-900/60 dark:text-indigo-300 font-semibold text-xs">{i + 1}</span>
+                          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-blue-700 dark:bg-indigo-900/60 dark:text-blue-300 font-semibold text-xs">{i + 1}</span>
                           <span className="leading-relaxed">{rec}</span>
                         </li>
                       ))}

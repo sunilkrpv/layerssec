@@ -1,6 +1,6 @@
 # Diagrams & Canvas
 
-Everything you need to work effectively on the Drafter canvas — layers, node operations, keyboard shortcuts, and more.
+Everything you need to work effectively on the Layers canvas — layers, node operations, keyboard shortcuts, and more.
 
 ---
 
@@ -102,7 +102,7 @@ Pasted nodes appear offset by 30 px from the originals. The clipboard persists a
 
 ## Layer System
 
-Drafter uses a **layered diagram** model. Every node can optionally link to a sub-layer, letting you drill into subsystems without cluttering the parent diagram.
+Layers uses a **layered diagram** model. Every node can optionally link to a sub-layer, letting you drill into subsystems without cluttering the parent diagram.
 
 ### Navigate layers
 
