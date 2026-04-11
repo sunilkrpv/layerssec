@@ -25,6 +25,6 @@ async function bootstrap() {
 
   const port = process.env.PORT || 4000;
   await app.listen(port);
-  console.log(`Drafter API running on http://localhost:${port}/api`);
+  console.log(`Layers API running on http://localhost:${port}/api`);
 }
 bootstrap();

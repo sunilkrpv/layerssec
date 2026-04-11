@@ -1,6 +1,6 @@
-# drafter-rest
+# layers-rest
 
-NestJS REST API backend for [Drafter](../drafter). Handles authentication, project and diagram storage, versioning, AI chat, STRIDE threat modeling, and security posture scoring.
+NestJS REST API backend for [Layers](../layers). Handles authentication, project and diagram storage, versioning, AI chat, STRIDE threat modeling, and security posture scoring.
 
 **Stack:** NestJS 10 · Prisma 5 · PostgreSQL · Redis (BullMQ) · ChromaDB (RAG) · Anthropic Claude / Ollama
 
@@ -10,7 +10,7 @@ NestJS REST API backend for [Drafter](../drafter). Handles authentication, proje
 
 ### Prerequisites
 - Node.js >= 20
-- PostgreSQL running locally (`createdb drafter`)
+- PostgreSQL running locally (`createdb layers`)
 - Docker (for Redis + ChromaDB)
 
 ### 1. Start infrastructure

@@ -1,9 +1,9 @@
 /**
- * Chat system prompts for Drafter — Engineering + Security platform.
+ * Chat system prompts for Layers — Engineering + Security platform.
  * General chat and layer-contextual chat with CISSP security awareness.
  */
 
-export const CHAT_SYSTEM_PROMPT = `You are a senior software architect and CISSP security engineer embedded in Drafter, an Engineering + Security diagramming platform.
+export const CHAT_SYSTEM_PROMPT = `You are a senior software architect and CISSP security engineer embedded in Layers, an Engineering + Security diagramming platform.
 
 Help users design, understand, and improve their system architecture with both engineering excellence and security best practices in mind. Apply shift-left thinking: consider security at design time, not as an afterthought.
 
@@ -82,7 +82,7 @@ export function buildLayerContextSystemPrompt(layerContext: {
       : 'All edges have protocol labels.',
   ].join(' ');
 
-  return `You are a senior software architect and CISSP security engineer embedded in Drafter, an Engineering + Security diagramming platform.
+  return `You are a senior software architect and CISSP security engineer embedded in Layers, an Engineering + Security diagramming platform.
 
 The user has attached the following diagram layer as context:
 

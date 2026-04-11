@@ -9,13 +9,13 @@ services:
     ports:
       - '5432:5432'
     environment:
-      POSTGRES_USER: drafter
-      POSTGRES_PASSWORD: drafter
-      POSTGRES_DB: drafter
+      POSTGRES_USER: layers
+      POSTGRES_PASSWORD: layers
+      POSTGRES_DB: layers
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U drafter']
+      test: ['CMD-SHELL', 'pg_isready -U layers']
       interval: 5s
       timeout: 5s
       retries: 10
@@ -52,8 +52,8 @@ services:
     environment:
       NODE_ENV: production
       PORT: 4000
-      DATABASE_URL: postgresql://drafter:drafter@postgres:5432/drafter
-      DIRECT_URL: postgresql://drafter:drafter@postgres:5432/drafter
+      DATABASE_URL: postgresql://layers:layers@postgres:5432/layers
+      DIRECT_URL: postgresql://layers:layers@postgres:5432/layers
       REDIS_URL: redis://redis:6379
       CHROMA_URL: http://chromadb:8001
       CORS_ORIGIN: http://localhost:3000
@@ -67,7 +67,7 @@ services:
 
   frontend:
     build:
-      context: ../drafter
+      context: ../layers
       dockerfile: Dockerfile
       args:
         # Points the browser at the backend — use localhost since browser calls this directly

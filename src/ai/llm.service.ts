@@ -129,28 +129,35 @@ export class LlmService {
       this.logger.log(`LLM provider: Ollama — ${this.modelName} @ ${baseUrl} (numCtx=${numCtx})`);
     } else {
       this.modelName = config.get<string>('ANTHROPIC_MODEL') ?? 'claude-sonnet-4-6';
+      const anthropicApiKey = config.get<string>('ANTHROPIC_API_KEY');
 
-      this.llm = new ChatAnthropic({
-        apiKey: config.get<string>('ANTHROPIC_API_KEY'),
-        model: this.modelName,
-        maxTokens: 4096,
-        temperature: 0,
-      });
+      if (anthropicApiKey) {
+        this.llm = new ChatAnthropic({
+          apiKey: anthropicApiKey,
+          model: this.modelName,
+          maxTokens: 4096,
+          temperature: 0,
+        });
 
-      // Anthropic has no JSON-only constraint, same instance works for both
-      this.llmText = this.llm;
+        // Anthropic has no JSON-only constraint, same instance works for both
+        this.llmText = this.llm;
 
-      // Extended thinking instance: temperature must be 1 per Anthropic API spec
-      this.llmThinking = new ChatAnthropic({
-        apiKey: config.get<string>('ANTHROPIC_API_KEY'),
-        model: this.modelName,
-        // Extended thinking requires a higher token budget; maxTokens must be >= budget_tokens
-        maxTokens: 16000,
-        temperature: 1,
-        thinking: { type: 'enabled', budget_tokens: 10000 },
-      });
+        // Extended thinking instance: temperature must be 1 per Anthropic API spec
+        this.llmThinking = new ChatAnthropic({
+          apiKey: anthropicApiKey,
+          model: this.modelName,
+          // Extended thinking requires a higher token budget; maxTokens must be >= budget_tokens
+          maxTokens: 16000,
+          temperature: 1,
+          thinking: { type: 'enabled', budget_tokens: 10000 },
+        });
+      } else {
+        // No env key — API key will be supplied per-call from the DB via LlmCallConfig.apiKey
+        this.llm = null as unknown as ChatAnthropic;
+        this.llmText = null as unknown as ChatAnthropic;
+      }
 
-      this.logger.log(`LLM provider: Anthropic — ${this.modelName}`);
+      this.logger.log(`LLM provider: Anthropic — ${this.modelName}${anthropicApiKey ? '' : ' (key supplied per-call)'}`);
     }
   }
 
@@ -297,7 +304,6 @@ export class LlmService {
       }
     } catch (err) {
       this.rethrowConnectionError(err, resolvedProvider, resolvedModel);
-      throw err;
     }
   }
 

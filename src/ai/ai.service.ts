@@ -13,7 +13,7 @@ import { SYSTEM_PROMPT } from './prompts/system-prompt';
 import { buildGeneratePrompt } from './prompts/generate-prompt';
 import { buildSuggestPrompt } from './prompts/suggest-prompt';
 import { buildRefinePrompt } from './prompts/refine-prompt';
-import { DRAFTER_SYSTEM_PROMPT } from './prompts/drafter-system-prompt';
+import { LAYERS_SYSTEM_PROMPT } from './prompts/layers-system-prompt';
 import { EVAL_SYSTEM_PROMPT, QA_SYSTEM_PROMPT } from './prompts/eval-system-prompt';
 import { CHAT_SYSTEM_PROMPT, buildLayerContextSystemPrompt } from './prompts/chat-system-prompt';
 import { buildContextualSystemPrompt } from './prompts/contextual-system-prompt';
@@ -106,7 +106,7 @@ export class AiService {
     const userMessage = `Generate a diagram for: ${dto.prompt}`;
     const llmConfig = await this.buildLlmConfig(userId);
     const startTime = Date.now();
-    const llmResult = await this.llm.invoke(DRAFTER_SYSTEM_PROMPT, userMessage, llmConfig);
+    const llmResult = await this.llm.invoke(LAYERS_SYSTEM_PROMPT, userMessage, llmConfig);
     const durationMs = Date.now() - startTime;
     const raw = llmResult.content
       .replace(/^```json\s*/i, '')

@@ -15,7 +15,7 @@ export interface RagQueryResult {
   distance: number;
 }
 
-const COLLECTION_NAME = 'drafter_rag';
+const COLLECTION_NAME = 'layers_rag';
 
 @Injectable()
 export class ChromaService implements OnModuleInit {

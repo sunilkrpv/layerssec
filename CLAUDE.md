@@ -1,12 +1,12 @@
-# drafter-rest — Project Intelligence
+# layers-rest — Project Intelligence
 
 ## Overview
-NestJS REST API backend for Drafter. Handles authentication, project/diagram storage, versioning, and AI chat interactions.
+NestJS REST API backend for Layers. Handles authentication, project/diagram storage, versioning, and AI chat interactions.
 
 ## Stack
 - **Framework**: NestJS 10 (modular, decorator-based)
 - **ORM**: Prisma 5 + PostgreSQL (Supabase in production, local postgres in dev)
-- **Vector DB**: ChromaDB (local Docker) — `chromadb` npm client; collection `drafter_rag`
+- **Vector DB**: ChromaDB (local Docker) — `chromadb` npm client; collection `layers_rag`
 - **Auth**: JWT (access token 15 min + refresh token 7 d) via `@nestjs/jwt` + `passport-jwt`
 - **Passwords**: bcrypt (salt rounds 12)
 - **Validation**: `class-validator` + `class-transformer` + global `ValidationPipe`
@@ -35,7 +35,7 @@ NestJS REST API backend for Drafter. Handles authentication, project/diagram sto
 | `ThreatModel` | `id`, `projectId → Project`, `diagramId`, `diagramVersion` (int), `snapshotData` (Json), `name`, `savedBy` (userId), `savedAt`; NOT @unique on diagramId (many per diagram) |
 | `Threat` | `id`, `threatModelId → ThreatModel`, `targetId`, `targetType`, `targetLabel`, `layerId?`, `strideCategory`, `title`, `description`, `severity` (CRITICAL/HIGH/MEDIUM/LOW/INFO), `status` (OPEN/IN_PROGRESS/MITIGATED/ACCEPTED/FALSE_POSITIVE), `mitigationNotes?`, `identifiedBy` (AI/USER), `createdByUserId?` |
 
-**Drafter mapping**: Each Drafter project = one NestJS `Project` + one NestJS `Diagram` (`canvasData` = `{ layers: LayerMap, navStack: string[] }`). `version` increments on every PATCH via `{ increment: 1 }`.
+**Layers mapping**: Each Layers project = one NestJS `Project` + one NestJS `Diagram` (`canvasData` = `{ layers: LayerMap, navStack: string[] }`). `version` increments on every PATCH via `{ increment: 1 }`.
 
 ### Module Structure
 ```
@@ -63,7 +63,7 @@ src/
       generate-prompt.ts       — buildGeneratePrompt
       refine-prompt.ts         — buildRefinePrompt
       suggest-prompt.ts        — buildSuggestPrompt
-      drafter-system-prompt.ts — DRAFTER_SYSTEM_PROMPT (chatGenerate)
+      layers-system-prompt.ts — LAYERS_SYSTEM_PROMPT (chatGenerate)
       eval-system-prompt.ts         — EVAL_SYSTEM_PROMPT, QA_SYSTEM_PROMPT
       chat-system-prompt.ts         — CHAT_SYSTEM_PROMPT + buildLayerContextSystemPrompt(layerContext)
       contextual-system-prompt.ts   — buildContextualSystemPrompt(contextBlock) for RAG chat
@@ -168,7 +168,7 @@ POST   /api/ai/threat-analysis             — PRD 3: streaming STRIDE analysis;
 ## Development Setup
 ```bash
 # First-time local setup
-createdb drafter
+createdb layers
 npm run db:migrate          # applies migrations against local postgres via .env.local
 
 # Run dev server (loads .env.local first)

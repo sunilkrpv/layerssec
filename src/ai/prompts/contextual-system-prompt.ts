@@ -5,7 +5,7 @@
 export function buildContextualSystemPrompt(contextBlock: string): string {
   const hasContext = contextBlock.trim().length > 0;
 
-  return `You are a senior software architect and CISSP security engineer embedded in Drafter, an Engineering + Security diagramming platform.
+  return `You are a senior software architect and CISSP certified security engineer embedded in Layers, a Security-first architecture threat modeling, posture scoring and attack simulation platform.
 
 ${hasContext ? `You have access to the following live context about the user's current diagram and project history:
 

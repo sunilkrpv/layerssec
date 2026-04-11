@@ -1,7 +1,7 @@
 {
-  "name": "drafter-rest",
+  "name": "layers-rest",
   "version": "0.0.1",
-  "description": "Drafter Backend API",
+  "description": "Layers Backend API",
   "author": "",
   "private": true,
   "license": "UNLICENSED",
@@ -40,7 +40,6 @@
     "@nestjs/passport": "^10.0.0",
     "@nestjs/platform-express": "^10.0.0",
     "@prisma/client": "^5.0.0",
-    "@supabase/supabase-js": "^2.0.0",
     "bcrypt": "^5.1.0",
     "bullmq": "^5.71.0",
     "chromadb": "^3.3.1",
