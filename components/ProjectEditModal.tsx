@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { X } from 'lucide-react';
+import { Trash2, X } from 'lucide-react';
 import { apiUpdateProject } from '@/lib/api';
+import DeleteProjectModal from './DeleteProjectModal';
 
 const NAME_MAX = 100;
 const DESC_MAX = 1024;
@@ -13,11 +14,13 @@ interface Props {
   initialDescription: string | null;
   onClose: () => void;
   onSaved: (updates: { name: string; description: string }) => void;
+  onDeleted?: (projectId: string) => void;
 }
 
 export default function ProjectEditModal({
-  projectId, initialName, initialDescription, onClose, onSaved,
+  projectId, initialName, initialDescription, onClose, onSaved, onDeleted,
 }: Props) {
+  const [showDelete, setShowDelete] = useState(false);
   const [name, setName] = useState(initialName);
   const [description, setDescription] = useState(initialDescription ?? '');
   const [saving, setSaving] = useState(false);
@@ -114,23 +117,44 @@ export default function ProjectEditModal({
           )}
         </div>
 
-        <div className="flex items-center justify-end gap-2 border-t border-slate-200 bg-slate-50 px-5 py-3 dark:border-slate-800 dark:bg-slate-900/60">
+        <div className="flex items-center justify-between gap-2 border-t border-slate-200 bg-slate-50 px-5 py-3 dark:border-slate-800 dark:bg-slate-900/60">
           <button
-            onClick={onClose}
+            onClick={() => setShowDelete(true)}
             disabled={saving}
-            className="rounded-lg px-3 py-1.5 text-[13px] font-medium text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 disabled:opacity-50"
+            className="flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-[12px] font-medium text-red-600 hover:bg-red-50 disabled:opacity-50 dark:text-red-400 dark:hover:bg-red-950/30"
           >
-            Cancel
+            <Trash2 size={12} />
+            Delete project
           </button>
-          <button
-            onClick={handleSave}
-            disabled={!canSave}
-            className="rounded-lg bg-blue-600 px-4 py-1.5 text-[13px] font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {saving ? 'Saving…' : 'Save'}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={onClose}
+              disabled={saving}
+              className="rounded-lg px-3 py-1.5 text-[13px] font-medium text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={!canSave}
+              className="rounded-lg bg-blue-600 px-4 py-1.5 text-[13px] font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {saving ? 'Saving…' : 'Save'}
+            </button>
+          </div>
         </div>
       </div>
+
+      {showDelete && (
+        <DeleteProjectModal
+          project={{ id: projectId, name: initialName }}
+          onClose={() => setShowDelete(false)}
+          onDeleted={(id) => {
+            setShowDelete(false);
+            onDeleted?.(id);
+          }}
+        />
+      )}
     </div>
   );
 }

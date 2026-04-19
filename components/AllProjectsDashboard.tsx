@@ -5,12 +5,13 @@ import { useState } from 'react';
 import {
   Shield, BarChart2, Sword, Wand2, Zap, Plus,
   RotateCcw, Layers, AlertTriangle, ExternalLink, Activity,
-  CheckCircle2, XCircle, Pencil,
+  CheckCircle2, XCircle, Pencil, Trash2,
 } from 'lucide-react';
 import { type ProjectSummary, type AiJobListItem } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import EmptyProjectsState from './onboarding/EmptyProjectsState';
 import ProjectEditModal from './ProjectEditModal';
+import DeleteProjectModal from './DeleteProjectModal';
 import ProjectsGuidePanel from './ProjectsGuidePanel';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -144,6 +145,7 @@ export default function AllProjectsDashboard({
 }: AllProjectsDashboardProps) {
   const router = useRouter();
   const [editing, setEditing] = useState<ProjectSummary | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<ProjectSummary | null>(null);
 
   const displayProjects = section === 'threats'
     ? sortByRisk(projects.filter((p) => p.openThreatCount > 0))
@@ -287,9 +289,9 @@ export default function AllProjectsDashboard({
           )
         ) : (
           <section>
-            <div className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+            <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
               {/* Table header */}
-              <div className="grid grid-cols-[1fr_140px_130px_100px_160px] border-b border-slate-100 px-4 py-2.5 dark:border-slate-800">
+              <div className="grid min-w-[820px] grid-cols-[minmax(260px,1fr)_140px_130px_100px_220px] border-b border-slate-100 px-4 py-2.5 dark:border-slate-800">
                 {['Project', 'Posture', 'Threats', 'Last Activity', 'Actions'].map((h) => (
                   <span key={h} className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
                     {h}
@@ -304,7 +306,7 @@ export default function AllProjectsDashboard({
                 return (
                   <div
                     key={p.id}
-                    className="grid cursor-pointer grid-cols-[1fr_140px_130px_100px_160px] items-center border-b border-slate-100 px-4 py-3 transition-colors last:border-0 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/40"
+                    className="grid min-w-[820px] cursor-pointer grid-cols-[minmax(260px,1fr)_140px_130px_100px_220px] items-center border-b border-slate-100 px-4 py-3 transition-colors last:border-0 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/40"
                     onClick={() => onSelectProject(p.id)}
                   >
                     {/* Project */}
@@ -379,6 +381,14 @@ export default function AllProjectsDashboard({
                           Threats
                         </button>
                       )}
+                      <button
+                        onClick={() => setDeleteTarget(p)}
+                        title="Delete project"
+                        className="flex items-center gap-1 rounded-md border border-slate-200 px-2.5 py-1 text-[12px] font-medium text-slate-600 hover:border-red-200 hover:bg-red-50 hover:text-red-600 dark:border-slate-700 dark:text-slate-300 dark:hover:border-red-800/50 dark:hover:bg-red-950/30 dark:hover:text-red-400"
+                      >
+                        <Trash2 size={11} />
+                        Delete
+                      </button>
                     </div>
                   </div>
                 );
@@ -429,6 +439,21 @@ export default function AllProjectsDashboard({
           onClose={() => setEditing(null)}
           onSaved={() => {
             setEditing(null);
+            onRefresh();
+          }}
+          onDeleted={() => {
+            setEditing(null);
+            onRefresh();
+          }}
+        />
+      )}
+
+      {deleteTarget && (
+        <DeleteProjectModal
+          project={{ id: deleteTarget.id, name: deleteTarget.name }}
+          onClose={() => setDeleteTarget(null)}
+          onDeleted={() => {
+            setDeleteTarget(null);
             onRefresh();
           }}
         />
