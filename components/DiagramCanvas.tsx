@@ -145,6 +145,8 @@ export type ExtendedRFInstance = ReactFlowInstance & {
   updateEdge: (edgeId: string, updates: Partial<Edge>) => void;
   deleteEdge: (edgeId: string) => void;
   pushHistoryNow: () => void;
+  undo: () => void;
+  redo: () => void;
   doCopy: () => void;
   doPaste: () => void;
   /** Visually highlight a node or edge by id; pass null to clear. Auto-clears after 3s. */
@@ -186,6 +188,8 @@ interface DiagramCanvasProps {
   attackHighlightMap?: AttackHighlightMap;
   /** Edge IDs to animate as the active attack path */
   attackEdgeIds?: string[];
+  /** Called with the current undo/redo availability so the Toolbar can reflect button state */
+  onHistoryChange?: (state: { canUndo: boolean; canRedo: boolean }) => void;
 }
 
 export default function DiagramCanvas({
@@ -207,6 +211,7 @@ export default function DiagramCanvas({
   activeThreatTargetId,
   attackHighlightMap,
   attackEdgeIds,
+  onHistoryChange,
 }: DiagramCanvasProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState<NodeData>(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>(initialEdges);
@@ -238,18 +243,58 @@ export default function DiagramCanvas({
   const undoStack = useRef<{ nodes: Node<NodeData>[]; edges: Edge[] }[]>([]);
   const redoStack = useRef<{ nodes: Node<NodeData>[]; edges: Edge[] }[]>([]);
 
+  // Reactive counter so `canUndo`/`canRedo` can trigger re-renders. The stacks
+  // themselves stay in refs to avoid re-rendering the canvas on every push.
+  const [historyTick, setHistoryTick] = useState(0);
+  const bumpHistory = useCallback(() => setHistoryTick((n) => n + 1), []);
+
+  const onHistoryChangeRef = useRef(onHistoryChange);
+  useEffect(() => { onHistoryChangeRef.current = onHistoryChange; }, [onHistoryChange]);
+  useEffect(() => {
+    onHistoryChangeRef.current?.({
+      canUndo: undoStack.current.length > 0,
+      canRedo: redoStack.current.length > 0,
+    });
+  }, [historyTick]);
+
   const pushHistory = useCallback(() => {
     undoStack.current = [
       ...undoStack.current,
       { nodes: getNodes() as Node<NodeData>[], edges: getEdges() },
     ].slice(-50);
     redoStack.current = [];
-  }, [getNodes, getEdges]);
+    bumpHistory();
+  }, [getNodes, getEdges, bumpHistory]);
 
   const pushHistoryRef = useRef(pushHistory);
   useEffect(() => {
     pushHistoryRef.current = pushHistory;
   }, [pushHistory]);
+
+  const doUndo = useCallback(() => {
+    if (undoStack.current.length === 0) return;
+    const cur = { nodes: getNodes() as Node<NodeData>[], edges: getEdges() };
+    redoStack.current = [...redoStack.current, cur].slice(-50);
+    const prev = undoStack.current.pop()!;
+    setNodes(prev.nodes);
+    setEdges(prev.edges);
+    bumpHistory();
+  }, [getNodes, getEdges, setNodes, setEdges, bumpHistory]);
+
+  const doRedo = useCallback(() => {
+    if (redoStack.current.length === 0) return;
+    const cur = { nodes: getNodes() as Node<NodeData>[], edges: getEdges() };
+    undoStack.current = [...undoStack.current, cur].slice(-50);
+    const next = redoStack.current.pop()!;
+    setNodes(next.nodes);
+    setEdges(next.edges);
+    bumpHistory();
+  }, [getNodes, getEdges, setNodes, setEdges, bumpHistory]);
+
+  const doUndoRef = useRef(doUndo);
+  const doRedoRef = useRef(doRedo);
+  useEffect(() => { doUndoRef.current = doUndo; }, [doUndo]);
+  useEffect(() => { doRedoRef.current = doRedo; }, [doRedo]);
 
   // Stable ref for onLayerSave to avoid stale closures in the debounced effect
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -290,25 +335,15 @@ export default function DiagramCanvas({
       const isTyping =
         e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement;
 
-      // Undo / Redo (Cmd+Z / Cmd+Shift+Z) — all used values are stable refs
-      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !isTyping) {
+      // Undo / Redo: Cmd/Ctrl+Z = undo, Cmd/Ctrl+Shift+Z or Cmd/Ctrl+Y = redo.
+      // `e.key` can be uppercase when Shift is held, so normalize.
+      const key = e.key.toLowerCase();
+      if ((e.ctrlKey || e.metaKey) && !isTyping && (key === 'z' || key === 'y')) {
         e.preventDefault();
-        if (e.shiftKey) {
-          // Redo
-          if (redoStack.current.length === 0) return;
-          const cur = { nodes: getNodes() as Node<NodeData>[], edges: getEdges() };
-          undoStack.current = [...undoStack.current, cur].slice(-50);
-          const next = redoStack.current.pop()!;
-          setNodes(next.nodes);
-          setEdges(next.edges);
+        if (key === 'y' || (key === 'z' && e.shiftKey)) {
+          doRedoRef.current();
         } else {
-          // Undo
-          if (undoStack.current.length === 0) return;
-          const cur = { nodes: getNodes() as Node<NodeData>[], edges: getEdges() };
-          redoStack.current = [...redoStack.current, cur].slice(-50);
-          const prev = undoStack.current.pop()!;
-          setNodes(prev.nodes);
-          setEdges(prev.edges);
+          doUndoRef.current();
         }
         return;
       }
@@ -566,10 +601,14 @@ export default function DiagramCanvas({
     [getNodes],
   );
 
-  // ── Drag stop: save history + snap line nodes to nearby shapes ────────────
+  // ── Drag start: capture pre-drag state so undo can revert the move ────────
+  const onNodeDragStart = useCallback(() => {
+    pushHistoryRef.current();
+  }, []);
+
+  // ── Drag stop: snap line nodes to nearby shapes ───────────────────────────
   const onNodeDragStop = useCallback(
     (_: React.MouseEvent, node: Node<NodeData>) => {
-      pushHistoryRef.current(); // capture post-drag state for undo
       setGuideLines([]);
       setSnapTargetInfo(null);
 
@@ -912,6 +951,8 @@ export default function DiagramCanvas({
         updateEdge,
         deleteEdge,
         pushHistoryNow,
+        undo: () => doUndoRef.current(),
+        redo: () => doRedoRef.current(),
         doCopy,
         doPaste,
         highlightThreatTarget,
@@ -960,6 +1001,22 @@ export default function DiagramCanvas({
     selectedNodesRef.current = sel as Node<NodeData>[];
   }, []);
 
+  // Record pre-delete state so Backspace (React Flow's built-in delete) is undoable.
+  const handleNodesChange = useCallback<typeof onNodesChange>(
+    (changes) => {
+      if (changes.some((c) => c.type === 'remove')) pushHistoryRef.current();
+      onNodesChange(changes);
+    },
+    [onNodesChange],
+  );
+  const handleEdgesChange = useCallback<typeof onEdgesChange>(
+    (changes) => {
+      if (changes.some((c) => c.type === 'remove')) pushHistoryRef.current();
+      onEdgesChange(changes);
+    },
+    [onEdgesChange],
+  );
+
   // Apply animated red stroke to edges that are part of the active attack path
   const displayEdges = useMemo(() => {
     if (!attackEdgeIds || attackEdgeIds.length === 0) return edges;
@@ -976,8 +1033,8 @@ export default function DiagramCanvas({
       <ReactFlow
         nodes={nodes}
         edges={displayEdges}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
+        onNodesChange={handleNodesChange}
+        onEdgesChange={handleEdgesChange}
         onConnect={onConnect}
         onReconnectStart={readOnly ? undefined : onReconnectStart}
         onReconnect={readOnly ? undefined : onReconnect}
@@ -989,6 +1046,7 @@ export default function DiagramCanvas({
         onNodeContextMenu={handleNodeContextMenu}
         onPaneContextMenu={handlePaneContextMenu}
         onSelectionChange={handleSelectionChange}
+        onNodeDragStart={readOnly ? undefined : onNodeDragStart}
         onNodeDrag={onNodeDrag}
         onNodeDragStop={onNodeDragStop}
         nodeTypes={NODE_TYPES}

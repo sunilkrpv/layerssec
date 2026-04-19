@@ -14,7 +14,7 @@ import {
   apiListActivity, apiCancelJob,
   type AiJobListItem, type AiJobType, type AiJobStatus, type AiActivityFilters,
 } from '@/lib/api';
-import { isLoggedIn, getStoredUser, clearTokens } from '@/lib/authStore';
+import { isLoggedIn, getStoredUser, signOut } from '@/lib/authStore';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -616,7 +616,7 @@ export default function AIActivityPage() {
   };
 
   const handleSignOut = () => {
-    clearTokens();
+    signOut();
     router.push('/projects');
   };
 

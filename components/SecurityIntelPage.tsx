@@ -22,7 +22,7 @@ import {
   type ThreatSeverity, type ThreatStatus,
   type AttackPath,
 } from '@/lib/api';
-import { getStoredUser, clearTokens } from '@/lib/authStore';
+import { getStoredUser, signOut } from '@/lib/authStore';
 import { useTheme } from '@/lib/themeContext';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -515,7 +515,7 @@ export default function SecurityIntelPage({ projectId }: Props) {
 
           {storedUser && (
             <button
-              onClick={() => { clearTokens(); router.push('/login'); }}
+              onClick={() => { signOut(); router.push('/login'); }}
               className="flex items-center gap-1.5 rounded px-2.5 py-1 text-sm text-slate-700 hover:bg-slate-200 hover:text-slate-900 dark:text-slate-200 dark:hover:bg-slate-700 dark:hover:text-white"
               title="Sign out"
             >

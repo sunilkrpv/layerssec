@@ -45,7 +45,7 @@ import {
   type AiJobStatusResponse, type ThreatChatPayload,
 } from '@/lib/api';
 import { useJobPoller } from '@/hooks/useJobPoller';
-import { getStoredUser, clearTokens, isLoggedIn } from '@/lib/authStore';
+import { getStoredUser, clearTokens, isLoggedIn, signOut } from '@/lib/authStore';
 import {
   makeInitialLayers,
   createChildLayer,
@@ -103,6 +103,8 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
   const [autoSave, setAutoSave] = useState(true);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [canUndo, setCanUndo] = useState(false);
+  const [canRedo, setCanRedo] = useState(false);
 
   // Guard ref — set to false on sign-out / 401 so debounced saves don't overwrite clean state
   const saveEnabledRef = useRef(true);
@@ -644,7 +646,7 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
 
   const handleSignOut = useCallback(() => {
     saveEnabledRef.current = false;
-    clearTokens();
+    signOut();
     setLayers(makeInitialLayers());
     setNavStack([ROOT_LAYER_ID]);
     setUser(null);
@@ -1599,6 +1601,10 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
             onMyProjects={() => router.push('/projects')}
             onCopy={() => rfInstanceRef.current?.doCopy()}
             onPaste={() => rfInstanceRef.current?.doPaste()}
+            onUndo={() => rfInstanceRef.current?.undo()}
+            onRedo={() => rfInstanceRef.current?.redo()}
+            canUndo={canUndo}
+            canRedo={canRedo}
             isReadOnly={isReadOnly}
             onOpenThreatModel={!!user ? () => setShowThreatModelPanel((v) => !v) : undefined}
             onOpenThreatDashboard={() => router.push(`/projects/${projectId}/threats`)}
@@ -1721,6 +1727,10 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
                 }}
                 attackHighlightMap={showAttackMindPanel ? attackHighlightMap : undefined}
                 attackEdgeIds={showAttackMindPanel ? attackEdgeIds : undefined}
+                onHistoryChange={({ canUndo, canRedo }) => {
+                  setCanUndo(canUndo);
+                  setCanRedo(canRedo);
+                }}
               />
 
               {/* ── Declutter loading overlay ──────────────────────────── */}

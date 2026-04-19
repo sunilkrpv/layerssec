@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import LayersLogo from '@/components/LayersLogo';
 import { type ProjectSummary } from '@/lib/api';
-import { getStoredUser, clearTokens } from '@/lib/authStore';
+import { getStoredUser, signOut } from '@/lib/authStore';
 import { useTheme } from '@/lib/themeContext';
 import type { Theme } from '@/lib/themeStore';
 import { cn } from '@/lib/utils';
@@ -162,7 +162,7 @@ export default function HomeSidebar({
   };
 
   const handleSignOut = () => {
-    clearTokens();
+    signOut();
     router.push('/login');
   };
 
