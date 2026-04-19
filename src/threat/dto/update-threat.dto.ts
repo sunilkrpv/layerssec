@@ -22,4 +22,7 @@ export class UpdateThreatDto {
 
   @IsOptional() @IsString()
   mitigationNotes?: string;
+
+  @IsOptional() @IsString()
+  mitigationAdvice?: string;
 }

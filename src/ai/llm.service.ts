@@ -24,6 +24,8 @@ export interface LlmCallConfig {
   numCtx?: number;
   apiKey?: string;
   baseUrl?: string;
+  /** Human-readable name of the system prompt constant. Logged instead of prompt content. */
+  promptName?: string;
 }
 
 /**
@@ -228,7 +230,10 @@ export class LlmService {
     }
 
     const resolvedModel = config?.model ?? this.modelName;
-    this.logger.debug(`invokeWithThinking — ${resolvedModel}`);
+    const name = config?.promptName ?? 'unnamed';
+    const startMs = Date.now();
+
+    this.logger.log(`[LLM] START ${name} (thinking) | anthropic/${resolvedModel} | chars=${userMessage.length}`);
 
     const response = await thinkingLlm.invoke([
       new SystemMessage(systemPrompt),
@@ -241,8 +246,12 @@ export class LlmService {
     const tokensUsed = usage?.total_tokens ?? 0;
     const inputTokens = usage?.input_tokens ?? 0;
     const outputTokens = usage?.output_tokens ?? 0;
+    const durationMs = Date.now() - startMs;
 
-    this.logger.debug(`invokeWithThinking tokens used: ${tokensUsed}`);
+    this.logger.log(
+      `[LLM] DONE  ${name} (thinking) | anthropic/${resolvedModel} | in=${inputTokens} out=${outputTokens} total=${tokensUsed} tokens | ${durationMs}ms`,
+    );
+
     return { content, tokensUsed, inputTokens, outputTokens, provider: 'anthropic', model: resolvedModel };
   }
 
@@ -253,9 +262,10 @@ export class LlmService {
   async invoke(systemPrompt: string, userMessage: string, config?: LlmCallConfig): Promise<LlmResponse> {
     const { llm, resolvedProvider, resolvedModel } = this.resolveLlm(config);
     const effectiveSystemPrompt = applyOllamaOptimizations(systemPrompt, resolvedProvider, resolvedModel);
+    const name = config?.promptName ?? 'unnamed';
+    const startMs = Date.now();
 
-    this.logger.debug(`system-prompt ${resolvedModel} — ${effectiveSystemPrompt}`);
-    this.logger.debug(`user-message — ${userMessage}`);
+    this.logger.log(`[LLM] START ${name} | ${resolvedProvider}/${resolvedModel} | chars=${userMessage.length}`);
 
     let response: Awaited<ReturnType<typeof llm.invoke>>;
     try {
@@ -269,7 +279,6 @@ export class LlmService {
 
     const content = this.extractText(response.content);
 
-    // usage_metadata is populated by LangChain for both Anthropic and Ollama
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const usage = (response as any).usage_metadata as
       | { total_tokens?: number; input_tokens?: number; output_tokens?: number }
@@ -277,11 +286,11 @@ export class LlmService {
     const tokensUsed = usage?.total_tokens ?? 0;
     const inputTokens = usage?.input_tokens ?? 0;
     const outputTokens = usage?.output_tokens ?? 0;
+    const durationMs = Date.now() - startMs;
 
-    this.logger.debug(`LLM response content: ${content}`);
-    this.logger.debug(`LLM tokens used: ${tokensUsed}`);
-    this.logger.debug(`LLM used model: ${resolvedModel}`);
-    this.logger.debug(`LLM provider: ${resolvedProvider}`);
+    this.logger.log(
+      `[LLM] DONE  ${name} | ${resolvedProvider}/${resolvedModel} | in=${inputTokens} out=${outputTokens} total=${tokensUsed} tokens | ${durationMs}ms`,
+    );
 
     return { content, tokensUsed, inputTokens, outputTokens, provider: resolvedProvider, model: resolvedModel };
   }
@@ -293,6 +302,11 @@ export class LlmService {
   async *stream(systemPrompt: string, userMessage: string, config?: LlmCallConfig): AsyncGenerator<string> {
     const { llmText, resolvedProvider, resolvedModel } = this.resolveLlm(config);
     const effectiveSystemPrompt = applyOllamaOptimizations(systemPrompt, resolvedProvider, resolvedModel);
+    const name = config?.promptName ?? 'unnamed';
+    const startMs = Date.now();
+
+    this.logger.log(`[LLM] STREAM START ${name} | ${resolvedProvider}/${resolvedModel} | chars=${userMessage.length}`);
+
     try {
       const chunks = await llmText.stream([
         new SystemMessage(effectiveSystemPrompt),
@@ -305,6 +319,8 @@ export class LlmService {
     } catch (err) {
       this.rethrowConnectionError(err, resolvedProvider, resolvedModel);
     }
+
+    this.logger.log(`[LLM] STREAM END  ${name} | ${resolvedProvider}/${resolvedModel} | ${Date.now() - startMs}ms`);
   }
 
   /**
@@ -319,6 +335,11 @@ export class LlmService {
   ): AsyncGenerator<string> {
     const { llmText, resolvedProvider, resolvedModel } = this.resolveLlm(config);
     const effectiveSystemPrompt = applyOllamaOptimizations(systemPrompt, resolvedProvider, resolvedModel);
+    const name = config?.promptName ?? 'unnamed';
+    const startMs = Date.now();
+
+    this.logger.log(`[LLM] STREAM START ${name} | ${resolvedProvider}/${resolvedModel} | chars=${userMessage.length}`);
+
     const msgs = [
       new SystemMessage(effectiveSystemPrompt),
       ...history.map((m) =>
@@ -331,6 +352,8 @@ export class LlmService {
       const text = this.extractText(chunk.content);
       if (text) yield text;
     }
+
+    this.logger.log(`[LLM] STREAM END  ${name} | ${resolvedProvider}/${resolvedModel} | ${Date.now() - startMs}ms`);
   }
 
   /**

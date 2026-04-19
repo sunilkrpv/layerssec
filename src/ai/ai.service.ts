@@ -9,6 +9,7 @@ import { SubmitThreatAnalysisDto } from '../jobs/dto/submit-threat-analysis.dto'
 import { SubmitPostureScoreDto } from '../jobs/dto/submit-posture-score.dto';
 import { LlmService, LlmCallConfig } from './llm.service';
 import { UserSettingsService } from '../user-settings/user-settings.service';
+import { OnboardingService } from '../onboarding/onboarding.service';
 import { SYSTEM_PROMPT } from './prompts/system-prompt';
 import { buildGeneratePrompt } from './prompts/generate-prompt';
 import { buildSuggestPrompt } from './prompts/suggest-prompt';
@@ -50,6 +51,7 @@ export class AiService {
     private readonly ragContext: RagContextService,
     private readonly ragIndexing: RagIndexingService,
     private readonly userSettingsService: UserSettingsService,
+    private readonly onboarding: OnboardingService,
     @InjectQueue(THREAT_ANALYSIS_QUEUE) private readonly threatQueue: Queue,
     @InjectQueue(POSTURE_SCORE_QUEUE) private readonly postureQueue: Queue,
     @InjectQueue(ATTACK_SIM_QUEUE) private readonly attackSimQueue: Queue,
@@ -106,7 +108,7 @@ export class AiService {
     const userMessage = `Generate a diagram for: ${dto.prompt}`;
     const llmConfig = await this.buildLlmConfig(userId);
     const startTime = Date.now();
-    const llmResult = await this.llm.invoke(LAYERS_SYSTEM_PROMPT, userMessage, llmConfig);
+    const llmResult = await this.llm.invoke(LAYERS_SYSTEM_PROMPT, userMessage, { ...llmConfig, promptName: 'LAYERS_SYSTEM_PROMPT' });
     const durationMs = Date.now() - startTime;
     const raw = llmResult.content
       .replace(/^```json\s*/i, '')
@@ -184,7 +186,7 @@ export class AiService {
     const startTime = Date.now();
     let fullResponse = '';
     try {
-      for await (const chunk of this.llm.stream(systemPrompt, userContent, llmConfig)) {
+      for await (const chunk of this.llm.stream(systemPrompt, userContent, { ...llmConfig, promptName: isQA ? 'QA_SYSTEM_PROMPT' : 'EVAL_SYSTEM_PROMPT' })) {
         res.write(chunk);
         fullResponse += chunk;
       }
@@ -234,7 +236,7 @@ export class AiService {
         systemPrompt,
         dto.history ?? [],
         dto.message,
-        llmConfig,
+        { ...llmConfig, promptName: dto.layerContext ? 'CHAT_SYSTEM_PROMPT_WITH_LAYER_CONTEXT' : 'CHAT_SYSTEM_PROMPT' },
       )) {
         res.write(chunk);
         fullResponse += chunk;
@@ -339,7 +341,7 @@ export class AiService {
         systemPrompt,
         dto.history ?? [],
         dto.message,
-        llmConfig,
+        { ...llmConfig, promptName: 'CONTEXTUAL_SYSTEM_PROMPT' },
       )) {
         res.write(chunk);
         fullResponse += chunk;
@@ -439,7 +441,7 @@ export class AiService {
     const llmConfig = await this.buildLlmConfig(userId);
     const startTime = Date.now();
     const { content, tokensUsed, inputTokens, outputTokens, provider: llmProvider, model: llmModel } =
-      await this.llm.invoke(THREAT_ANALYSIS_SYSTEM_PROMPT, userMessage, llmConfig);
+      await this.llm.invoke(THREAT_ANALYSIS_SYSTEM_PROMPT, userMessage, { ...llmConfig, promptName: 'THREAT_ANALYSIS_SYSTEM_PROMPT' });
     const durationMs = Date.now() - startTime;
     this.logger.log(`[ThreatAnalysis] completed durationMs=${durationMs} tokens=${tokensUsed} (in=${inputTokens} out=${outputTokens}) model=${llmProvider}/${llmModel}`);
 
@@ -479,7 +481,7 @@ export class AiService {
 
   // ── Declutter Layout ─────────────────────────────────────────────────────
 
-  async declutter(userId: string, dto: DeclutterDto): Promise<{ positions: Record<string, { x: number; y: number }> }> {
+  async declutter(userId: string, dto: DeclutterDto): Promise<{ positions: Record<string, { x: number; y: number }>; jobId: string }> {
     const nodeSummary = dto.nodes.map((n) => ({
       id: n.id,
       type: n.type ?? 'unknown',
@@ -493,45 +495,76 @@ export class AiService {
 
     const edgeSummary = dto.edges.map((e) => ({ source: e.source, target: e.target }));
 
+    // Create activity-log entry up-front so the job is visible in the feed
+    // while the LLM runs. This is a synchronous job (not BullMQ-backed) —
+    // the client blocks on the response to apply positions to the canvas.
+    const aiJob = await this.prisma.aiJob.create({
+      data: {
+        userId,
+        projectId: dto.projectId ?? null,
+        diagramId: dto.diagramId ?? null,
+        layerId: dto.layerId ?? null,
+        type: AiJobType.DECLUTTER,
+        status: AiJobStatus.RUNNING,
+        startedAt: new Date(),
+      },
+    });
+
     const userMessage = buildDeclutterPrompt(nodeSummary, edgeSummary);
     const llmConfig = await this.buildLlmConfig(userId);
 
-    this.logger.log(`[Declutter] nodes=${dto.nodes.length} edges=${dto.edges.length}`);
+    this.logger.log(`[Declutter] job=${aiJob.id} nodes=${dto.nodes.length} edges=${dto.edges.length}`);
     const startTime = Date.now();
-    const { content, tokensUsed, inputTokens, outputTokens, provider: llmProvider, model: llmModel } =
-      await this.llm.invoke(DECLUTTER_SYSTEM_PROMPT, userMessage, llmConfig);
-    const durationMs = Date.now() - startTime;
-    this.logger.log(`[Declutter] completed durationMs=${durationMs} tokens=${tokensUsed} (in=${inputTokens} out=${outputTokens}) model=${llmProvider}/${llmModel}`);
-
-    const raw = content
-      .replace(/^```json\s*/i, '')
-      .replace(/^```\s*/i, '')
-      .replace(/```\s*$/i, '')
-      .trim();
-
-    const result = JSON.parse(raw) as { positions: Record<string, { x: number; y: number }> };
-    if (!result.positions || typeof result.positions !== 'object') {
-      throw new InternalServerErrorException('AI returned invalid declutter response');
-    }
-
     try {
-      await this.prisma.aiInteraction.create({
-        data: {
-          userId,
-          diagramId: null,
-          prompt: `[declutter] nodes=${dto.nodes.length}`,
-          response: { nodeCount: Object.keys(result.positions).length },
-          tokensUsed,
-          model: `${llmProvider}/${llmModel}`,
-          durationMs,
-        },
-      });
-      this.logger.log(`[Declutter] aiInteraction persisted userId=${userId} tokens=${tokensUsed}`);
-    } catch (err) {
-      this.logger.error(`[Declutter] failed to persist aiInteraction: ${err instanceof Error ? err.message : String(err)}`);
-    }
+      const { content, tokensUsed, inputTokens, outputTokens, provider: llmProvider, model: llmModel } =
+        await this.llm.invoke(DECLUTTER_SYSTEM_PROMPT, userMessage, { ...llmConfig, promptName: 'DECLUTTER_SYSTEM_PROMPT' });
+      const durationMs = Date.now() - startTime;
+      this.logger.log(`[Declutter] job=${aiJob.id} completed durationMs=${durationMs} tokens=${tokensUsed} (in=${inputTokens} out=${outputTokens}) model=${llmProvider}/${llmModel}`);
 
-    return result;
+      const raw = content
+        .replace(/^```json\s*/i, '')
+        .replace(/^```\s*/i, '')
+        .replace(/```\s*$/i, '')
+        .trim();
+
+      const result = JSON.parse(raw) as { positions: Record<string, { x: number; y: number }> };
+      if (!result.positions || typeof result.positions !== 'object') {
+        throw new InternalServerErrorException('AI returned invalid declutter response');
+      }
+
+      await this.prisma.aiJob.update({
+        where: { id: aiJob.id },
+        data: { status: AiJobStatus.COMPLETED, progress: 100, completedAt: new Date() },
+      });
+
+      try {
+        await this.prisma.aiInteraction.create({
+          data: {
+            userId,
+            diagramId: dto.diagramId ?? null,
+            prompt: `[declutter] nodes=${dto.nodes.length}`,
+            response: { nodeCount: Object.keys(result.positions).length, jobId: aiJob.id },
+            tokensUsed,
+            inputTokens,
+            outputTokens,
+            model: `${llmProvider}/${llmModel}`,
+            durationMs,
+          },
+        });
+      } catch (err) {
+        this.logger.error(`[Declutter] failed to persist aiInteraction: ${err instanceof Error ? err.message : String(err)}`);
+      }
+
+      return { ...result, jobId: aiJob.id };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.error(`[Declutter] job=${aiJob.id} failed: ${message}`);
+      await this.prisma.aiJob.update({
+        where: { id: aiJob.id },
+        data: { status: AiJobStatus.FAILED, errorMessage: message, completedAt: new Date() },
+      });
+      throw err;
+    }
   }
 
   // ── Security Posture Score ───────────────────────────────────────────────
@@ -545,8 +578,8 @@ export class AiService {
     const llmConfig = await this.buildLlmConfig(userId);
     const startTime = Date.now();
     const { content, tokensUsed, inputTokens, outputTokens, provider: llmProvider, model: llmModel } = dto.useExtendedThinking
-      ? await this.llm.invokeWithThinking(POSTURE_SCORE_SYSTEM_PROMPT, userMessage, llmConfig)
-      : await this.llm.invoke(POSTURE_SCORE_SYSTEM_PROMPT, userMessage, llmConfig);
+      ? await this.llm.invokeWithThinking(POSTURE_SCORE_SYSTEM_PROMPT, userMessage, { ...llmConfig, promptName: 'POSTURE_SCORE_SYSTEM_PROMPT' })
+      : await this.llm.invoke(POSTURE_SCORE_SYSTEM_PROMPT, userMessage, { ...llmConfig, promptName: 'POSTURE_SCORE_SYSTEM_PROMPT' });
 
     const durationMs = Date.now() - startTime;
     this.logger.log(`[PostureScore] completed durationMs=${durationMs} tokens=${tokensUsed} (in=${inputTokens} out=${outputTokens}) model=${llmProvider}/${llmModel}`);
@@ -576,6 +609,10 @@ export class AiService {
     });
 
     this.logger.log(`[PostureScore] saved id=${saved.id} score=${saved.score}`);
+
+    this.onboarding.markFirstPostureScore(userId).catch((err) => {
+      this.logger.warn(`Failed to mark firstPostureScoreAt for user ${userId}: ${err.message}`);
+    });
 
     await this.prisma.aiInteraction.create({
       data: {
@@ -621,7 +658,7 @@ export class AiService {
     try {
       if (dto.useExtendedThinking) {
         this.logger.log('[AttackMind] using extended thinking — blocking invoke');
-        const result = await this.llm.invokeWithThinking(ATTACK_MIND_SYSTEM_PROMPT, userMessage, llmConfig);
+        const result = await this.llm.invokeWithThinking(ATTACK_MIND_SYSTEM_PROMPT, userMessage, { ...llmConfig, promptName: 'ATTACK_MIND_SYSTEM_PROMPT' });
         fullResponse = result.content;
         tokensUsed = result.tokensUsed;
         inputTokens = result.inputTokens;
@@ -629,7 +666,7 @@ export class AiService {
         res.write(fullResponse);
         this.logger.log(`[AttackMind] extended thinking completed durationMs=${Date.now() - startTime} tokens=${tokensUsed} (in=${inputTokens} out=${outputTokens}) model=${result.provider}/${result.model}`);
       } else {
-        for await (const chunk of this.llm.stream(ATTACK_MIND_SYSTEM_PROMPT, userMessage, llmConfig)) {
+        for await (const chunk of this.llm.stream(ATTACK_MIND_SYSTEM_PROMPT, userMessage, { ...llmConfig, promptName: 'ATTACK_MIND_SYSTEM_PROMPT' })) {
           res.write(chunk);
           fullResponse += chunk;
         }
@@ -780,7 +817,7 @@ export class AiService {
       // Use stream() not streamConversation() — history is already embedded in userMessage
       // by buildThreatAgentPrompt, so passing dto.messages again would duplicate it.
       let fullResponse = '';
-      for await (const chunk of this.llm.stream(THREAT_AGENT_SYSTEM_PROMPT, userMessage, llmConfig)) {
+      for await (const chunk of this.llm.stream(THREAT_AGENT_SYSTEM_PROMPT, userMessage, { ...llmConfig, promptName: 'THREAT_AGENT_SYSTEM_PROMPT' })) {
         fullResponse += chunk;
       }
 
@@ -1102,7 +1139,7 @@ Return 5-7 priorityActions max, ranked by risk impact. severity must be one of: 
     const llmConfig = await this.buildLlmConfig(userId);
     const startTime = Date.now();
     const { content, tokensUsed, inputTokens, outputTokens, provider: llmProvider, model: llmModel } =
-      await this.llm.invoke(systemPrompt, userMessage, llmConfig);
+      await this.llm.invoke(systemPrompt, userMessage, { ...llmConfig, promptName: 'INTEL_SYNTHESIS_SYSTEM_PROMPT' });
     const durationMs = Date.now() - startTime;
 
     let result: { executiveSummary: string; priorityActions: Array<{ rank: number; severity: string; source: string; title: string; detail: string }> };
@@ -1143,7 +1180,7 @@ Return 5-7 priorityActions max, ranked by risk impact. severity must be one of: 
     const startTime = Date.now();
 
     try {
-      const { content, tokensUsed, inputTokens, outputTokens, provider: llmProvider, model: llmModel } = await this.llm.invoke(SYSTEM_PROMPT, userMessage, llmConfig);
+      const { content, tokensUsed, inputTokens, outputTokens, provider: llmProvider, model: llmModel } = await this.llm.invoke(SYSTEM_PROMPT, userMessage, { ...llmConfig, promptName: 'SYSTEM_PROMPT' });
 
       // Strip markdown fences if the model wrapped the JSON (Ollama sometimes does)
       const raw = content

@@ -5,6 +5,7 @@ import { AiJobStatus, ThreatStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { LlmService } from '../../ai/llm.service';
 import { UserSettingsService } from '../../user-settings/user-settings.service';
+import { OnboardingService } from '../../onboarding/onboarding.service';
 import { POSTURE_SCORE_QUEUE } from '../queues';
 import {
   POSTURE_SCORE_SYSTEM_PROMPT,
@@ -37,6 +38,7 @@ export class PostureScoreProcessor extends WorkerHost {
     private readonly prisma: PrismaService,
     private readonly llm: LlmService,
     private readonly userSettings: UserSettingsService,
+    private readonly onboarding: OnboardingService,
   ) {
     super();
   }
@@ -118,8 +120,8 @@ export class PostureScoreProcessor extends WorkerHost {
 
       const startTime = Date.now();
       const { content, tokensUsed, inputTokens, outputTokens, provider: llmProvider, model: llmModel } = dto.useExtendedThinking
-        ? await this.llm.invokeWithThinking(POSTURE_SCORE_SYSTEM_PROMPT, userMessage, llmConfig)
-        : await this.llm.invoke(POSTURE_SCORE_SYSTEM_PROMPT, userMessage, llmConfig);
+        ? await this.llm.invokeWithThinking(POSTURE_SCORE_SYSTEM_PROMPT, userMessage, { ...llmConfig, promptName: 'POSTURE_SCORE_SYSTEM_PROMPT' })
+        : await this.llm.invoke(POSTURE_SCORE_SYSTEM_PROMPT, userMessage, { ...llmConfig, promptName: 'POSTURE_SCORE_SYSTEM_PROMPT' });
       const durationMs = Date.now() - startTime;
       this.logger.log(`[PostureScore] job=${aiJobId} llm completed durationMs=${durationMs} tokens=${tokensUsed} (in=${inputTokens} out=${outputTokens}) model=${llmProvider}/${llmModel}`);
 
@@ -173,6 +175,10 @@ export class PostureScoreProcessor extends WorkerHost {
           computedBy: userId,
           useExtended: dto.useExtendedThinking ?? false,
         },
+      });
+
+      this.onboarding.markFirstPostureScore(userId).catch((err) => {
+        this.logger.warn(`Failed to mark firstPostureScoreAt for user ${userId}: ${err.message}`);
       });
 
       await this.prisma.aiJob.update({

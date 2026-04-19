@@ -5,6 +5,7 @@ import { AiJobStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { LlmService } from '../../ai/llm.service';
 import { UserSettingsService } from '../../user-settings/user-settings.service';
+import { OnboardingService } from '../../onboarding/onboarding.service';
 import { ATTACK_SIM_QUEUE } from '../queues';
 import { ATTACK_MIND_SYSTEM_PROMPT, buildAttackMindPrompt } from '../../ai/prompts/attack-mind-prompt';
 import { SubmitAttackMindDto } from '../../ai/dto/attack-mind.dto';
@@ -30,6 +31,7 @@ export class AttackSimulationProcessor extends WorkerHost {
     private readonly prisma: PrismaService,
     private readonly llm: LlmService,
     private readonly userSettings: UserSettingsService,
+    private readonly onboarding: OnboardingService,
   ) {
     super();
   }
@@ -67,8 +69,8 @@ export class AttackSimulationProcessor extends WorkerHost {
       const startTime = Date.now();
       const { content, tokensUsed, inputTokens, outputTokens, provider: llmProvider, model: llmModel } =
         dto.useExtendedThinking
-          ? await this.llm.invokeWithThinking(ATTACK_MIND_SYSTEM_PROMPT, userMessage, llmConfig)
-          : await this.llm.invoke(ATTACK_MIND_SYSTEM_PROMPT, userMessage, llmConfig);
+          ? await this.llm.invokeWithThinking(ATTACK_MIND_SYSTEM_PROMPT, userMessage, { ...llmConfig, promptName: 'ATTACK_MIND_SYSTEM_PROMPT' })
+          : await this.llm.invoke(ATTACK_MIND_SYSTEM_PROMPT, userMessage, { ...llmConfig, promptName: 'ATTACK_MIND_SYSTEM_PROMPT' });
       const durationMs = Date.now() - startTime;
       this.logger.log(`[AttackSim] job=${aiJobId} llm completed durationMs=${durationMs} tokens=${tokensUsed} (in=${inputTokens} out=${outputTokens}) model=${llmProvider}/${llmModel}`);
 
@@ -96,6 +98,10 @@ export class AttackSimulationProcessor extends WorkerHost {
           useExtended: dto.useExtendedThinking ?? false,
           savedBy: userId,
         },
+      });
+
+      this.onboarding.markFirstAttackSim(userId).catch((err) => {
+        this.logger.warn(`Failed to mark firstAttackSimAt for user ${userId}: ${err.message}`);
       });
 
       await this.prisma.aiJob.update({

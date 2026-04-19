@@ -6,6 +6,7 @@ import { PrismaModule } from '../prisma/prisma.module';
 import { ThreatModule } from '../threat/threat.module';
 import { UserSettingsModule } from '../user-settings/user-settings.module';
 import { AiModule } from '../ai/ai.module';
+import { OnboardingModule } from '../onboarding/onboarding.module';
 import { ThreatAnalysisProcessor } from './processors/threat-analysis.processor';
 import { PostureScoreProcessor } from './processors/posture-score.processor';
 import { AttackSimulationProcessor } from './processors/attack-simulation.processor';
@@ -20,6 +21,7 @@ import {
     PrismaModule,
     UserSettingsModule,
     ThreatModule,
+    OnboardingModule,
     // forwardRef breaks the AiModule ↔ JobsModule circular dependency.
     // AiModule imports BullModule.registerQueue directly (no JobsModule dep).
     // JobsModule imports AiModule only to access LlmService for processors.

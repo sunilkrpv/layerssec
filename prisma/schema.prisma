@@ -20,10 +20,29 @@ model User {
   createdThreats  Threat[]        @relation("ThreatCreatedBy")
   aiSettings      UserAiSettings?
   aiJobs          AiJob[]
+  onboarding      UserOnboarding?
   createdAt       DateTime        @default(now()) @map("created_at")
   updatedAt       DateTime        @updatedAt @map("updated_at")
 
   @@map("users")
+}
+
+model UserOnboarding {
+  id                    String    @id @default(uuid()) @db.Uuid
+  userId                String    @unique @map("user_id") @db.Uuid
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  welcomeModalSeenAt    DateTime? @map("welcome_modal_seen_at")
+  aiTourCompletedAt     DateTime? @map("ai_tour_completed_at")
+  firstProjectCreatedAt DateTime? @map("first_project_created_at")
+  firstThreatAnalysisAt DateTime? @map("first_threat_analysis_at")
+  firstPostureScoreAt   DateTime? @map("first_posture_score_at")
+  firstAttackSimAt      DateTime? @map("first_attack_sim_at")
+  checklistDismissedAt  DateTime? @map("checklist_dismissed_at")
+  lastNudgedAt          DateTime? @map("last_nudged_at")
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
+
+  @@map("user_onboarding")
 }
 
 model Project {
@@ -224,6 +243,7 @@ model Threat {
   severity        ThreatSeverity
   status          ThreatStatus   @default(IDENTIFIED)
   mitigationNotes String?        @db.Text @map("mitigation_notes")
+  mitigationAdvice String?       @db.Text @map("mitigation_advice")
   codeEvidence    Json?          @map("code_evidence")
   identifiedBy    IdentifiedBy   @default(AI) @map("identified_by")
   createdByUserId String?        @db.Uuid @map("created_by_user_id")

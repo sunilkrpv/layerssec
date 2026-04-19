@@ -165,6 +165,34 @@ POST   /api/ai/threat-analysis             — PRD 3: streaming STRIDE analysis;
 
 ---
 
+## Logging Conventions
+
+All logging uses NestJS `Logger`. Follow these rules on every new endpoint or AI integration — do NOT skip them for "small" PRs.
+
+### HTTP Request/Response
+- Every request/response is logged by `HttpLoggingMiddleware` (`src/common/middleware/http-logging.middleware.ts`) — **do not add per-controller request logging**.
+- Log levels: `info` for status < 500; `error` for status ≥ 500. 4xx is `info` (normal client error, not server fault).
+- Format: `→  METHOD /path [user:id]` / `←  METHOD /path [user:id] STATUS Xms`
+
+### AI / LLM Calls
+- **Never log system prompt content** — log the constant name instead (e.g. `'THREAT_ANALYSIS_SYSTEM_PROMPT'`).
+- **Never log user prompt content** — log character count only (e.g. `chars=1842`).
+- Always pass `promptName` in `LlmCallConfig` so `LlmService` can produce structured log lines:
+  ```typescript
+  await this.llm.invoke(SOME_SYSTEM_PROMPT, userMessage, { ...llmConfig, promptName: 'SOME_SYSTEM_PROMPT' });
+  ```
+- `LlmService` emits `info` lines automatically:
+  - `[LLM] START name | provider/model | chars=N` (before call)
+  - `[LLM] DONE  name | provider/model | in=X out=Y total=Z tokens | Xms` (after invoke)
+  - `[LLM] STREAM START/END name | provider/model | chars=N / Xms` (for streaming; no token counts available from LangChain streaming API)
+
+### General Rules
+- Use `this.logger.error(msg, err.stack)` for caught exceptions — always include the stack.
+- Do not log sensitive data: passwords, API keys, JWT tokens, PII.
+- Background job processors (`src/jobs/processors/`) follow the same AI logging rules.
+
+---
+
 ## Development Setup
 ```bash
 # First-time local setup

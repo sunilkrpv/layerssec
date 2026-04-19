@@ -1,10 +1,12 @@
 import {
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { IdentifiedBy, ThreatStatus, ThreatSeverity } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { OnboardingService } from '../onboarding/onboarding.service';
 import { SaveThreatModelDto } from './dto/save-threat-model.dto';
 import { UpdateThreatDto } from './dto/update-threat.dto';
 import { CreateThreatDto } from './dto/create-threat.dto';
@@ -12,12 +14,22 @@ import { SaveAttackSimulationDto } from '../ai/dto/attack-mind.dto';
 
 @Injectable()
 export class ThreatService {
-  constructor(private readonly prisma: PrismaService) {}
+  private readonly logger = new Logger(ThreatService.name);
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly onboarding: OnboardingService,
+  ) {}
 
   // ── Save a new threat model snapshot (explicit user action) ──────────────
 
   async saveThreatModel(projectId: string, userId: string, dto: SaveThreatModelDto) {
     await this.verifyProjectOwnership(projectId, userId);
+
+    // Non-blocking — onboarding milestone must never block the core save path
+    this.onboarding.markFirstThreatAnalysis(userId).catch((err) => {
+      this.logger.warn(`Failed to mark firstThreatAnalysisAt for user ${userId}: ${err.message}`);
+    });
 
     return this.prisma.$transaction(async (tx) => {
       const threatModel = await tx.threatModel.create({
@@ -211,6 +223,7 @@ export class ThreatService {
         ...(dto.strideCategory !== undefined && { strideCategory: dto.strideCategory }),
         ...(dto.status !== undefined && { status: dto.status }),
         ...(dto.mitigationNotes !== undefined && { mitigationNotes: dto.mitigationNotes }),
+        ...(dto.mitigationAdvice !== undefined && { mitigationAdvice: dto.mitigationAdvice }),
         ...(dto.severity !== undefined && { severity: dto.severity }),
       },
     });
@@ -271,6 +284,10 @@ export class ThreatService {
 
   async saveAttackSimulation(projectId: string, userId: string, dto: SaveAttackSimulationDto) {
     await this.verifyProjectOwnership(projectId, userId);
+
+    this.onboarding.markFirstAttackSim(userId).catch((err) => {
+      this.logger.warn(`Failed to mark firstAttackSimAt for user ${userId}: ${err.message}`);
+    });
 
     return this.prisma.attackSimulation.create({
       data: {

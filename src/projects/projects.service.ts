@@ -1,6 +1,7 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { RagIndexingService } from '../rag/rag-indexing.service';
+import { OnboardingService } from '../onboarding/onboarding.service';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
 
@@ -15,9 +16,12 @@ const STRIDE_MAP: Record<string, string> = {
 
 @Injectable()
 export class ProjectsService {
+  private readonly logger = new Logger(ProjectsService.name);
+
   constructor(
     private prisma: PrismaService,
     private ragIndexing: RagIndexingService,
+    private onboarding: OnboardingService,
   ) {}
 
   async findAllByUser(userId: string) {
@@ -67,9 +71,14 @@ export class ProjectsService {
   }
 
   async create(userId: string, dto: CreateProjectDto) {
-    return this.prisma.project.create({
+    const project = await this.prisma.project.create({
       data: { ...dto, ownerId: userId },
     });
+    // Non-blocking — onboarding milestone must never prevent project creation
+    this.onboarding.markFirstProjectCreated(userId).catch((err) => {
+      this.logger.warn(`Failed to mark firstProjectCreatedAt for user ${userId}: ${err.message}`);
+    });
+    return project;
   }
 
   async update(id: string, userId: string, dto: UpdateProjectDto) {

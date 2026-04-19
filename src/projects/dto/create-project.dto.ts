@@ -1,11 +1,13 @@
-import { IsString, IsOptional, IsBoolean, IsArray } from 'class-validator';
+import { IsString, IsOptional, IsBoolean, IsArray, MaxLength } from 'class-validator';
 
 export class CreateProjectDto {
   @IsString()
+  @MaxLength(100)
   name: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(1024)
   description?: string;
 
   @IsOptional()

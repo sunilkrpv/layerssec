@@ -22,4 +22,16 @@ export class DeclutterDto {
   @IsOptional()
   @IsString()
   layerName?: string;
+
+  @IsOptional()
+  @IsString()
+  projectId?: string;
+
+  @IsOptional()
+  @IsString()
+  diagramId?: string;
+
+  @IsOptional()
+  @IsString()
+  layerId?: string;
 }

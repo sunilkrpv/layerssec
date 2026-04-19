@@ -98,7 +98,7 @@ export class ThreatAnalysisProcessor extends WorkerHost {
       const systemPrompt = selectThreatSystemPrompt(job.data.appType ?? 'standard');
       const startTime = Date.now();
       const { content, tokensUsed, inputTokens, outputTokens, provider: llmProvider, model: llmModel } =
-        await this.llm.invoke(systemPrompt, userMessage, llmConfig);
+        await this.llm.invoke(systemPrompt, userMessage, { ...llmConfig, promptName: 'THREAT_ANALYSIS_SYSTEM_PROMPT' });
       const durationMs = Date.now() - startTime;
       this.logger.log(`[ThreatAnalysis] job=${aiJobId} llm completed durationMs=${durationMs} tokens=${tokensUsed} (in=${inputTokens} out=${outputTokens}) model=${llmProvider}/${llmModel}`);
 
