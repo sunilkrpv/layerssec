@@ -13,43 +13,13 @@ export interface Layer {
 
 export type LayerMap = Record<string, Layer>;
 
+/** Shape of a persisted project snapshot (stored as cloud `canvasData`). */
+export interface ProjectFile {
+  layers: LayerMap;
+  navStack: string[];
+}
+
 export const ROOT_LAYER_ID = 'root';
-const STORAGE_KEY = 'layers';
-
-export function loadAllLayers(): LayerMap {
-  if (typeof window === 'undefined') return makeInitialLayers();
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw) as LayerMap;
-      if (parsed && typeof parsed === 'object' && Object.keys(parsed).length > 0) {
-        return parsed;
-      }
-    }
-  } catch {
-    // fall through
-  }
-  return makeInitialLayers();
-}
-
-export function saveAllLayers(layers: LayerMap): void {
-  if (typeof window === 'undefined') return;
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(layers));
-  } catch {
-    // ignore quota errors
-  }
-}
-
-/** Remove the layers key from localStorage entirely (called on sign-out / session expiry). */
-export function clearLayersStorage(): void {
-  if (typeof window === 'undefined') return;
-  try {
-    localStorage.removeItem(STORAGE_KEY);
-  } catch {
-    // ignore
-  }
-}
 
 export function makeInitialLayers(): LayerMap {
   const root: Layer = {

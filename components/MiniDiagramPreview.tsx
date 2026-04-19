@@ -33,7 +33,8 @@ function MiniNode({ data }: { data: MiniNodeData }) {
   );
 }
 
-const miniNodeTypes = { miniNode: MiniNode };
+const miniNodeTypes = Object.freeze({ miniNode: MiniNode });
+const miniEdgeTypes = Object.freeze({});
 
 // ─── Fit view on mount ───────────────────────────────────────────────────────
 
@@ -80,6 +81,7 @@ function Inner({ nodes, edges }: { nodes: unknown[]; edges: unknown[] }) {
       nodes={rfNodes}
       edges={rfEdges}
       nodeTypes={miniNodeTypes}
+      edgeTypes={miniEdgeTypes}
       nodesDraggable={false}
       nodesConnectable={false}
       elementsSelectable={false}

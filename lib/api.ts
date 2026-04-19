@@ -194,10 +194,13 @@ export function apiGetProject(id: string): Promise<ProjectWithDiagrams> {
   return apiFetch<ProjectWithDiagrams>(`/api/projects/${id}`);
 }
 
-export function apiUpdateProject(id: string, name: string): Promise<Project> {
+export function apiUpdateProject(
+  id: string,
+  updates: { name?: string; description?: string },
+): Promise<Project> {
   return apiFetch<Project>(`/api/projects/${id}`, {
     method: 'PATCH',
-    body: JSON.stringify({ name }),
+    body: JSON.stringify(updates),
   });
 }
 
@@ -465,6 +468,7 @@ export interface SavedThreat extends ThreatItem {
   threatModelId: string;
   status: ThreatStatus;
   mitigationNotes: string | null;
+  mitigationAdvice: string | null;
   identifiedBy: IdentifiedBy;
   createdByUserId: string | null;
   createdAt: string;
@@ -507,8 +511,11 @@ export function apiDeclutter(payload: {
   nodes: unknown[];
   edges: unknown[];
   layerName?: string;
-}): Promise<{ positions: Record<string, { x: number; y: number }> }> {
-  return apiFetch<{ positions: Record<string, { x: number; y: number }> }>('/api/ai/declutter', {
+  projectId?: string;
+  diagramId?: string;
+  layerId?: string;
+}): Promise<{ positions: Record<string, { x: number; y: number }>; jobId: string }> {
+  return apiFetch<{ positions: Record<string, { x: number; y: number }>; jobId: string }>('/api/ai/declutter', {
     method: 'POST',
     body: JSON.stringify(payload),
   });
@@ -589,6 +596,7 @@ export function apiUpdateThreat(
     severity: ThreatSeverity;
     status: ThreatStatus;
     mitigationNotes: string;
+    mitigationAdvice: string;
   }>,
 ): Promise<SavedThreat> {
   return apiFetch<SavedThreat>(`/api/threat-models/${threatModelId}/threats/${threatId}`, {
@@ -969,6 +977,39 @@ export function apiUpdateAiSettings(payload: UpdateAiSettingsPayload): Promise<U
 
 export function apiGetAiMetrics(): Promise<AiTokenMetrics> {
   return apiFetch<AiTokenMetrics>('/api/user/ai-metrics');
+}
+
+// ─── Onboarding ───────────────────────────────────────────────────────────────
+
+export interface OnboardingState {
+  /** Derived live from user_ai_settings existence — never cached on the onboarding row. */
+  aiConfigured: boolean;
+  welcomeModalSeenAt: string | null;
+  aiTourCompletedAt: string | null;
+  firstProjectCreatedAt: string | null;
+  firstThreatAnalysisAt: string | null;
+  firstPostureScoreAt: string | null;
+  firstAttackSimAt: string | null;
+  checklistDismissedAt: string | null;
+  lastNudgedAt: string | null;
+}
+
+export interface UpdateOnboardingPayload {
+  welcomeModalSeenAt?: string;
+  aiTourCompletedAt?: string;
+  checklistDismissedAt?: string;
+  lastNudgedAt?: string;
+}
+
+export function apiGetOnboarding(): Promise<OnboardingState> {
+  return apiFetch<OnboardingState>('/api/users/me/onboarding');
+}
+
+export function apiUpdateOnboarding(payload: UpdateOnboardingPayload): Promise<OnboardingState> {
+  return apiFetch<OnboardingState>('/api/users/me/onboarding', {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  });
 }
 
 // ── Async AI job endpoints ────────────────────────────────────────────────────

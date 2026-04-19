@@ -1,12 +1,11 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { use } from 'react';
+import { useRouter } from 'next/navigation';
+import { use, useEffect } from 'react';
 
-// DiagramPage depends heavily on localStorage and browser-only APIs (React Flow,
-// File System Access API, window.history, etc.).  Disabling SSR prevents the
-// hydration mismatch that occurs when useState initialisers read localStorage on
-// the client but return different defaults during server pre-rendering.
+// DiagramPage depends on browser-only APIs (React Flow, window, etc.). SSR is
+// disabled to avoid hydration mismatch.
 const DiagramPage = dynamic(() => import('@/components/DiagramPage'), { ssr: false });
 
 interface PageProps {
@@ -17,5 +16,14 @@ interface PageProps {
 export default function ProjectPage(props: PageProps) {
   const searchParams = use(props.searchParams);
   const params = use(props.params);
+  const router = useRouter();
+
+  useEffect(() => {
+    if (params.projectId === 'local') {
+      router.replace('/login');
+    }
+  }, [params.projectId, router]);
+
+  if (params.projectId === 'local') return null;
   return <DiagramPage projectId={params.projectId} viewDiagramId={searchParams.view} />;
 }

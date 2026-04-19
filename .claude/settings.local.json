@@ -62,14 +62,18 @@
       "Bash(docker exec:*)",
       "Bash(sed -i '' 's/bg-indigo-400/bg-blue-400/g' /Users/sunil/Development/github/layers/components/nodes/StorageNode.tsx)",
       "Bash(sed -i '' 's/bg-indigo-400/bg-blue-400/g' /Users/sunil/Development/github/layers/components/AIHistoryPage.tsx)",
-      "Bash(sed -i '' 's/hover:bg-indigo-400/hover:bg-blue-400/g' /Users/sunil/Development/github/layers/components/AIHistoryPage.tsx)"
+      "Bash(sed -i '' 's/hover:bg-indigo-400/hover:bg-blue-400/g' /Users/sunil/Development/github/layers/components/AIHistoryPage.tsx)",
+      "Bash(curl -s -X DELETE http://localhost:8000/api/v2/tenants/default_tenant/databases/default_database/collections/layers_rag)",
+      "Bash(curl -s -X DELETE http://localhost:8000/api/v1/collections/layers_rag)",
+      "Read(//Users/sunil/.claude/plugins/cache/claude-plugins-official/superpowers/5.0.7/skills/subagent-driven-development/**)"
     ],
     "additionalDirectories": [
       "/Users/sunil/Development/github/layers/.next/types/app/projects/[projectId]/threats/report",
       "/Users/sunil/Development/github/layers/docs/superpowers",
       "/Users/sunil/Development/github/layers/app/projects/[projectId]",
       "/Users/sunil/Development/github/layers/docs/superpowers/plans",
-      "/Users/sunil/Development/github/layers/components"
+      "/Users/sunil/Development/github/layers/components",
+      "/Users/sunil/Development/github/layers-rest/node_modules/@huggingface/transformers/.cache/Xenova/all-MiniLM-L6-v2/onnx"
     ]
   }
 }

@@ -6,8 +6,10 @@ import {
   ShieldCheck, ArrowLeft, Loader2, AlertCircle,
   Search, Filter, Bot, User, Trash2, ShieldOff,
   ExternalLink, Plus, Sun, Moon, Monitor, LogOut, X, FileText,
-  Sparkles, Clock,
+  Sparkles, Clock, Copy, Check,
 } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import LayersLogo from '@/components/LayersLogo';
 import {
   apiListProjectThreats, apiUpdateThreat, apiDeleteThreat,
@@ -41,6 +43,79 @@ const STRIDE_LABEL: Record<StrideCategory, string> = {
 };
 
 const STRIDE_OPTIONS = Object.keys(STRIDE_LABEL) as StrideCategory[];
+
+// Markdown renderers for the AI Mitigation Advice card — code blocks get a
+// monospace block with horizontal scroll; inline code gets a subtle chip.
+const mitigationMdComponents = {
+  p: ({ children }: { children?: React.ReactNode }) => (
+    <p className="mb-2 text-sm leading-relaxed last:mb-0">{children}</p>
+  ),
+  h1: ({ children }: { children?: React.ReactNode }) => (
+    <h1 className="mb-2 mt-3 text-base font-bold text-slate-900 dark:text-slate-100">{children}</h1>
+  ),
+  h2: ({ children }: { children?: React.ReactNode }) => (
+    <h2 className="mb-1.5 mt-3 text-sm font-bold text-slate-900 dark:text-slate-100">{children}</h2>
+  ),
+  h3: ({ children }: { children?: React.ReactNode }) => (
+    <h3 className="mb-1 mt-2 text-sm font-semibold text-slate-700 dark:text-slate-200">{children}</h3>
+  ),
+  strong: ({ children }: { children?: React.ReactNode }) => (
+    <strong className="font-semibold text-slate-900 dark:text-slate-100">{children}</strong>
+  ),
+  em: ({ children }: { children?: React.ReactNode }) => (
+    <em className="italic text-slate-600 dark:text-slate-300">{children}</em>
+  ),
+  ul: ({ children }: { children?: React.ReactNode }) => (
+    <ul className="mb-2 ml-4 list-disc space-y-0.5 text-sm">{children}</ul>
+  ),
+  ol: ({ children }: { children?: React.ReactNode }) => (
+    <ol className="mb-2 ml-4 list-decimal space-y-0.5 text-sm">{children}</ol>
+  ),
+  li: ({ children }: { children?: React.ReactNode }) => (
+    <li className="leading-relaxed">{children}</li>
+  ),
+  code: ({ children, className }: { children?: React.ReactNode; className?: string }) => {
+    const isBlock = /language-/.test(className ?? '');
+    return isBlock ? (
+      <code className={`font-mono text-xs text-blue-700 dark:text-blue-300 ${className ?? ''}`}>{children}</code>
+    ) : (
+      <code className="rounded bg-blue-50 px-1.5 py-0.5 font-mono text-xs text-blue-700 dark:bg-slate-700 dark:text-blue-300">
+        {children}
+      </code>
+    );
+  },
+  pre: ({ children }: { children?: React.ReactNode }) => (
+    <pre className="mb-3 overflow-x-auto rounded-lg bg-slate-100 p-3 text-xs leading-relaxed ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-700">
+      {children}
+    </pre>
+  ),
+  a: ({ children, href }: { children?: React.ReactNode; href?: string }) => (
+    <a
+      href={href}
+      className="text-blue-600 underline decoration-blue-400/40 underline-offset-2 hover:text-blue-500 dark:text-blue-400 dark:decoration-blue-500/40 dark:hover:text-blue-300"
+      target="_blank"
+      rel="noreferrer"
+    >
+      {children}
+    </a>
+  ),
+  blockquote: ({ children }: { children?: React.ReactNode }) => (
+    <blockquote className="mb-2 border-l-2 border-indigo-300 dark:border-indigo-700 pl-3 italic text-slate-600 dark:text-slate-400">
+      {children}
+    </blockquote>
+  ),
+  table: ({ children }: { children?: React.ReactNode }) => (
+    <div className="mb-3 overflow-x-auto">
+      <table className="w-full border-collapse text-xs">{children}</table>
+    </div>
+  ),
+  th: ({ children }: { children?: React.ReactNode }) => (
+    <th className="border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 px-2 py-1 text-left font-semibold">{children}</th>
+  ),
+  td: ({ children }: { children?: React.ReactNode }) => (
+    <td className="border border-slate-200 dark:border-slate-700 px-2 py-1 align-top">{children}</td>
+  ),
+};
 
 const STRIDE_FULL_LABEL: Record<StrideCategory, string> = {
   SPOOFING:               'Spoofing',
@@ -230,23 +305,25 @@ function ThreatDetailSidesheet({ threat, projectId, showAcceptanceWarning, onClo
   const [acceptanceError, setAcceptanceError] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [aiText, setAiText] = useState('');
+  const [aiText, setAiText] = useState(threat.mitigationAdvice ?? '');
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState('');
+  const [aiCopied, setAiCopied] = useState(false);
   const aiAbortRef = useRef(false);
   const notesRef = useRef<HTMLTextAreaElement>(null);
 
-  // Sync when a different row is selected
+  // Sync when a different row is selected — hydrate from persisted advice.
   useEffect(() => {
     setPendingNotes(threat.mitigationNotes ?? '');
-    setAiText('');
+    setAiText(threat.mitigationAdvice ?? '');
     setAiError('');
     setAcceptanceError(false);
     setConfirmDelete(false);
     setNotesSaved(false);
+    setAiCopied(false);
     aiAbortRef.current = true;
     setTimeout(() => { aiAbortRef.current = false; }, 50);
-  }, [threat.id]);
+  }, [threat.id, threat.mitigationAdvice, threat.mitigationNotes]);
 
   // When opened via acceptance gate, focus + scroll to notes textarea
   useEffect(() => {
@@ -319,6 +396,7 @@ function ThreatDetailSidesheet({ threat, projectId, showAcceptanceWarning, onClo
     setAiError('');
     setAiLoading(true);
     aiAbortRef.current = false;
+    let streamed = '';
     try {
       await apiChatAsk(
         {
@@ -341,13 +419,36 @@ Be concise and developer-actionable. Avoid generic advice.`,
           projectId,
         },
         (chunk) => {
-          if (!aiAbortRef.current) setAiText((prev) => prev + chunk);
+          if (aiAbortRef.current) return;
+          streamed += chunk;
+          setAiText((prev) => prev + chunk);
         },
       );
+      if (!aiAbortRef.current && streamed.trim()) {
+        try {
+          const updated = await apiUpdateThreat(threat.threatModel.id, threat.id, {
+            mitigationAdvice: streamed,
+          });
+          onUpdate({ ...threat, ...updated });
+        } catch {
+          // Persist failure is non-fatal — the advice is still shown in the UI.
+        }
+      }
     } catch (e) {
       if (!aiAbortRef.current) setAiError((e as Error).message || 'Failed to get AI advice');
     } finally {
       if (!aiAbortRef.current) setAiLoading(false);
+    }
+  };
+
+  const handleCopyAdvice = async () => {
+    if (!aiText) return;
+    try {
+      await navigator.clipboard.writeText(aiText);
+      setAiCopied(true);
+      setTimeout(() => setAiCopied(false), 2000);
+    } catch {
+      // Clipboard API blocked — silently ignore.
     }
   };
 
@@ -356,7 +457,7 @@ Be concise and developer-actionable. Avoid generic advice.`,
   const isStale = threat.status === 'IDENTIFIED' && ageInDays > 0;
 
   return (
-    <div className="fixed right-0 top-9 bottom-0 z-40 flex w-[440px] flex-col border-l border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900 transition-transform">
+    <div className="fixed right-0 top-9 bottom-0 z-40 flex w-[880px] max-w-[92vw] flex-col border-l border-slate-200 bg-white shadow-[-16px_0_40px_-8px_rgba(15,23,42,0.25)] dark:border-slate-700 dark:bg-slate-900 dark:shadow-[-16px_0_40px_-8px_rgba(0,0,0,0.55)] transition-transform">
       {/* Header */}
       <div className="flex h-14 flex-shrink-0 items-center gap-3 border-b border-slate-200 px-4 dark:border-slate-700">
         <div className="flex min-w-0 flex-1 flex-col gap-1">
@@ -512,19 +613,31 @@ Be concise and developer-actionable. Avoid generic advice.`,
                 <Sparkles size={13} className="text-blue-500" />
                 <p className="text-xs font-semibold text-blue-700 dark:text-blue-300">AI Mitigation Advice</p>
               </div>
-              {aiLoading ? (
-                <span className="flex items-center gap-1 text-[11px] text-blue-500">
-                  <Loader2 size={11} className="animate-spin" /> Generating…
-                </span>
-              ) : (
-                <button
-                  onClick={handleGetAiAdvice}
-                  className="flex items-center gap-1 rounded-md bg-blue-600 px-2.5 py-1 text-[11px] font-medium text-white hover:bg-blue-500 transition"
-                >
-                  <Sparkles size={10} />
-                  {aiText ? 'Regenerate' : 'Get advice'}
-                </button>
-              )}
+              <div className="flex items-center gap-1.5">
+                {aiText && !aiLoading && (
+                  <button
+                    onClick={handleCopyAdvice}
+                    title={aiCopied ? 'Copied' : 'Copy to clipboard'}
+                    className="flex items-center gap-1 rounded-md border border-indigo-200 dark:border-indigo-700/60 bg-white dark:bg-slate-800 px-2 py-1 text-[11px] font-medium text-slate-600 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-slate-700 transition"
+                  >
+                    {aiCopied ? <Check size={10} className="text-green-600 dark:text-green-400" /> : <Copy size={10} />}
+                    {aiCopied ? 'Copied' : 'Copy'}
+                  </button>
+                )}
+                {aiLoading ? (
+                  <span className="flex items-center gap-1 text-[11px] text-blue-500">
+                    <Loader2 size={11} className="animate-spin" /> Generating…
+                  </span>
+                ) : (
+                  <button
+                    onClick={handleGetAiAdvice}
+                    className="flex items-center gap-1 rounded-md bg-blue-600 px-2.5 py-1 text-[11px] font-medium text-white hover:bg-blue-500 transition"
+                  >
+                    <Sparkles size={10} />
+                    {aiText ? 'Regenerate' : 'Get advice'}
+                  </button>
+                )}
+              </div>
             </div>
             {!aiText && !aiLoading && !aiError && (
               <p className="text-xs text-indigo-400/80 dark:text-blue-500/70">
@@ -533,8 +646,10 @@ Be concise and developer-actionable. Avoid generic advice.`,
             )}
             {aiError && <p className="text-xs text-red-600 dark:text-red-400">{aiError}</p>}
             {aiText && (
-              <div className="mt-1 text-xs leading-relaxed text-slate-700 dark:text-slate-300 whitespace-pre-wrap">
-                {aiText}
+              <div className="mt-1 text-sm leading-relaxed text-slate-700 dark:text-slate-300">
+                <ReactMarkdown remarkPlugins={[remarkGfm]} components={mitigationMdComponents}>
+                  {aiText}
+                </ReactMarkdown>
               </div>
             )}
           </div>
@@ -976,7 +1091,7 @@ export default function ThreatsDashboardPage({ projectId }: Props) {
 
           {storedUser && (
             <button
-              onClick={() => { clearTokens(); router.push('/projects/local'); }}
+              onClick={() => { clearTokens(); router.push('/login'); }}
               className="flex items-center gap-1.5 rounded px-2.5 py-1 text-sm text-slate-700 hover:bg-slate-200 hover:text-slate-900 dark:text-slate-200 dark:hover:bg-slate-700 dark:hover:text-white"
               title="Sign out"
             >

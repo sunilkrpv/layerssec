@@ -26,8 +26,6 @@ import AttackMindPanel, { type AttackMindHighlight } from '@/components/AttackMi
 import DeclutterOverlay from '@/components/DeclutterOverlay';
 import { type AttackHighlightMap } from '@/components/AttackPathOverlay';
 import { Lock, ArrowRight } from 'lucide-react';
-import FileLoadPrompt from '@/components/FileLoadPrompt';
-import StartupModal from '@/components/StartupModal';
 import AuthModal from '@/components/AuthModal';
 import ProjectsModal from '@/components/ProjectsModal';
 import PublishModal from '@/components/PublishModal';
@@ -47,11 +45,8 @@ import {
   type AiJobStatusResponse, type ThreatChatPayload,
 } from '@/lib/api';
 import { useJobPoller } from '@/hooks/useJobPoller';
-import { getStoredUser, clearTokens, isLoggedIn, isLocalMode, clearLocalMode } from '@/lib/authStore';
+import { getStoredUser, clearTokens, isLoggedIn } from '@/lib/authStore';
 import {
-  loadAllLayers,
-  saveAllLayers,
-  clearLayersStorage,
   makeInitialLayers,
   createChildLayer,
   createStandaloneLayer,
@@ -64,15 +59,8 @@ import {
   ROOT_LAYER_ID,
   type LayerMap,
   type Layer,
-} from '@/lib/layerStore';
-import {
-  canUseFileSystemAPI,
-  pickAndReadFile,
-  writeToHandle,
-  pickSaveAndWrite,
-  downloadProjectFile,
   type ProjectFile,
-} from '@/lib/fileStore';
+} from '@/lib/layerStore';
 import { CanvasContext } from '@/lib/canvasContext';
 import { LINE_NODE_TYPES } from '@/lib/nodeConfig';
 import { advanceToNudge, loadPipelineState, type PipelinePhase } from '@/lib/pipelineState';
@@ -85,17 +73,6 @@ function captureCanvas(
   if (!instance) return null;
   const obj = instance.toObject();
   return { nodes: obj.nodes as Node[], edges: obj.edges };
-}
-
-// ─── helper: trigger a JSON file download ────────────────────────────────────
-function downloadJson(data: unknown, filename: string) {
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
 }
 
 // ─── helper: read currLayer from the current URL search params ───────────────
@@ -119,22 +96,13 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
   const clipboardRef = useRef<{ nodes: Node<NodeData>[]; edges: Edge[] }>({ nodes: [], edges: [] });
 
   // ── Layer state — init navStack from URL currLayer param ─────────────────
-  const [layers, setLayers] = useState<LayerMap>(() => loadAllLayers());
-  const [navStack, setNavStack] = useState<string[]>(() => {
-    const currLayerParam = readCurrLayerParam();
-    if (currLayerParam) {
-      const allLayers = loadAllLayers();
-      // Only use URL param if the layer exists locally; otherwise we'll show a file prompt
-      const path = getLayerPath(allLayers, currLayerParam);
-      if (path.length > 0 && allLayers[currLayerParam]) return path.map((l) => l.id);
-    }
-    return [ROOT_LAYER_ID];
-  });
+  const [layers, setLayers] = useState<LayerMap>(() => makeInitialLayers());
+  const [navStack, setNavStack] = useState<string[]>([ROOT_LAYER_ID]);
 
   // ── File management ───────────────────────────────────────────────────────
-  const [fileHandle, setFileHandle] = useState<FileSystemFileHandle | null>(null);
   const [autoSave, setAutoSave] = useState(true);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   // Guard ref — set to false on sign-out / 401 so debounced saves don't overwrite clean state
   const saveEnabledRef = useRef(true);
@@ -142,23 +110,10 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
   // Refs so auto-save interval / debounced saves can access latest state without stale closures
   const layersRef = useRef(layers);
   const navStackRef = useRef(navStack);
-  const fileHandleRef = useRef<FileSystemFileHandle | null>(null);
   const autoSaveRef = useRef(true); // mirrors autoSave state for use inside callbacks
-  const saveFileRef = useRef<() => Promise<void>>(() => Promise.resolve()); // set after handleSaveFile is declared
   useEffect(() => { layersRef.current = layers; }, [layers]);
   useEffect(() => { navStackRef.current = navStack; }, [navStack]);
-  useEffect(() => { fileHandleRef.current = fileHandle; }, [fileHandle]);
   useEffect(() => { autoSaveRef.current = autoSave; }, [autoSave]);
-
-  // ── URL file-load prompt — shown when currLayer param exists but not found locally ──
-  const [showFileLoadPrompt, setShowFileLoadPrompt] = useState<string | null>(() => {
-    if (typeof window === 'undefined') return null;
-    const param = readCurrLayerParam();
-    if (!param) return null;
-    const allLayers = loadAllLayers();
-    return allLayers[param] ? null : param;
-  });
-  const [fileLoadPending, setFileLoadPending] = useState(false);
 
   // ── Auth state ────────────────────────────────────────────────────────────
   const [user, setUser] = useState<UserProfile | null>(() => getStoredUser());
@@ -174,6 +129,9 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
   const [isReadOnly, setIsReadOnly] = useState(false);
   const isReadOnlyRef = useRef(false);
   useEffect(() => { isReadOnlyRef.current = isReadOnly; }, [isReadOnly]);
+
+  /** Stable ref so global keyboard shortcuts can call the latest handleExportPng without re-wiring. */
+  const handleExportPngRef = useRef<(() => void) | null>(null);
 
   const [showPublishModal, setShowPublishModal] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
@@ -192,25 +150,9 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showProjectsModal, setShowProjectsModal] = useState(false);
 
-  // ── On mount: prune malformed layers (no id or no name) from the store ──────
+  // ── Auth guard — redirect to /login if no session ────
   useEffect(() => {
-    setLayers((prev) => {
-      const cleaned: LayerMap = {};
-      let changed = false;
-      for (const [key, layer] of Object.entries(prev)) {
-        if (!layer.id || key !== layer.id) { changed = true; continue; } // skip miskeyed / no-id entries
-        cleaned[key] = layer;
-      }
-      if (!changed) return prev;
-      saveAllLayers(cleaned);
-      return cleaned;
-    });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // run once on mount
-
-  // ── Auth guard — redirect to /login if no session and not in local mode ────
-  useEffect(() => {
-    if (!isLoggedIn() && !isLocalMode()) {
+    if (!isLoggedIn()) {
       router.replace('/login');
     }
   }, [router]);
@@ -220,11 +162,7 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
     const handle401 = () => {
       saveEnabledRef.current = false;
       clearTokens();
-      clearLocalMode();
-      // Clear stored diagram data so the next user doesn't see stale layers
-      clearLayersStorage();
-      const fresh = makeInitialLayers();
-      setLayers(fresh);
+      setLayers(makeInitialLayers());
       setNavStack([ROOT_LAYER_ID]);
       setUser(null);
       setBackendDiagramId(null);
@@ -264,6 +202,9 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
       if (e.key === 'l') {
         e.preventDefault();
         setShowLayersPanel((v) => !v);
+      } else if (e.key === 'E' && e.shiftKey) {
+        e.preventDefault();
+        void handleExportPngRef.current?.();
       } else if (e.key === 'p') {
         e.preventDefault();
         setShowProjectsModal(true);
@@ -274,10 +215,6 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
         // Cmd+Shift+M — Threat Model panel (Cmd+T and Cmd+Shift+T are browser-reserved for tab management)
         e.preventDefault();
         setShowThreatModelPanel((v) => !v);
-      } else if (e.key === 'S' && e.shiftKey) {
-        // Cmd+Shift+S — Save (Cmd+S triggers browser save dialog)
-        e.preventDefault();
-        saveFileRef.current();
       }
     };
     document.addEventListener('keydown', handleKeyDown);
@@ -292,27 +229,12 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
   const [error, setError] = useState<string | null>(null);
   const [showLayersPanel, setShowLayersPanel] = useState(false);
   const [animateEdges, setAnimateEdges] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
   const [isDecluttering, setIsDecluttering] = useState(false);
   const [showDeclutterSuggestion, setShowDeclutterSuggestion] = useState(false);
 
   // Async AI job tracking
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
   const [activeJobType, setActiveJobType] = useState<'THREAT_ANALYSIS' | 'POSTURE_SCORE' | null>(null);
-
-  // Startup modal — shown on fresh load when there's no existing work
-  const [showStartupModal, setShowStartupModal] = useState(() => {
-    if (typeof window === 'undefined') return false;
-    if (readCurrLayerParam()) return false; // URL-sharing flow takes priority
-    // Cloud projects are auto-loaded from the backend — never show startup modal for them
-    if (projectId !== 'local' && isLoggedIn()) return false;
-    const allLayers = loadAllLayers();
-    const isBlank =
-      Object.keys(allLayers).length <= 1 &&
-      (allLayers[ROOT_LAYER_ID]?.nodes?.length ?? 0) === 0;
-    return isBlank;
-  });
-  const [startupLoading, setStartupLoading] = useState(false);
 
   // AI chat panel — hidden by default; toggle with Cmd+I
   const [showChatPanel, setShowChatPanel] = useState(false);
@@ -333,7 +255,7 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
 
   // Pipeline nudge state
   const [pipelinePhase, setPipelinePhase] = useState<PipelinePhase>(() =>
-    projectId !== 'local' ? loadPipelineState(projectId).phase : 'idle'
+    loadPipelineState(projectId).phase
   );
 
   // Attack Mind Simulator panel
@@ -461,23 +383,12 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
     );
   }, [currentLayerId, projectId]);
 
-  // ── Auto-save interval (every 60 s when ON + file handle or backend diagram is set) ─────
+  // ── Auto-save interval (every 60 s when ON + backend diagram is set) ─────
   useEffect(() => {
     if (!autoSave) return;
     const id = setInterval(async () => {
       // Always capture live canvas state (flushes current layer via rfInstanceRef)
       const projectData = buildProjectSnapshotRef.current();
-
-      // Local file save
-      const handle = fileHandleRef.current;
-      if (handle) {
-        try {
-          await writeToHandle(handle, projectData);
-          setLastSaved(new Date());
-        } catch (err) {
-          console.error('[Auto-save local] Failed:', err);
-        }
-      }
 
       // Cloud save
       const diagId = backendDiagramIdRef.current;
@@ -520,7 +431,6 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
           ...prev,
           [currentLayerId]: { ...prev[currentLayerId], nodes, edges },
         };
-        saveAllLayers(updated);
         return updated;
       });
     },
@@ -532,7 +442,7 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
   // If viewDiagramId prop is set (from ?view= search param), load that specific diagram.
   const autoLoadedRef = useRef(false);
   useEffect(() => {
-    if (projectId === 'local' || !isLoggedIn() || backendDiagramId || autoLoadedRef.current) return;
+    if (!isLoggedIn() || backendDiagramId || autoLoadedRef.current) return;
     autoLoadedRef.current = true;
 
     (async () => {
@@ -617,7 +527,6 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
       canvasData?.layers && typeof canvasData.layers === 'object' && Object.keys(canvasData.layers).length > 0
         ? canvasData.layers
         : makeInitialLayers();
-    saveAllLayers(importedLayers);
     setLayers(importedLayers);
     // Honor ?currLayer= URL param if the layer exists in the loaded diagram
     const currLayerParam = readCurrLayerParam();
@@ -635,7 +544,6 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
     setSelectedNode(null);
     setSelectedEdge(null);
     setLastSaved(null);
-    setFileHandle(null);
   }, []);
 
   // Stable ref so the auto-load effect (above) can call the latest version without stale closure
@@ -664,72 +572,6 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
     buildProjectSnapshotRef.current = buildProjectSnapshot;
   }, [buildProjectSnapshot]);
 
-  /** Open a project file and load it into memory. */
-  const handleOpenFile = useCallback(async () => {
-    if (!canUseFileSystemAPI()) {
-      setError('Your browser does not support the File System API. Use Import Project instead.');
-      return;
-    }
-    try {
-      const result = await pickAndReadFile();
-      if (!result) return; // user cancelled
-      const { handle, data } = result;
-      setFileHandle(handle);
-      setLayers(data.layers);
-      saveAllLayers(data.layers);
-      setNavStack(data.navStack?.length ? data.navStack : [ROOT_LAYER_ID]);
-      setSelectedNode(null);
-      setSelectedEdge(null);
-      setLastSaved(null);
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to open file.');
-    }
-  }, []);
-
-  /**
-   * Open a project file in response to a shared URL.
-   * After loading, navigate to targetLayerId and validate it exists.
-   */
-  const handleOpenFileForURL = useCallback(
-    async (targetLayerId: string) => {
-      if (!canUseFileSystemAPI()) return;
-      setFileLoadPending(true);
-      try {
-        const result = await pickAndReadFile();
-        if (!result) {
-          setFileLoadPending(false);
-          return; // user cancelled
-        }
-        const { handle, data } = result;
-
-        if (!data.layers[targetLayerId]) {
-          setError(
-            `Layer "${targetLayerId}" was not found in the opened file. You may have opened the wrong project.`,
-          );
-          setFileLoadPending(false);
-          return;
-        }
-
-        // Load data and navigate to the target layer
-        setFileHandle(handle);
-        setLayers(data.layers);
-        saveAllLayers(data.layers);
-
-        const path = getLayerPath(data.layers, targetLayerId);
-        setNavStack(path.length > 0 ? path.map((l) => l.id) : [ROOT_LAYER_ID]);
-        setSelectedNode(null);
-        setSelectedEdge(null);
-        setLastSaved(null);
-        setShowFileLoadPrompt(null); // dismiss prompt
-      } catch (err: unknown) {
-        setError(err instanceof Error ? err.message : 'Failed to open file.');
-      } finally {
-        setFileLoadPending(false);
-      }
-    },
-    [],
-  );
-
   /**
    * Retry cloud project setup after an auto-load failure.
    * Finds or creates a backendDiagramId then immediately saves current canvas.
@@ -740,7 +582,6 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
     try {
       let diagId = backendDiagramIdRef.current;
       if (!diagId) {
-        if (projectId === 'local') return;
         const draft = await apiGetProjectDraft(projectId);
         if (draft) {
           diagId = draft.id;
@@ -762,67 +603,34 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
     }
   }, [projectId]);
 
-  /**
-   * Save now.
-   * - If a cloud diagram is open (backendDiagramId is set), ALWAYS saves to cloud.
-   * - Otherwise falls back to local file save.
-   * This covers both the /projects/:uuid route AND the case where a cloud project
-   * was opened via the Projects modal from the /projects/local route.
-   */
-  const handleDiagramReady = useCallback(() => {
-    if (projectId !== 'local' && isLoggedIn()) {
-      advanceToNudge(projectId);
-      setPipelinePhase('nudge');
-    }
-  }, [projectId]);
-
+  /** Manually save the current diagram to the cloud now. */
   const handleSaveFile = useCallback(async () => {
     const diagId = backendDiagramIdRef.current;
-
-    // ── Cloud save ─────────────────────────────────────────────────────────
-    if (diagId && isLoggedIn()) {
-      if (isReadOnlyRef.current) {
-        setError('This is a published version and cannot be edited. Use "Check Out to Edit" to create a new draft.');
-        return;
-      }
-      setIsSaving(true);
-      try {
-        const data = buildProjectSnapshot();
-        await apiUpdateDiagram(diagId, data);
-        setLastSaved(new Date());
-        handleDiagramReady();
-        setError(null);
-      } catch (err: unknown) {
-        setError(err instanceof Error ? err.message : 'Save failed.');
-      } finally {
-        setIsSaving(false);
-      }
+    if (!diagId || !isLoggedIn()) return;
+    if (isReadOnlyRef.current) {
+      setError('This is a published version and cannot be edited. Use "Check Out to Edit" to create a new draft.');
       return;
     }
-
-    // ── Local file save (only when no cloud diagram is open) ───────────────
     setIsSaving(true);
-    const data = buildProjectSnapshot();
     try {
-      if (fileHandle) {
-        await writeToHandle(fileHandle, data);
-        setLastSaved(new Date());
-      } else if (canUseFileSystemAPI()) {
-        const handle = await pickSaveAndWrite(data);
-        if (handle) {
-          setFileHandle(handle);
-          setLastSaved(new Date());
-        }
-      } else {
-        downloadProjectFile(data);
-      }
+      const data = buildProjectSnapshotRef.current();
+      await apiUpdateDiagram(diagId, data);
+      setLastSaved(new Date());
+      setError(null);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Save failed.');
     } finally {
       setIsSaving(false);
     }
-  }, [fileHandle, buildProjectSnapshot, handleDiagramReady]);
-  useEffect(() => { saveFileRef.current = handleSaveFile; }, [handleSaveFile]);
+  }, []);
+
+  /** Advance the security pipeline to the "nudge" phase once a cloud diagram is rendered. */
+  const handleDiagramReady = useCallback(() => {
+    if (isLoggedIn()) {
+      advanceToNudge(projectId);
+      setPipelinePhase('nudge');
+    }
+  }, [projectId]);
 
   // ── Auth handlers ─────────────────────────────────────────────────────────
 
@@ -837,9 +645,6 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
   const handleSignOut = useCallback(() => {
     saveEnabledRef.current = false;
     clearTokens();
-    clearLocalMode();
-    // Remove diagram data entirely so the next user starts clean
-    clearLayersStorage();
     setLayers(makeInitialLayers());
     setNavStack([ROOT_LAYER_ID]);
     setUser(null);
@@ -856,7 +661,6 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
       setCurrentProjectName(project.name);
       setIsReadOnly(false);
       setShowProjectsModal(false);
-      setShowStartupModal(false);
     },
     [loadCanvasFromData],
   );
@@ -875,7 +679,6 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
         setCurrentProjectName(project.name);
         setIsReadOnly(false);
         setShowProjectsModal(false);
-        setShowStartupModal(false);
         setShowChatPanel(true);
       } catch (err: unknown) {
         setError(err instanceof Error ? err.message : 'Failed to create cloud project');
@@ -904,7 +707,7 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
 
   /** Create a new draft from the current published version (from within the editor). */
   const handleCheckoutFromEditor = useCallback(async () => {
-    if (!backendDiagramId || projectId === 'local') return;
+    if (!backendDiagramId) return;
     try {
       const newDraft = await apiCheckoutVersion(projectId, backendDiagramId);
       loadCanvasFromData(newDraft.canvasData as ProjectFile);
@@ -926,68 +729,6 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
       }
     }
   }, [backendDiagramId, projectId, loadCanvasFromData]);
-
-  // ── Startup modal handlers ────────────────────────────────────────────────
-
-  const handleStartupOpen = useCallback(async () => {
-    if (!canUseFileSystemAPI()) {
-      setError('File opening requires Chrome or Edge. Use File → Import Project instead.');
-      setShowStartupModal(false);
-      return;
-    }
-    setStartupLoading(true);
-    try {
-      const result = await pickAndReadFile();
-      if (!result) return; // user cancelled — keep modal open
-      const { handle, data } = result;
-      setFileHandle(handle);
-      setLayers(data.layers);
-      saveAllLayers(data.layers);
-      setNavStack(data.navStack?.length ? data.navStack : [ROOT_LAYER_ID]);
-      setSelectedNode(null);
-      setSelectedEdge(null);
-      setLastSaved(null);
-      setShowStartupModal(false);
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to open file.');
-    } finally {
-      setStartupLoading(false);
-    }
-  }, []);
-
-  const handleStartupNew = useCallback(async () => {
-    const emptyProject: ProjectFile = { layers: makeInitialLayers(), navStack: [ROOT_LAYER_ID] };
-    if (!canUseFileSystemAPI()) {
-      // No File API (Safari): start fresh without a save location
-      setLayers(emptyProject.layers);
-      saveAllLayers(emptyProject.layers);
-      setNavStack(emptyProject.navStack);
-      setShowStartupModal(false);
-      setShowChatPanel(true);
-      return;
-    }
-    setStartupLoading(true);
-    try {
-      const handle = await pickSaveAndWrite(emptyProject, 'untitled-project.json');
-      if (!handle) return; // user cancelled — keep modal open
-      setFileHandle(handle);
-      setLayers(emptyProject.layers);
-      saveAllLayers(emptyProject.layers);
-      setNavStack(emptyProject.navStack);
-      setLastSaved(new Date());
-      setShowStartupModal(false);
-      setShowChatPanel(true);
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to create project.');
-    } finally {
-      setStartupLoading(false);
-    }
-  }, []);
-
-  const handleStartupContinue = useCallback(() => {
-    setShowStartupModal(false);
-    setShowChatPanel(true);
-  }, []);
 
   // ── Diagram evaluation (streaming) ────────────────────────────────────────
 
@@ -1034,7 +775,7 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
       label: typeof e.label === 'string' ? e.label : undefined,
     }));
 
-    const diagramId = backendDiagramIdRef.current ?? 'local';
+    const diagramId = backendDiagramIdRef.current ?? '';
     const result = await apiRunThreatAnalysis({
       diagramId,
       layerId: currentLayerId,
@@ -1063,7 +804,7 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
 
   /** Submit threat analysis as a background job — returns immediately, results populate on completion. */
   const handleSubmitThreatAnalysisAsync = useCallback(async () => {
-    if (projectId === 'local' || !backendDiagramIdRef.current) return;
+    if (!backendDiagramIdRef.current) return;
     const nodes = (rfInstanceRef.current as ReactFlowInstance | null)?.getNodes() ?? [];
     const edges = (rfInstanceRef.current as ReactFlowInstance | null)?.getEdges() ?? [];
     const layer = layers[currentLayerId];
@@ -1116,7 +857,7 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
 
   const handleSaveThreatModel = useCallback(
     async (name: string, threats: ThreatItem[]) => {
-      if (projectId === 'local' || !backendDiagramIdRef.current) {
+      if (!backendDiagramIdRef.current) {
         throw new Error('Sign in to save threat models');
       }
       const nodes = (rfInstanceRef.current as ReactFlowInstance | null)?.getNodes() ?? [];
@@ -1138,7 +879,7 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
   /** Save all current transient threats as a named model (called from ThreatModelPanel) */
   const handleSaveThreatModelFromPanel = useCallback(
     async (name: string) => {
-      if (projectId === 'local' || !backendDiagramIdRef.current) {
+      if (!backendDiagramIdRef.current) {
         throw new Error('Sign in to save threat models');
       }
       const nodes = (rfInstanceRef.current as ReactFlowInstance | null)?.getNodes() ?? [];
@@ -1201,7 +942,6 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
       const snapshot = captureCanvas(rfInstanceRef);
       setLayers((prev) => {
         const updated = flushCurrentLayer(prev, currentLayerId, snapshot);
-        saveAllLayers(updated);
         return updated;
       });
       setNavStack((stack) => {
@@ -1221,7 +961,6 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
     const snapshot = captureCanvas(rfInstanceRef);
     setLayers((prev) => {
       const updated = flushCurrentLayer(prev, currentLayerId, snapshot);
-      saveAllLayers(updated);
       return updated;
     });
     setNavStack((stack) => stack.slice(0, -1));
@@ -1236,7 +975,6 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
     (layerId: string, updates: { name?: string; description?: string }) => {
       setLayers((prev) => {
         const updated = updateLayer(prev, layerId, updates);
-        saveAllLayers(updated);
         return updated;
       });
     },
@@ -1260,7 +998,6 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
     setLayers((prev) => {
       const flushed = flushCurrentLayer(prev, currentLayerId, snapshot);
       const updated = deleteLayerCascade(flushed, deleteLayerTarget);
-      saveAllLayers(updated);
       return updated;
     });
 
@@ -1362,7 +1099,6 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
             }),
           },
         };
-        saveAllLayers(updated);
         return updated;
       });
 
@@ -1468,7 +1204,6 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
           [currentLayerId]: { ...parentLayer, nodes: updatedNodes },
           [newLayer.id]: newLayer,
         };
-        saveAllLayers(updated);
         return updated;
       });
       // All other state mutations outside the updater to avoid double-invocation in Strict Mode
@@ -1535,7 +1270,6 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
           [currentLayerId]: { ...parentLayer, nodes: updatedNodes },
           [layerId]: { ...flushed[layerId], parentNodeId: targetNodeId },
         };
-        saveAllLayers(updated);
         return updated;
       });
 
@@ -1648,6 +1382,9 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
         nodes,
         edges,
         layerName: layers[currentLayerId]?.name,
+        projectId,
+        diagramId: backendDiagramIdRef.current ?? undefined,
+        layerId: currentLayerId,
       });
       rfInstanceRef.current?.applyLayout(result.positions);
       setTimeout(() => {
@@ -1658,7 +1395,7 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
     } finally {
       setIsDecluttering(false);
     }
-  }, [currentLayerId, layers]);
+  }, [currentLayerId, layers, projectId]);
 
   // ── Generate preview (no canvas apply) — caller decides where to put it ──
 
@@ -1697,7 +1434,6 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
         setLayers((prev) => {
           const flushed = flushCurrentLayer(prev, currentLayerId, snapshot);
           const updated = { ...flushed, [newLayer.id]: newLayer };
-          saveAllLayers(updated);
           return updated;
         });
         setNavStack((stack) => [...stack, newLayer.id]);
@@ -1723,7 +1459,6 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
       setLayers((prev) => {
         const flushed = flushCurrentLayer(prev, currentLayerId, snapshot);
         const updated = { ...flushed, [newLayer.id]: newLayer };
-        saveAllLayers(updated);
         return updated;
       });
       setNavStack((stack) => [...stack, newLayer.id]);
@@ -1744,17 +1479,6 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
     setSelectedEdge(null);
   }, []);
 
-  const handleNew = useCallback(() => {
-    handleClear();
-    setShowChatPanel(true);
-  }, [handleClear]);
-
-  const handleExportJson = useCallback(() => {
-    const instance = rfInstanceRef.current as ReactFlowInstance | null;
-    if (!instance) return;
-    downloadJson(instance.toObject(), `${currentLayer?.name ?? 'diagram'}.json`);
-  }, [currentLayer?.name]);
-
   const handleExportPng = useCallback(async () => {
     const el = canvasRef.current;
     if (!el) return;
@@ -1769,65 +1493,7 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
     }
   }, [currentLayer?.name]);
 
-  const handleImportJson = useCallback((file: File) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const data = JSON.parse(e.target?.result as string);
-        if (Array.isArray(data.nodes) && Array.isArray(data.edges)) {
-          rfInstanceRef.current?.loadDiagram(data);
-          setTimeout(() => {
-            (rfInstanceRef.current as ReactFlowInstance | null)?.fitView({ padding: 0.15 });
-          }, 100);
-        } else {
-          setError('Invalid diagram file — missing nodes or edges arrays.');
-        }
-      } catch {
-        setError('Failed to parse JSON file.');
-      }
-    };
-    reader.readAsText(file);
-  }, []);
-
-  // ── Project export / import (all layers) ──────────────────────────────────
-
-  const handleExportProject = useCallback(() => {
-    const snapshot = captureCanvas(rfInstanceRef);
-    setLayers((prev) => {
-      const updated = flushCurrentLayer(prev, currentLayerId, snapshot);
-      saveAllLayers(updated);
-      downloadJson({ layers: updated, navStack }, 'layers-project.json');
-      return updated;
-    });
-  }, [currentLayerId, flushCurrentLayer, navStack]);
-
-  const handleImportProject = useCallback((file: File) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const data = JSON.parse(e.target?.result as string);
-        const importedLayers: LayerMap =
-          data.layers && typeof data.layers === 'object' ? data.layers : data;
-        if (
-          typeof importedLayers === 'object' &&
-          importedLayers !== null &&
-          Object.keys(importedLayers).length > 0
-        ) {
-          saveAllLayers(importedLayers);
-          setLayers(importedLayers);
-          setNavStack([ROOT_LAYER_ID]);
-          setSelectedNode(null);
-          setSelectedEdge(null);
-          setContextMenu(null);
-        } else {
-          setError('Invalid project file.');
-        }
-      } catch {
-        setError('Failed to parse project file.');
-      }
-    };
-    reader.readAsText(file);
-  }, []);
+  useEffect(() => { handleExportPngRef.current = handleExportPng; }, [handleExportPng]);
 
   // ── Node operations ───────────────────────────────────────────────────────
 
@@ -1915,51 +1581,36 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
         <div className="flex h-screen flex-col overflow-hidden">
           {/* ── Menu bar ────────────────────────────────────────────────── */}
           <MenuBar
-            onNew={handleNew}
-            onOpenFile={handleOpenFile}
-            onSaveFile={handleSaveFile}
-            hasFileHandle={!!fileHandle}
-            onImportJson={handleImportJson}
-            onExportJson={handleExportJson}
-            onExportPng={handleExportPng}
-            onImportProject={handleImportProject}
-            onExportProject={handleExportProject}
-            onOpenDiff={() => router.push('/diff')}
-            layersVisible={showLayersPanel}
-            onToggleLayers={() => setShowLayersPanel((v) => !v)}
             userEmail={user?.email ?? null}
             onSignIn={() => setShowAuthModal(true)}
             onSignOut={handleSignOut}
-            isCloudProject={!!backendDiagramId && projectId !== 'local'}
-            isReadOnly={isReadOnly}
-            onPublish={() => setShowPublishModal(true)}
+            isCloudProject={!!backendDiagramId}
           />
 
           {/* ── Toolbar ─────────────────────────────────────────────────── */}
           <Toolbar
             onClear={handleClear}
-            hasFileHandle={!!fileHandle}
-            hasCloudProject={!!backendDiagramId || (projectId !== 'local' && isLoggedIn())}
             autoSave={autoSave}
             onToggleAutoSave={() => setAutoSave((v) => !v)}
-            onSaveFile={handleSaveFile}
-            isSaving={isSaving}
             lastSaved={lastSaved}
+            onSaveFile={backendDiagramId && !isReadOnly ? handleSaveFile : undefined}
+            isSaving={isSaving}
+            onExportPng={handleExportPng}
             onMyProjects={() => router.push('/projects')}
             onCopy={() => rfInstanceRef.current?.doCopy()}
             onPaste={() => rfInstanceRef.current?.doPaste()}
             isReadOnly={isReadOnly}
-            onOpenThreatModel={projectId !== 'local' && !!user ? () => setShowThreatModelPanel((v) => !v) : undefined}
-            onOpenThreatDashboard={projectId !== 'local' ? () => router.push(`/projects/${projectId}/threats`) : undefined}
-            onOpenPostureScore={projectId !== 'local' && !!user ? () => { setShowPosturePanel((v) => !v); setShowAttackMindPanel(false); } : undefined}
+            onOpenThreatModel={!!user ? () => setShowThreatModelPanel((v) => !v) : undefined}
+            onOpenThreatDashboard={() => router.push(`/projects/${projectId}/threats`)}
+            onOpenPostureScore={!!user ? () => { setShowPosturePanel((v) => !v); setShowAttackMindPanel(false); } : undefined}
             postureScore={latestPostureScore}
-            onOpenAttackMind={projectId !== 'local' && !!user ? () => { setShowAttackMindPanel((v) => !v); setShowPosturePanel(false); } : undefined}
+            onOpenAttackMind={!!user ? () => { setShowAttackMindPanel((v) => !v); setShowPosturePanel(false); } : undefined}
             onShowAI={() => setShowChatPanel(true)}
-            onShowAIHistory={projectId !== 'local' && isLoggedIn() ? () => router.push(`/projects/${projectId}/ai-history`) : undefined}
-            onShowSecurityIntel={projectId !== 'local' && isLoggedIn() ? () => router.push(`/projects/${projectId}/intel`) : undefined}
-            isCloudProject={!!backendDiagramId && projectId !== 'local'}
+            onShowAIHistory={isLoggedIn() ? () => router.push(`/projects/${projectId}/ai-history`) : undefined}
+            onShowSecurityIntel={isLoggedIn() ? () => router.push(`/projects/${projectId}/intel`) : undefined}
+            isCloudProject={!!backendDiagramId}
             onPublish={() => setShowPublishModal(true)}
-            onOpenDiff={projectId !== 'local' ? () => setShowVersionCompare(true) : undefined}
+            onOpenDiff={() => setShowVersionCompare(true)}
             pipelinePhase={pipelinePhase}
           />
 
@@ -1978,14 +1629,12 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
               <span className="font-medium">Error:</span>
               <span>{error}</span>
               <div className="ml-auto flex items-center gap-2">
-                {projectId !== 'local' && (
-                  <button
+                <button
                     onClick={retryAutoLoad}
                     className="rounded border border-red-300 px-2 py-0.5 text-xs font-medium hover:bg-red-100 dark:border-red-800 dark:hover:bg-red-900/30"
                   >
                     Retry
                   </button>
-                )}
                 <button
                   onClick={() => setError(null)}
                   className="text-red-400 hover:text-red-600"
@@ -2041,8 +1690,8 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
                 <NodePalette
                   onDragStart={onPaletteDragStart}
                   onAddNode={handleAddNode}
-                  onOpenThreatModel={projectId !== 'local' && !!user ? () => setShowThreatModelPanel((v) => !v) : undefined}
-                  onOpenThreatDashboard={projectId !== 'local' ? () => router.push(`/projects/${projectId}/threats`) : undefined}
+                  onOpenThreatModel={!!user ? () => setShowThreatModelPanel((v) => !v) : undefined}
+                  onOpenThreatDashboard={() => router.push(`/projects/${projectId}/threats`)}
                 />
               </div>
             )}
@@ -2138,7 +1787,7 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
             )}
 
             {/* ── Threat Model panel — docked right, cloud projects only ──────── */}
-            {showThreatModelPanel && !!user && projectId !== 'local' && (
+            {showThreatModelPanel && !!user && (
               <ThreatModelPanel
                 currentLayerId={currentLayerId}
                 threats={threatPanelThreats}
@@ -2159,7 +1808,7 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
             )}
 
             {/* ── Security Posture Score panel — cloud projects only ────────── */}
-            {showPosturePanel && !!user && projectId !== 'local' && backendDiagramId && (
+            {showPosturePanel && !!user && backendDiagramId && (
               <PostureScorePanel
                 projectId={projectId}
                 diagramId={backendDiagramId}
@@ -2172,7 +1821,7 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
             )}
 
             {/* ── Attack Mind Simulator panel — cloud projects only ─────────── */}
-            {showAttackMindPanel && !!user && projectId !== 'local' && backendDiagramId && (
+            {showAttackMindPanel && !!user && backendDiagramId && (
               <AttackMindPanel
                 projectId={projectId}
                 diagramId={backendDiagramId}
@@ -2191,9 +1840,9 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
                 onGeneratePreview={handleGeneratePreview}
                 onApplyGeneratedDiagram={handleApplyGeneratedDiagram}
                 onEvaluate={handleEvaluate}
-                onThreatAnalysis={projectId !== 'local' ? handleThreatAnalysis : undefined}
-                onSaveThreatModel={projectId !== 'local' ? handleSaveThreatModel : undefined}
-                onThreatAgentChat={projectId !== 'local' ? handleThreatAgentChat : undefined}
+                onThreatAnalysis={handleThreatAnalysis}
+                onSaveThreatModel={handleSaveThreatModel}
+                onThreatAgentChat={handleThreatAgentChat}
                 diagramId={backendDiagramId ?? undefined}
                 layerId={currentLayerId}
                 layerName={currentLayer?.name}
@@ -2205,8 +1854,8 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
                 onRunAttackMind={isLoggedIn() ? (payload) => apiAttackMindStream(payload) : undefined}
                 diagramVersion={1}
                 diagramLayers={layers}
-                projectId={projectId !== 'local' ? projectId : undefined}
-                onShowSecurityIntel={projectId !== 'local' && isLoggedIn() ? () => router.push(`/projects/${projectId}/intel`) : undefined}
+                projectId={projectId}
+                onShowSecurityIntel={isLoggedIn() ? () => router.push(`/projects/${projectId}/intel`) : undefined}
                 onDiagramReady={handleDiagramReady}
                 onPipelinePhaseChange={setPipelinePhase}
                 isLoading={isGenerating}
@@ -2253,7 +1902,7 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
             onReassignLayer={handleReassignLayer}
             hasAssignableOrphans={contextMenu.hasAssignableOrphans}
             onAssignLayer={handleAssignLayer}
-            onSimulateAttack={projectId !== 'local' && !!user ? () => handleSimulateAttackFromNode(contextMenu.node.id) : undefined}
+            onSimulateAttack={!!user ? () => handleSimulateAttackFromNode(contextMenu.node.id) : undefined}
           />
         )}
 
@@ -2296,30 +1945,6 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
           />
         )}
 
-        {/* ── File-load prompt (shown when URL layer not found locally) ──────── */}
-        {showFileLoadPrompt && (
-          <FileLoadPrompt
-            targetLayerId={showFileLoadPrompt}
-            onOpenFile={() => handleOpenFileForURL(showFileLoadPrompt)}
-            onDismiss={() => setShowFileLoadPrompt(null)}
-            isLoading={fileLoadPending}
-          />
-        )}
-
-        {/* ── Startup modal ────────────────────────────────────────────────── */}
-        {showStartupModal && !showFileLoadPrompt && (
-          <StartupModal
-            onOpen={handleStartupOpen}
-            onNew={handleStartupNew}
-            onContinue={handleStartupContinue}
-            isLoading={startupLoading}
-            existingLayerCount={Object.keys(layers).length - 1}
-            userEmail={user?.email ?? null}
-            onSignIn={() => setShowAuthModal(true)}
-            onMyProjects={() => router.push('/projects')}
-          />
-        )}
-
         {/* ── Auth modal ───────────────────────────────────────────────────── */}
         {showAuthModal && (
           <AuthModal
@@ -2338,7 +1963,7 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
         )}
 
         {/* ── Version compare sheet ────────────────────────────────────────── */}
-        {showVersionCompare && projectId !== 'local' && (
+        {showVersionCompare && (
           <VersionCompareSheet
             projectId={projectId}
             onClose={() => setShowVersionCompare(false)}

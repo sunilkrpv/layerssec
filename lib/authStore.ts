@@ -54,20 +54,3 @@ export function isLoggedIn(): boolean {
   return !!(getAccessToken() || getRefreshToken());
 }
 
-// ── Local (no-login) mode ─────────────────────────────────────────────────────
-const LOCAL_MODE_KEY = 'layers_local_mode';
-
-export function setLocalMode(): void {
-  if (typeof window === 'undefined') return;
-  localStorage.setItem(LOCAL_MODE_KEY, '1');
-}
-
-export function clearLocalMode(): void {
-  if (typeof window === 'undefined') return;
-  localStorage.removeItem(LOCAL_MODE_KEY);
-}
-
-export function isLocalMode(): boolean {
-  if (typeof window === 'undefined') return false;
-  return localStorage.getItem(LOCAL_MODE_KEY) === '1';
-}

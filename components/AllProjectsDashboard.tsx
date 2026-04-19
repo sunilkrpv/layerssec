@@ -1,13 +1,17 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 import {
   Shield, BarChart2, Sword, Wand2, Zap, Plus,
   RotateCcw, Layers, AlertTriangle, ExternalLink, Activity,
-  CheckCircle2, XCircle,
+  CheckCircle2, XCircle, Pencil,
 } from 'lucide-react';
 import { type ProjectSummary, type AiJobListItem } from '@/lib/api';
 import { cn } from '@/lib/utils';
+import EmptyProjectsState from './onboarding/EmptyProjectsState';
+import ProjectEditModal from './ProjectEditModal';
+import ProjectsGuidePanel from './ProjectsGuidePanel';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -92,7 +96,7 @@ interface AllProjectsDashboardProps {
   onSelectProject: (id: string) => void;
   onNewProject: () => void;
   onRefresh: () => void;
-  section?: 'all' | 'threats' | 'posture';
+  section?: 'all' | 'threats' | 'posture' | 'projects';
 }
 
 // ── Stat Card ─────────────────────────────────────────────────────────────────
@@ -139,6 +143,7 @@ export default function AllProjectsDashboard({
   section = 'all',
 }: AllProjectsDashboardProps) {
   const router = useRouter();
+  const [editing, setEditing] = useState<ProjectSummary | null>(null);
 
   const displayProjects = section === 'threats'
     ? sortByRisk(projects.filter((p) => p.openThreatCount > 0))
@@ -149,12 +154,19 @@ export default function AllProjectsDashboard({
   const sorted = displayProjects;
   const scoredCount = projects.filter((p) => p.latestPostureScore !== null).length;
 
-  const title = section === 'threats' ? 'Open Threats' : section === 'posture' ? 'Posture Score' : 'Security Overview';
+  const title =
+    section === 'threats' ? 'Open Threats'
+    : section === 'posture' ? 'Posture Score'
+    : section === 'projects' ? 'My Projects'
+    : 'Security Overview';
   const subtitle = section === 'threats'
     ? `${displayProjects.length} project${displayProjects.length !== 1 ? 's' : ''} with open threats`
     : section === 'posture'
     ? `${scoredCount} of ${projects.length} projects scored`
     : `${projects.length} project${projects.length !== 1 ? 's' : ''}`;
+
+  const showStats = section !== 'projects';
+  const showRecent = section !== 'projects';
 
   return (
     <div className="flex h-full flex-col overflow-hidden bg-slate-50 dark:bg-slate-950">
@@ -187,7 +199,7 @@ export default function AllProjectsDashboard({
       <div className="flex-1 space-y-6 overflow-y-auto px-6 py-6">
 
         {/* Hero stats */}
-        {loading ? (
+        {showStats && (loading ? (
           <div className="grid grid-cols-4 gap-4">
             {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-32 rounded-xl" />)}
           </div>
@@ -227,10 +239,10 @@ export default function AllProjectsDashboard({
               pulse={activeJobs.length > 0}
             />
           </div>
-        )}
+        ))}
 
         {/* Active jobs strip */}
-        {activeJobs.length > 0 && (
+        {showStats && activeJobs.length > 0 && (
           <div className="flex items-center gap-3 rounded-xl border border-blue-200 bg-blue-50 px-4 py-2.5 dark:border-blue-800/50 dark:bg-blue-950/30">
             <Zap size={13} className="shrink-0 text-blue-600 dark:text-blue-400" />
             <p className="flex-1 truncate text-[12px] text-blue-700 dark:text-blue-300">
@@ -253,38 +265,26 @@ export default function AllProjectsDashboard({
           </div>
         )}
 
-        {/* Projects table */}
+        {/* Projects table (+ guide sidebar on 'projects' section) */}
+        <div className={cn(section === 'projects' && 'grid grid-cols-1 gap-6 lg:grid-cols-[1fr_300px]')}>
+          <div className="min-w-0">
         {loading ? (
           <div className="space-y-2">
             <Skeleton className="h-10" />
             {[1, 2, 3].map((i) => <Skeleton key={i} className="h-16 rounded-xl" />)}
           </div>
         ) : sorted.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 text-center">
-            <Layers size={40} className="mb-4 text-slate-300 dark:text-slate-600" />
-            {section === 'threats' ? (
-              <>
-                <p className="text-[16px] font-semibold text-slate-700 dark:text-slate-200">No open threats</p>
-                <p className="mt-1.5 max-w-sm text-[13px] leading-relaxed text-slate-400">
-                  All projects are clean. Run a threat analysis to discover potential vulnerabilities.
-                </p>
-              </>
-            ) : (
-              <>
-                <p className="text-[16px] font-semibold text-slate-700 dark:text-slate-200">No projects yet</p>
-                <p className="mt-1.5 max-w-sm text-[13px] leading-relaxed text-slate-400">
-                  Create your first architecture diagram to start your security analysis.
-                </p>
-                <button
-                  onClick={onNewProject}
-                  className="mt-5 flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-[14px] font-medium text-white transition-colors hover:bg-blue-700"
-                >
-                  <Plus size={15} />
-                  New Project
-                </button>
-              </>
-            )}
-          </div>
+          section === 'threats' ? (
+            <div className="flex flex-col items-center justify-center py-20 text-center">
+              <Layers size={40} className="mb-4 text-slate-300 dark:text-slate-600" />
+              <p className="text-[16px] font-semibold text-slate-700 dark:text-slate-200">No open threats</p>
+              <p className="mt-1.5 max-w-sm text-[13px] leading-relaxed text-slate-400">
+                All projects are clean. Run a threat analysis to discover potential vulnerabilities.
+              </p>
+            </div>
+          ) : (
+            <EmptyProjectsState onNewProject={onNewProject} />
+          )
         ) : (
           <section>
             <div className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
@@ -359,9 +359,18 @@ export default function AllProjectsDashboard({
                         className="flex items-center gap-1 rounded-md border border-slate-200 px-2.5 py-1 text-[12px] font-medium text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
                       >
                         <ExternalLink size={11} />
-                        Diagram
+                        Open
                       </button>
-                      {p.openThreatCount > 0 && (
+                      {section === 'projects' ? (
+                        <button
+                          onClick={() => setEditing(p)}
+                          title="Edit name and description"
+                          className="flex items-center gap-1 rounded-md border border-slate-200 px-2.5 py-1 text-[12px] font-medium text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+                        >
+                          <Pencil size={11} />
+                          Edit
+                        </button>
+                      ) : p.openThreatCount > 0 && (
                         <button
                           onClick={() => router.push(`/projects/${p.id}/threats`)}
                           className="flex items-center gap-1 rounded-md border border-orange-200 px-2.5 py-1 text-[12px] font-medium text-orange-600 hover:bg-orange-50 dark:border-orange-800/50 dark:text-orange-400 dark:hover:bg-orange-950/30"
@@ -377,9 +386,12 @@ export default function AllProjectsDashboard({
             </div>
           </section>
         )}
+          </div>
+          {section === 'projects' && <ProjectsGuidePanel />}
+        </div>
 
         {/* Recent Activity */}
-        {recentActivity.length > 0 && (
+        {showRecent && recentActivity.length > 0 && (
           <section>
             <h2 className="mb-2 text-[15px] font-semibold text-slate-700 dark:text-slate-200">Recent Activity</h2>
             <div className="divide-y divide-slate-100 rounded-xl border border-slate-200 bg-white px-4 dark:divide-slate-800 dark:border-slate-800 dark:bg-slate-900">
@@ -408,6 +420,19 @@ export default function AllProjectsDashboard({
           </section>
         )}
       </div>
+
+      {editing && (
+        <ProjectEditModal
+          projectId={editing.id}
+          initialName={editing.name}
+          initialDescription={editing.description ?? null}
+          onClose={() => setEditing(null)}
+          onSaved={() => {
+            setEditing(null);
+            onRefresh();
+          }}
+        />
+      )}
     </div>
   );
 }

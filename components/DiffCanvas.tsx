@@ -64,8 +64,9 @@ function DiffNode({ data }: { data: DiffNodeData }) {
   );
 }
 
-// Module-level nodeTypes — must be stable to avoid React Flow re-registration warnings
-const diffNodeTypes = { diffNode: DiffNode };
+// Module-level types — frozen for stable identity (React Flow error #002)
+const diffNodeTypes = Object.freeze({ diffNode: DiffNode });
+const diffEdgeTypes = Object.freeze({});
 
 // ─── Inner canvas — handles fitView on node changes ───────────────────────────
 
@@ -83,6 +84,7 @@ function ReactFlowInner({ nodes, edges }: { nodes: Node<DiffNodeData>[]; edges: 
       nodes={nodes}
       edges={edges}
       nodeTypes={diffNodeTypes}
+      edgeTypes={diffEdgeTypes}
       nodesDraggable={false}
       nodesConnectable={false}
       elementsSelectable={false}

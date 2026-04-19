@@ -1,14 +1,14 @@
 # Layers — Project Intelligence
 
 ## Overview
-Layers is a web-based layered diagramming tool built with **Next.js 16 App Router**, **React Flow 11**, and **Anthropic Claude** (AI diagram generation). Users build architecture diagrams, drill into nodes to create sub-layers, and export as PNG or JSON.
+Layers is a web-based layered diagramming tool built with **Next.js 16 App Router**, **React Flow 11**, and **Anthropic Claude** (AI diagram generation). Users build architecture diagrams, drill into nodes to create sub-layers, and export as PNG. Diagrams are stored exclusively in the cloud (layers-rest); the app requires login.
 
 ## Stack
 - **Framework**: Next.js 16 App Router (`app/` directory, `'use client'` components)
 - **Canvas**: React Flow 11 (`reactflow`) — nodes, edges, handles, NodeResizer
 - **AI**: Anthropic Claude API — streaming via `app/api/generate/route.ts` and `app/api/evaluate/route.ts`
 - **Styling**: Tailwind CSS v3 (`darkMode: 'class'`)
-- **Storage**: `localStorage` via `lib/layerStore.ts` (no database); cloud via layers-rest backend
+- **Storage**: cloud-only via layers-rest backend (`lib/api.ts`); `localStorage` is only used for auth tokens, theme, and sidebar state
 - **Icons**: `lucide-react`
 
 ---
@@ -16,7 +16,7 @@ Layers is a web-based layered diagramming tool built with **Next.js 16 App Route
 ## Key Architecture Patterns
 
 ### Layer System
-- `lib/layerStore.ts` — `LayerMap = Record<string, Layer>`, persisted in `localStorage`
+- `lib/layerStore.ts` — `LayerMap = Record<string, Layer>`; persistence is handled by `apiUpdateDiagram` (cloud) via `DiagramPage`
 - Each `Layer`: `{ id, name, description, parentLayerId, parentNodeId, nodes, edges, createdAt }`
 - `app/page.tsx` uses `key={currentLayerId}` on `<DiagramCanvas>` to force React remount on layer switch
 - Navigation: `navStack: string[]` — last item is current layer
@@ -156,44 +156,41 @@ Key rules: `h-9` header, `bg-slate-50 dark:bg-slate-900` header bg, `h-4 w-px` s
   - **PRD 8 — Report Export**: "Export Report" button in `ThreatsDashboardPage` with `exportingReport` loading state → calls `apiExportThreatReport(projectId)` → backend streams PDF → browser download triggered via blob URL; `lib/api.ts → apiExportThreatReport`
   - Backend: `threat` module — `ThreatModel` (version-aware snapshot) + `Threat` (per node/edge); `IdentifiedBy` enum (AI/USER); PDF via `ReportService` (PDFKit, pure-JS, no Java)
 
-### File & Project Management
-- File System Access API: open/save/save-as project JSON; fallback browser download
-- Auto-save: 60s interval (local file) + 2s debounced backend save
+### Project Management
+- Auto-save: 2s debounced cloud save via `apiUpdateDiagram`
 - URL sync: `/projects/:projectId?currLayer=:layerId`; navStack rebuilt from URL via `getLayerPath`
 - Project versioning: Publish (with comment) → read-only view; Check Out → new draft; version history list
-- Project diff: `/diff` route; `diffProjects(left, right): ProjectDiff`; split-view two canvases; color-coded by `DiffStatus`
+- Project diff: `/diff?v1=...&v2=...` route; requires two cloud diagram IDs; `diffProjects(left, right): ProjectDiff`; split-view two canvases; color-coded by `DiffStatus`
 
 ### UX
-- Toolbar: Save, Auto Save toggle, Zoom in/out/fit, last-saved indicator, Delete, Animate toggle; hides edit controls in `isReadOnly`
+- Toolbar: Auto Save toggle, Zoom in/out/fit, last-saved indicator, Delete, Animate toggle; hides edit controls in `isReadOnly`
 - MenuBar: File/View/AI/About dropdowns; project name display; theme toggle; My Projects / Sign in/out
 - PropertiesPanel: colors, rotation controls, node data
 - EdgePropertiesPanel: label, arrow direction (→/←/↔/—), stroke color
 - Alignment guides: red dotted lines during drag when centers/edges align within 5px
 - Read-only published mode: dark indigo banner with "Check Out to Edit" CTA; `isReadOnly` hides all edit controls
-- Startup modal: Open project / New project / Continue / My Cloud Projects
 
 ---
 
 ## Key File Map
 | File | Purpose |
 |------|---------|
-| `app/page.tsx` | Redirects to `/projects/local` |
-| `app/projects/[projectId]/page.tsx` | Server Component route → `DiagramPage` |
+| `app/page.tsx` | Redirects to `/login` |
+| `app/projects/[projectId]/page.tsx` | Client route → `DiagramPage`; redirects `/projects/local` to `/login` |
 | `components/DiagramPage.tsx` | Main client component — all state, handlers, URL sync, context wiring |
 | `components/DiagramCanvas.tsx` | React Flow wrapper, copy/paste, undo/redo, ExtendedRFInstance |
 | `lib/types.ts` | `NodeType`, `NodeData`, `DiagramEdge`, `GenerateResponse` |
-| `lib/layerStore.ts` | Layer CRUD + localStorage persistence |
+| `lib/layerStore.ts` | Layer domain types + helpers (`createChildLayer`, `getLayerPath`, `deleteLayerCascade`, `ProjectFile`) |
 | `lib/canvasContext.ts` | React context shared with all node components |
 | `lib/nodeConfig.ts` | `PALETTE_ITEMS`, `LINE_NODE_TYPES` |
 | `lib/diagramUtils.ts` | `generateId`, `toReactFlowNodes/Edges`, `EDGE_MARKER`, `EDGE_MARKER_START` |
 | `lib/api.ts` | Typed API client for layers-rest (auth, projects, diagrams, versioning) |
 | `lib/authStore.ts` | localStorage token/user management |
 | `lib/themeStore.ts` / `lib/themeContext.ts` | Theme persistence and `useTheme()` hook |
-| `lib/fileStore.ts` | File System Access API utilities |
 | `lib/diffEngine.ts` | `diffProjects(left, right): ProjectDiff` |
 | `components/ThemeProvider.tsx` | Applies/removes `dark` class on `<html>` |
 | `components/MenuBar.tsx` | App-style menu bar — File/View/AI/About dropdowns |
-| `components/Toolbar.tsx` | Zoom controls, Save, Auto Save toggle, clear |
+| `components/Toolbar.tsx` | Zoom controls, Auto Save toggle, clear |
 | `components/NodePalette.tsx` | Left sidebar, collapsible, click/drag to add |
 | `components/PropertiesPanel.tsx` | Selected node: colors, rotation, data |
 | `components/EdgePropertiesPanel.tsx` | Selected edge: label, arrow direction, color |
@@ -206,9 +203,7 @@ Key rules: `h-9` header, `bg-slate-50 dark:bg-slate-900` header bg, `h-4 w-px` s
 | `components/ProjectsModal.tsx` | Cloud project browser |
 | `components/ProjectsListPage.tsx` | Projects table + version history side-sheet |
 | `components/PublishModal.tsx` | Publish with optional comment; shows version number |
-| `components/StartupModal.tsx` | Fresh-load modal: Open / New / Continue / Cloud |
-| `components/FileLoadPrompt.tsx` | Modal when URL layer not found locally |
-| `components/DiffPage.tsx` | Split-view diff UI at `/diff` |
+| `components/DiffPage.tsx` | Split-view diff UI at `/diff?v1=...&v2=...` (cloud-only) |
 | `components/DiffCanvas.tsx` | Read-only React Flow canvas with diff status overlays |
 | `components/DiffLayersPanel.tsx` | Layer list with diff badges and change counts |
 | `components/AssignLayerModal.tsx` | Assign orphaned/sibling layer to node (2-step confirm) |

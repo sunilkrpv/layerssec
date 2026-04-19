@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { X, Loader2, FolderOpen, Plus, Clock, ChevronRight } from 'lucide-react';
 import { apiListProjects, apiGetProject, apiCreateProject, apiCreateDiagram, apiGetDiagram, type Project } from '@/lib/api';
-import type { ProjectFile } from '@/lib/fileStore';
+import type { ProjectFile } from '@/lib/layerStore';
 
 interface ProjectsModalProps {
   /** Called when user selects a project; includes the loaded canvasData and the backend diagramId */

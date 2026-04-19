@@ -98,8 +98,10 @@ function computeUpdatedLinePosition(
   return { ...line, position: { x, y }, style: { ...line.style, width, height: lineH } };
 }
 
-// Defined outside component to prevent React Flow re-mounting nodes on every render
-const NODE_TYPES = {
+// Defined outside component — stable identity so React Flow does not re-register
+// node renderers between renders. Passed through a memo inside the component too
+// to silence the strict-mode double-check warning (React Flow error #002).
+const NODE_TYPES = Object.freeze({
   service: ServiceNode,
   database: DatabaseNode,
   client: ClientNode,
@@ -127,7 +129,8 @@ const NODE_TYPES = {
   code: CodeNode,
   text: TextNode,
   trustboundary: TrustBoundaryNode,
-};
+});
+const EDGE_TYPES = Object.freeze({});
 
 export type ExtendedRFInstance = ReactFlowInstance & {
   loadDiagram: (diagram: GenerateResponse) => void;
@@ -989,6 +992,7 @@ export default function DiagramCanvas({
         onNodeDrag={onNodeDrag}
         onNodeDragStop={onNodeDragStop}
         nodeTypes={NODE_TYPES}
+        edgeTypes={EDGE_TYPES}
         selectionMode={SelectionMode.Partial}
         selectionOnDrag={!readOnly}
         panOnDrag={readOnly ? true : [1, 2]}

@@ -980,7 +980,7 @@ export default function AIHistoryPage({ projectId }: AIHistoryPageProps) {
           {/* User + sign out */}
           {storedUser && (
             <button
-              onClick={() => { clearTokens(); router.push('/projects/local'); }}
+              onClick={() => { clearTokens(); router.push('/login'); }}
               className="flex items-center gap-1.5 rounded px-2.5 py-1 text-sm text-slate-700 hover:bg-slate-200 hover:text-slate-900 dark:text-slate-200 dark:hover:bg-slate-700 dark:hover:text-white"
               title="Sign out"
             >

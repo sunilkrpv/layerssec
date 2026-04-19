@@ -13,8 +13,13 @@ import AllProjectsDashboard from './AllProjectsDashboard';
 import ProjectCommandCenter from './ProjectCommandCenter';
 import NewProjectChat from './NewProjectChat';
 import AiSettingsPage from './AiSettingsPage';
+import OnboardingProvider from './onboarding/OnboardingProvider';
+import WelcomeModal from './onboarding/WelcomeModal';
+import AiSetupTour from './onboarding/AiSetupTour';
+import AiNotConfiguredBanner from './onboarding/AiNotConfiguredBanner';
+import OnboardingChecklist from './onboarding/OnboardingChecklist';
 
-type ActiveView = 'all-projects' | 'threats' | 'posture' | 'project' | 'new-project' | 'settings';
+type ActiveView = 'all-projects' | 'my-projects' | 'threats' | 'posture' | 'project' | 'new-project' | 'settings';
 
 export default function AppShell() {
   const router = useRouter();
@@ -122,6 +127,11 @@ export default function AppShell() {
     setActiveView('all-projects');
   }, []);
 
+  const handleShowMyProjects = useCallback(() => {
+    setSelectedProjectId(null);
+    setActiveView('my-projects');
+  }, []);
+
   const handleShowThreats = useCallback(() => {
     setSelectedProjectId(null);
     setActiveView('threats');
@@ -143,13 +153,17 @@ export default function AppShell() {
   if (!authed) return null;
 
   return (
-    <div className="flex h-screen overflow-hidden bg-slate-50 dark:bg-slate-950">
+    <OnboardingProvider>
+    <div className="flex h-screen flex-col overflow-hidden bg-slate-50 dark:bg-slate-950">
+      <AiNotConfiguredBanner onOpenSettings={handleOpenSettings} />
+      <div className="flex min-h-0 flex-1 overflow-hidden">
       <HomeSidebar
         selectedProjectId={selectedProjectId}
         onSelectProject={handleSelectProject}
         onNewProject={handleNewProject}
         onOpenSettings={handleOpenSettings}
         onShowDashboard={handleShowDashboard}
+        onShowMyProjects={handleShowMyProjects}
         onShowThreats={handleShowThreats}
         onShowPosture={handleShowPosture}
         projects={projects}
@@ -185,10 +199,20 @@ export default function AppShell() {
             onSelectProject={handleSelectProject}
             onNewProject={handleNewProject}
             onRefresh={loadProjects}
-            section={activeView === 'threats' ? 'threats' : activeView === 'posture' ? 'posture' : 'all'}
+            section={
+              activeView === 'threats' ? 'threats'
+              : activeView === 'posture' ? 'posture'
+              : activeView === 'my-projects' ? 'projects'
+              : 'all'
+            }
           />
         )}
       </main>
+      </div>
+      <WelcomeModal />
+      <AiSetupTour onOpenSettings={handleOpenSettings} />
+      <OnboardingChecklist onOpenSettings={handleOpenSettings} onNewProject={handleNewProject} />
     </div>
+    </OnboardingProvider>
   );
 }

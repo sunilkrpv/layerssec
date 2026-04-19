@@ -159,7 +159,7 @@ function ThreatCard({ data, onDashboard, onRunStride }: { data: ProjectOverview[
         onClick={data.total > 0 ? onDashboard : onRunStride}
         className="mt-4 self-start text-[13px] font-medium text-blue-600 hover:underline dark:text-blue-400"
       >
-        {data.total > 0 ? 'View dashboard →' : 'Run STRIDE analysis →'}
+        {data.total > 0 ? 'View dashboard →' : 'Run STRIDE analysis'}
       </button>
     </div>
   );

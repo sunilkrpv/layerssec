@@ -4,8 +4,9 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Layers, Plus, LogOut, ChevronLeft, ChevronRight,
-  Shield, Search, BarChart2, Sword, Zap,
+  Shield, Search, BarChart2, Sword, Zap, Home,
   Settings, Activity, Sun, Moon, Monitor, ChevronDown,
+  FolderKanban,
 } from 'lucide-react';
 import LayersLogo from '@/components/LayersLogo';
 import { type ProjectSummary } from '@/lib/api';
@@ -61,6 +62,7 @@ export interface HomeSidebarProps {
   onNewProject: () => void;
   onOpenSettings: () => void;
   onShowDashboard: () => void;
+  onShowMyProjects: () => void;
   onShowThreats: () => void;
   onShowPosture: () => void;
   projects: ProjectSummary[];
@@ -117,7 +119,7 @@ function NavItem({
 
 export default function HomeSidebar({
   selectedProjectId, onSelectProject, onNewProject,
-  onOpenSettings, onShowDashboard, onShowThreats, onShowPosture,
+  onOpenSettings, onShowDashboard, onShowMyProjects, onShowThreats, onShowPosture,
   projects, loadingProjects,
   activeJobCount, totalThreats, criticalThreats, avgPosture, attackSimTotal,
   activeView,
@@ -215,6 +217,16 @@ export default function HomeSidebar({
 
       <div className="flex-1 overflow-y-auto py-3">
 
+        <NavItem
+          icon={<Home size={14} />}
+          label="Home"
+          active={activeView === 'all-projects'}
+          collapsed={collapsed}
+          onClick={onShowDashboard}
+        />
+
+        <div className="my-3 border-t border-slate-200 dark:border-slate-800" />
+
         {/* AI Dashboard section */}
         {!collapsed && (
           <p className="mb-1 px-4 text-[10px] font-semibold uppercase tracking-widest text-slate-400 dark:text-slate-600">
@@ -272,8 +284,18 @@ export default function HomeSidebar({
 
             {projectsOpen && (
               <>
+                {/* My Projects */}
+                <NavItem
+                  icon={<FolderKanban size={14} />}
+                  label="My Projects"
+                  badge={projects.length > 0 ? projects.length : undefined}
+                  active={activeView === 'my-projects'}
+                  collapsed={collapsed}
+                  onClick={onShowMyProjects}
+                />
+
                 {/* Search */}
-                <div className="mb-1 px-2">
+                <div className="mb-1 mt-1 px-2">
                   <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 dark:border-slate-700 dark:bg-slate-900">
                     <Search size={12} className="shrink-0 text-slate-400" />
                     <input
@@ -351,6 +373,7 @@ export default function HomeSidebar({
                 {/* New project */}
                 <div className="px-2 pt-1">
                   <button
+                    data-onboarding="new-project-btn"
                     onClick={onNewProject}
                     className="flex w-full items-center gap-2 rounded-lg border border-dashed border-blue-300 px-3 py-2 text-[12px] font-medium text-blue-600 transition-colors hover:bg-blue-50 dark:border-blue-800 dark:text-blue-400 dark:hover:bg-blue-950/30"
                   >
@@ -401,12 +424,14 @@ export default function HomeSidebar({
             collapsed={collapsed}
             onClick={() => router.push('/activity')}
           />
-          <NavItem
-            icon={<Settings size={14} />}
-            label="AI Settings"
-            collapsed={collapsed}
-            onClick={onOpenSettings}
-          />
+          <div data-onboarding="ai-settings-nav">
+            <NavItem
+              icon={<Settings size={14} />}
+              label="AI Settings"
+              collapsed={collapsed}
+              onClick={onOpenSettings}
+            />
+          </div>
         </div>
 
         {/* Theme + user */}

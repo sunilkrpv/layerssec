@@ -11,11 +11,14 @@ import {
   type ThreatItem,
   type SavedThreat,
   type ThreatModelFull,
+  type ThreatModelSummary,
   type ThreatSeverity,
   type StrideCategory,
   apiUpdateThreat,
   apiDeleteThreat,
   apiCreateThreat,
+  apiListThreatModels,
+  apiGetThreatModel,
 } from '@/lib/api';
 import { useTheme } from '@/lib/themeContext';
 
@@ -117,6 +120,9 @@ export default function ThreatModelPanel({
   const [showAddForm, setShowAddForm] = useState(false);
   const [addForm, setAddForm] = useState(EMPTY_FORM);
   const [isAdding, setIsAdding] = useState(false);
+  const [savedSummaries, setSavedSummaries] = useState<ThreatModelSummary[] | null>(null);
+  const [isLoadingSaved, setIsLoadingSaved] = useState(false);
+  const [loadingSummaryId, setLoadingSummaryId] = useState<string | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
 
@@ -196,6 +202,42 @@ export default function ThreatModelPanel({
   const handleLoadFromHistory = useCallback((model: ThreatModelFull) => {
     onLoadModel(model);
     setShowHistory(false);
+  }, [onLoadModel]);
+
+  // Fetch saved threat model summaries when the panel has no transient analysis.
+  // Sorted newest-first so `[0]` is the most recent.
+  useEffect(() => {
+    if (!projectId || threats.length > 0) {
+      setSavedSummaries(null);
+      return;
+    }
+    let cancelled = false;
+    setIsLoadingSaved(true);
+    apiListThreatModels(projectId)
+      .then((list) => {
+        if (cancelled) return;
+        const sortedByDate = [...list].sort(
+          (a, b) => new Date(b.savedAt).getTime() - new Date(a.savedAt).getTime(),
+        );
+        setSavedSummaries(sortedByDate);
+      })
+      .catch(() => {
+        if (!cancelled) setSavedSummaries([]);
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoadingSaved(false);
+      });
+    return () => { cancelled = true; };
+  }, [projectId, threats.length]);
+
+  const handleLoadSummary = useCallback(async (summaryId: string) => {
+    setLoadingSummaryId(summaryId);
+    try {
+      const full = await apiGetThreatModel(summaryId);
+      onLoadModel(full);
+    } finally {
+      setLoadingSummaryId(null);
+    }
   }, [onLoadModel]);
 
   // ── CRUD handlers for saved threats ───────────────────────────────────────
@@ -283,14 +325,20 @@ export default function ThreatModelPanel({
             </button>
           )}
 
-          {/* History button */}
+          {/* History button — labeled pill, with count when known */}
           {projectId && (
             <button
               onClick={() => setShowHistory(true)}
               title="Saved threat models"
-              className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg transition-colors text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-500 dark:hover:bg-slate-700 dark:hover:text-slate-300"
+              className="flex h-7 flex-shrink-0 items-center gap-1.5 rounded-lg border border-slate-200 px-2 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-800 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700 dark:hover:text-slate-100"
             >
-              <History size={15} />
+              <History size={13} />
+              <span>History</span>
+              {savedSummaries && savedSummaries.length > 0 && (
+                <span className="flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold text-white">
+                  {savedSummaries.length}
+                </span>
+              )}
             </button>
           )}
 
@@ -311,6 +359,10 @@ export default function ThreatModelPanel({
           isDark={isDark}
           onBack={() => setShowHistory(false)}
           onLoadModel={handleLoadFromHistory}
+          onRunNew={onRunAsync ? () => {
+            setShowHistory(false);
+            void onRunAsync();
+          } : undefined}
         />
       )}
 
@@ -420,33 +472,138 @@ export default function ThreatModelPanel({
           {/* Threat list / empty states */}
           <div ref={listRef} className="flex-1 overflow-y-auto px-4 py-3">
             {threats.length === 0 && !activeJobId ? (
-              <div className="flex flex-col items-center justify-center py-16 text-center gap-4">
-                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 dark:bg-slate-700">
-                  <ShieldCheck size={24} className="text-red-300 dark:text-red-500/60" />
+              isLoadingSaved ? (
+                <div className="flex items-center justify-center py-16">
+                  <Loader2 size={20} className="animate-spin text-slate-400 dark:text-slate-500" />
                 </div>
-                <div>
-                  <p className="mb-1 text-sm font-semibold text-slate-900 dark:text-slate-100">No threat analysis yet</p>
-                  <p className="text-sm text-slate-500 dark:text-slate-400">Analyse in the background and keep working, or open the AI Assistant.</p>
-                </div>
-                <div className="flex flex-col items-center gap-2">
-                  {onRunAsync && (
+              ) : savedSummaries && savedSummaries.length > 0 ? (
+                <div className="space-y-4 py-2">
+                  {/* Header */}
+                  <div className="flex items-center gap-3 px-1">
+                    <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-red-50 ring-1 ring-red-200 dark:bg-slate-700 dark:ring-slate-600">
+                      <ShieldCheck size={18} className="text-red-600 dark:text-red-400" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                        {savedSummaries.length} saved threat model{savedSummaries.length !== 1 ? 's' : ''}
+                      </p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">Pick up where you left off, or run a new analysis.</p>
+                    </div>
+                  </div>
+
+                  {/* Most-recent summary card — clickable */}
+                  {(() => {
+                    const m = savedSummaries[0];
+                    const isLoadingThis = loadingSummaryId === m.id;
+                    const mitigatedPct = m.threatCount > 0
+                      ? Math.round((m.mitigatedCount / m.threatCount) * 100)
+                      : 0;
+                    return (
+                      <button
+                        onClick={() => void handleLoadSummary(m.id)}
+                        disabled={isLoadingThis}
+                        className="w-full rounded-xl border border-slate-200 bg-white p-3 text-left shadow-sm transition hover:border-red-300 hover:shadow-md dark:border-slate-700 dark:bg-slate-900/50 dark:hover:border-red-500/40 disabled:opacity-60"
+                      >
+                        <div className="flex items-start gap-2">
+                          <div className="min-w-0 flex-1 space-y-1">
+                            <div className="flex items-center gap-2">
+                              <p className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">{m.name}</p>
+                              <span className="flex-shrink-0 rounded-full bg-red-100 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-red-700 dark:bg-red-900/30 dark:text-red-400">
+                                Latest
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                              {new Date(m.savedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                              {' · '}v{m.diagramVersion}
+                              {' · '}
+                              {m.threatCount} threat{m.threatCount !== 1 ? 's' : ''}
+                              {m.mitigatedCount > 0 && (
+                                <span className="text-green-600 dark:text-green-400">{' · '}{mitigatedPct}% mitigated</span>
+                              )}
+                            </p>
+                            <div className="flex flex-wrap items-center gap-1 pt-0.5">
+                              {Object.entries(m.severitySummary)
+                                .filter(([, count]) => count > 0)
+                                .map(([sev, count]) => (
+                                  <span
+                                    key={sev}
+                                    title={`${count} ${sev}`}
+                                    className={`inline-flex h-4 min-w-[16px] items-center justify-center rounded-full px-1 text-[9px] font-bold ${SEVERITY_BADGE[sev as ThreatSeverity]}`}
+                                  >
+                                    {count}
+                                  </span>
+                                ))}
+                            </div>
+                          </div>
+                          {isLoadingThis && <Loader2 size={14} className="mt-0.5 animate-spin text-slate-400 dark:text-slate-500" />}
+                        </div>
+                      </button>
+                    );
+                  })()}
+
+                  {/* Primary CTA — view all */}
+                  <button
+                    onClick={() => setShowHistory(true)}
+                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-red-500"
+                  >
+                    <History size={14} />
+                    View all saved threat models
+                  </button>
+
+                  {/* Secondary — run new analysis */}
+                  <div className="flex items-center gap-2 pt-1">
+                    <div className="h-px flex-1 bg-slate-200 dark:bg-slate-700" />
+                    <span className="text-[10px] uppercase tracking-wider text-slate-400 dark:text-slate-500">or</span>
+                    <div className="h-px flex-1 bg-slate-200 dark:bg-slate-700" />
+                  </div>
+                  <div className="flex flex-col items-stretch gap-2">
+                    {onRunAsync && (
+                      <button
+                        onClick={() => void onRunAsync()}
+                        className="flex items-center justify-center gap-2 rounded-xl border border-violet-300 bg-violet-50 px-3 py-2 text-sm font-medium text-violet-700 transition hover:bg-violet-100 dark:border-violet-500/40 dark:bg-violet-900/20 dark:text-violet-300 dark:hover:bg-violet-900/40"
+                      >
+                        <ScanSearch size={13} />
+                        Run new analysis
+                      </button>
+                    )}
                     <button
-                      onClick={() => void onRunAsync()}
-                      className="flex items-center gap-2 rounded-xl bg-violet-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-violet-500"
+                      onClick={onOpenAIAssistant}
+                      className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100 dark:border-slate-600 dark:text-slate-400 dark:hover:bg-slate-700"
+                    >
+                      <ScanSearch size={13} />
+                      Open AI Assistant
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-16 text-center gap-4">
+                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 dark:bg-slate-700">
+                    <ShieldCheck size={24} className="text-red-300 dark:text-red-500/60" />
+                  </div>
+                  <div>
+                    <p className="mb-1 text-sm font-semibold text-slate-900 dark:text-slate-100">No threat analysis yet</p>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">Analyse in the background and keep working, or open the AI Assistant.</p>
+                  </div>
+                  <div className="flex flex-col items-center gap-2">
+                    {onRunAsync && (
+                      <button
+                        onClick={() => void onRunAsync()}
+                        className="flex items-center gap-2 rounded-xl bg-violet-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-violet-500"
+                      >
+                        <ScanSearch size={14} />
+                        Analyse in background
+                      </button>
+                    )}
+                    <button
+                      onClick={onOpenAIAssistant}
+                      className="flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100 dark:border-slate-600 dark:text-slate-400 dark:hover:bg-slate-700"
                     >
                       <ScanSearch size={14} />
-                      Analyse in background
+                      Open AI Assistant
                     </button>
-                  )}
-                  <button
-                    onClick={onOpenAIAssistant}
-                    className="flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100 dark:border-slate-600 dark:text-slate-400 dark:hover:bg-slate-700"
-                  >
-                    <ScanSearch size={14} />
-                    Open AI Assistant
-                  </button>
+                  </div>
                 </div>
-              </div>
+              )
             ) : layerThreats.length === 0 && !activeJobId ? (
               <div className="flex flex-col items-center justify-center py-12 text-center gap-3">
                 <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">No threats for this layer</p>

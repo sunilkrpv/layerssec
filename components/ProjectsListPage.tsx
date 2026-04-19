@@ -654,7 +654,7 @@ export default function ProjectsListPage() {
 
   useEffect(() => {
     if (!isLoggedIn()) {
-      router.push('/projects/local');
+      router.push('/login');
       return;
     }
     const stored = getStoredUser();
@@ -704,7 +704,7 @@ export default function ProjectsListPage() {
     setEditingNameId(null);
     if (!trimmed || trimmed === projects.find((p) => p.id === id)?.name) return;
     try {
-      await apiUpdateProject(id, trimmed);
+      await apiUpdateProject(id, { name: trimmed });
       setProjects((prev) => prev.map((p) => p.id === id ? { ...p, name: trimmed } : p));
       setSelectedProject((prev) => prev?.id === id ? { ...prev, name: trimmed } : prev);
     } catch {
@@ -749,10 +749,10 @@ export default function ProjectsListPage() {
         <button
           onClick={() => router.push('/home')}
           className="flex items-center gap-1.5 rounded px-2 py-1 text-xs text-slate-500 hover:bg-slate-200 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200"
-          title="Back to Security Dashboard"
+          title="Back to Home"
         >
           <LayoutDashboard size={13} />
-          <span className="hidden sm:inline">Dashboard</span>
+          <span className="hidden sm:inline">Home</span>
         </button>
         <button
           onClick={() => router.push('/activity')}
@@ -784,7 +784,7 @@ export default function ProjectsListPage() {
           {/* User + sign out */}
           {user && (
             <button
-              onClick={() => { clearTokens(); router.push('/projects/local'); }}
+              onClick={() => { clearTokens(); router.push('/login'); }}
               className="flex items-center gap-1.5 rounded px-2.5 py-1 text-sm text-slate-700 hover:bg-slate-200 hover:text-slate-900 dark:text-slate-200 dark:hover:bg-slate-700 dark:hover:text-white"
               title="Sign out"
             >

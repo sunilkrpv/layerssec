@@ -2,27 +2,27 @@
 
 import { useState, useRef, useEffect } from 'react';
 import {
-  Trash2, Save, Clock,
-  Loader2, FolderOpen, Copy, ClipboardPaste,
+  Trash2, Clock,
+  FolderOpen, Copy, ClipboardPaste,
   ShieldAlert, ShieldCheck, LayoutDashboard, ChevronDown,
   Sparkles, History, Lock, GitCompareArrows, Sword, Shield,
+  Save, Loader2, ImageDown,
+  Gauge,
 } from 'lucide-react';
+import LayersLogo from '@/components/LayersLogo';
+import AboutModal from '@/components/AboutModal';
 
 interface ToolbarProps {
   onClear: () => void;
-  /** Whether a local file is currently open (handle exists) */
-  hasFileHandle: boolean;
-  /** Whether a cloud project is currently open */
-  hasCloudProject: boolean;
   /** Whether auto-save is enabled */
   autoSave: boolean;
   onToggleAutoSave: () => void;
-  /** Manually trigger a save */
-  onSaveFile: () => void;
-  /** True while a manual save is in flight */
-  isSaving: boolean;
   /** ISO string of last auto-save time, or null */
   lastSaved: Date | null;
+  /** Manually save the diagram to cloud now */
+  onSaveFile?: () => void;
+  /** Whether a save is currently in progress */
+  isSaving?: boolean;
   /** Navigate to My Projects page (shown only when provided) */
   onMyProjects?: () => void;
   /** Copy selected canvas nodes */
@@ -53,6 +53,8 @@ interface ToolbarProps {
   onPublish?: () => void;
   /** Open the diff view */
   onOpenDiff?: () => void;
+  /** Export the current canvas layer as PNG */
+  onExportPng?: () => void;
   /** Current security pipeline phase — shows dot indicator on Shield icon */
   pipelinePhase?: 'idle' | 'nudge' | 'threat_running' | 'threat_done' | 'posture_running' | 'complete';
 }
@@ -108,13 +110,11 @@ function formatLastSaved(d: Date): string {
 
 export default function Toolbar({
   onClear,
-  hasFileHandle,
-  hasCloudProject,
   autoSave,
   onToggleAutoSave,
-  onSaveFile,
-  isSaving,
   lastSaved,
+  onSaveFile,
+  isSaving = false,
   onMyProjects,
   onCopy,
   onPaste,
@@ -130,8 +130,10 @@ export default function Toolbar({
   isCloudProject,
   onPublish,
   onOpenDiff,
+  onExportPng,
   pipelinePhase,
 }: ToolbarProps) {
+  const [aboutOpen, setAboutOpen] = useState(false);
   const [threatMenuOpen, setThreatMenuOpen] = useState(false);
   const threatBtnRef = useRef<HTMLButtonElement>(null);
   const postureScoreColor =
@@ -172,6 +174,19 @@ export default function Toolbar({
   return (
     <div className="flex h-10 flex-shrink-0 items-center gap-1.5 border-b border-slate-200 bg-white px-3 dark:border-slate-700 dark:bg-slate-900">
 
+      {/* ── About (Layers logo) ─────────────────────────────────── */}
+      <BtnGroup>
+        <button
+          onClick={() => setAboutOpen(true)}
+          title="About Layers"
+          aria-label="About Layers"
+          className="flex h-8 w-8 items-center justify-center rounded-lg text-blue-600 transition-colors hover:bg-slate-100 dark:text-blue-400 dark:hover:bg-slate-700"
+        >
+          <LayersLogo size={14} />
+        </button>
+      </BtnGroup>
+      <Divider />
+
       {/* ── My Projects ─────────────────────────────────────────── */}
       {onMyProjects && (
         <>
@@ -184,50 +199,36 @@ export default function Toolbar({
         </>
       )}
 
-      {/* ── Save / Auto Save (editing mode only) ─────────────────────────── */}
+      {/* ── Auto Save (editing mode only) ─────────────────────────────────── */}
       {!isReadOnly && (
         <>
           <BtnGroup>
-            <button
-              onClick={onSaveFile}
-              disabled={(!hasFileHandle && !hasCloudProject) || isSaving}
-              title={
-                isSaving
-                  ? 'Saving…'
-                  : hasCloudProject
-                    ? 'Save to cloud now (⌘⇧S)'
-                    : hasFileHandle
-                      ? 'Save to file now (⌘⇧S)'
-                      : 'Open a project file or cloud project first'
-              }
-              className="flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium text-slate-600 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40 dark:text-slate-300 dark:hover:bg-slate-700"
-            >
-              {isSaving
-                ? <Loader2 size={13} className="animate-spin" />
-                : <Save size={13} />}
-              {isSaving ? 'Saving…' : 'Save'}
-            </button>
-
-            <div className="mx-0.5 h-5 w-px bg-slate-200 dark:bg-slate-600" />
-
+            {onSaveFile && (
+              <>
+                <button
+                  onClick={onSaveFile}
+                  disabled={isSaving}
+                  title={isSaving ? 'Saving…' : 'Save to cloud now'}
+                  className="flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium text-slate-600 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40 dark:text-slate-300 dark:hover:bg-slate-700"
+                >
+                  {isSaving ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />}
+                  {isSaving ? 'Saving…' : 'Save'}
+                </button>
+                <div className="mx-0.5 h-5 w-px bg-slate-200 dark:bg-slate-600" />
+              </>
+            )}
             <button
               onClick={onToggleAutoSave}
               title={autoSave ? 'Auto Save is ON — click to disable' : 'Auto Save is OFF — click to enable'}
               className={`flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium transition-colors ${
-                autoSave && (hasFileHandle || hasCloudProject)
+                autoSave
                   ? 'text-green-700 hover:bg-green-50 dark:text-green-400 dark:hover:bg-green-900/20'
-                  : autoSave
-                    ? 'text-amber-700 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-900/20'
-                    : 'text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700'
+                  : 'text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700'
               }`}
             >
               <span
                 className={`h-1.5 w-1.5 rounded-full ${
-                  autoSave && (hasFileHandle || hasCloudProject)
-                    ? 'bg-green-500'
-                    : autoSave
-                      ? 'bg-amber-500'
-                      : 'bg-slate-400'
+                  autoSave ? 'bg-green-500' : 'bg-slate-400'
                 }`}
               />
               Auto {autoSave ? 'ON' : 'OFF'}
@@ -258,6 +259,29 @@ export default function Toolbar({
                   Diff
                 </button>
               )}
+              {onExportPng && (
+                <button
+                  onClick={onExportPng}
+                  title="Save canvas as PNG (⌘⇧E)"
+                  className="flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700"
+                >
+                  <ImageDown size={13} />
+                  Export PNG
+                </button>
+              )}
+            </>
+          )}
+          {!(isCloudProject && !isReadOnly && onPublish || onOpenDiff) && onExportPng && (
+            <>
+              <div className="mx-0.5 h-5 w-px bg-slate-200 dark:bg-slate-600" />
+              <button
+                onClick={onExportPng}
+                title="Save canvas as PNG (⌘⇧E)"
+                className="flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700"
+              >
+                <ImageDown size={13} />
+                Export PNG
+              </button>
             </>
           )}
           <Divider />
@@ -342,7 +366,7 @@ export default function Toolbar({
                     onClick={() => { onOpenPostureScore(); setThreatMenuOpen(false); }}
                     className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm hover:bg-slate-50 dark:hover:bg-slate-700/50"
                   >
-                    <ShieldCheck size={14} className="flex-shrink-0 text-blue-500" />
+                    <Gauge size={14} className="flex-shrink-0 text-blue-500" />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <p className="text-xs font-medium text-slate-800 dark:text-slate-200">Posture Score</p>
@@ -462,7 +486,7 @@ export default function Toolbar({
       )}
 
       {/* ── Last saved indicator (editing mode only, trailing) ────────────── */}
-      {!isReadOnly && lastSaved && (hasFileHandle || hasCloudProject) && (
+      {!isReadOnly && lastSaved && (
         <span
           className="ml-auto flex items-center gap-1 text-xs text-slate-400 dark:text-slate-500"
           title={`Last saved: ${lastSaved.toLocaleTimeString()}`}
@@ -471,6 +495,8 @@ export default function Toolbar({
           {formatLastSaved(lastSaved)}
         </span>
       )}
+
+      <AboutModal open={aboutOpen} onClose={() => setAboutOpen(false)} />
     </div>
   );
 }

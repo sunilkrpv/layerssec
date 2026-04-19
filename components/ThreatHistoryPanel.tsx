@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { ChevronLeft, Trash2, Loader2, ShieldCheck, ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronLeft, Trash2, Loader2, ShieldCheck, ChevronDown, ChevronUp, ScanSearch } from 'lucide-react';
 import ThreatResultCard from '@/components/ThreatResultCard';
 import {
   apiGetThreatModel,
@@ -18,6 +18,8 @@ interface ThreatHistoryPanelProps {
   onBack: () => void;
   /** Called when user loads a saved model — parent receives full model object. */
   onLoadModel?: (model: ThreatModelFull) => void;
+  /** Optional — shown as a CTA when no saved models exist; back to the parent so it can run analysis. */
+  onRunNew?: () => void;
 }
 
 const SEVERITY_COLORS: Record<string, string> = {
@@ -51,6 +53,7 @@ export default function ThreatHistoryPanel({
   isDark,
   onBack,
   onLoadModel,
+  onRunNew,
 }: ThreatHistoryPanelProps) {
   const [models, setModels] = useState<ThreatModelSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -63,7 +66,10 @@ export default function ThreatHistoryPanel({
     setIsLoading(true);
     try {
       const list = await apiListThreatModels(projectId);
-      setModels(list);
+      const sortedByDate = [...list].sort(
+        (a, b) => new Date(b.savedAt).getTime() - new Date(a.savedAt).getTime(),
+      );
+      setModels(sortedByDate);
     } catch {
       // silently fail — list stays empty
     } finally {
@@ -131,15 +137,27 @@ export default function ThreatHistoryPanel({
             <Loader2 size={20} className="animate-spin text-slate-400 dark:text-slate-500" />
           </div>
         ) : models.length === 0 ? (
-          <div className="py-10 text-center text-xs text-slate-500 dark:text-slate-400">
-            No saved threat models yet.
-            <br />Run a threat analysis and save it.
+          <div className="flex flex-col items-center gap-3 py-10 text-center">
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              No saved threat models yet.
+              <br />Run a threat analysis and save it.
+            </p>
+            {onRunNew && (
+              <button
+                onClick={onRunNew}
+                className="flex items-center gap-2 rounded-xl bg-violet-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-violet-500"
+              >
+                <ScanSearch size={13} />
+                Run analysis
+              </button>
+            )}
           </div>
         ) : (
-          models.map((m) => {
+          models.map((m, index) => {
             const isExpanded = expandedId === m.id;
             const isLoadingThis = loadingId === m.id;
             const isDeletingThis = deletingId === m.id;
+            const isLatest = index === 0;
             const mitigatedPct = m.threatCount > 0
               ? Math.round((m.mitigatedCount / m.threatCount) * 100)
               : 0;
@@ -155,7 +173,14 @@ export default function ThreatHistoryPanel({
                   className="w-full flex items-start gap-3 px-3 py-2.5 text-left transition-colors hover:bg-slate-50 dark:hover:bg-slate-700/50"
                 >
                   <div className="flex-1 min-w-0 space-y-1">
-                    <p className="text-xs font-semibold truncate text-slate-900 dark:text-slate-100">{m.name}</p>
+                    <div className="flex items-center gap-1.5">
+                      <p className="text-xs font-semibold truncate text-slate-900 dark:text-slate-100">{m.name}</p>
+                      {isLatest && (
+                        <span className="flex-shrink-0 rounded-full bg-red-100 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-red-700 dark:bg-red-900/30 dark:text-red-400">
+                          Latest
+                        </span>
+                      )}
+                    </div>
                     <div className="flex items-center gap-2">
                       <span className="text-[10px] text-slate-500 dark:text-slate-400">
                         {new Date(m.savedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}

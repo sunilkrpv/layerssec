@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { useOnboarding } from '@/lib/onboardingStore';
 import {
   Settings, Cpu, Zap, BarChart3, Check, AlertCircle, Loader2,
   ChevronDown, Eye, EyeOff, Key, ShieldCheck, Trash2, Terminal,
@@ -500,6 +501,7 @@ function ApiKeyInput({ label, keySet, maskedValue, value, onChange, onClear, pla
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function AiSettingsPage() {
+  const { refresh: refreshOnboarding } = useOnboarding();
   const [settings, setSettings] = useState<UserAiSettings | null>(null);
   const [metrics, setMetrics] = useState<AiTokenMetrics | null>(null);
   const [loading, setLoading] = useState(true);
@@ -576,6 +578,7 @@ export default function AiSettingsPage() {
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
       apiGetAiMetrics().then(setMetrics).catch(() => {});
+      void refreshOnboarding();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to save settings');
     } finally {
@@ -623,7 +626,7 @@ export default function AiSettingsPage() {
             <Cpu size={14} className="text-slate-500 dark:text-slate-400" />
             <h2 className="text-[13px] font-semibold text-slate-700 dark:text-slate-200">AI Provider</h2>
           </div>
-          <div className="grid grid-cols-2 gap-2">
+          <div data-onboarding="ai-provider-tiles" className="grid grid-cols-2 gap-2">
             {PROVIDERS.map((p) => (
               <ProviderCard key={p.id} info={p} selected={provider === p.id} onSelect={() => handleProviderChange(p.id)} />
             ))}
@@ -729,6 +732,7 @@ export default function AiSettingsPage() {
         {/* Save */}
         <div className="mb-10 flex items-center gap-3">
           <button
+            data-onboarding="ai-save-button"
             onClick={handleSave}
             disabled={saving}
             className="flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-[13px] font-semibold text-white transition hover:bg-blue-700 disabled:opacity-50"
