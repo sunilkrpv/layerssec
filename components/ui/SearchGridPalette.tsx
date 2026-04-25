@@ -20,9 +20,23 @@ export interface SearchGridPaletteProps {
   items: PaletteItem[];
   selectedId?: string | null;
   onSelect: (id: string) => void;
+  /** Optional per-tile render override. If provided, caller is responsible
+   * for rendering an element that:
+   *   - sets `data-palette-item` attribute for keyboard nav
+   *   - sets `aria-label` to the item's accessible name
+   *   - invokes `defaultProps.onClick` (and is focusable via tabIndex)
+   */
+  renderItem?: (item: PaletteItem, defaultProps: {
+    active: boolean;
+    onClick: () => void;
+    className: string;
+    'data-palette-item': true;
+    'aria-label': string;
+    tabIndex: 0;
+  }) => ReactNode;
 }
 
-export function SearchGridPalette({ categories, items, selectedId, onSelect }: SearchGridPaletteProps) {
+export function SearchGridPalette({ categories, items, selectedId, onSelect, renderItem }: SearchGridPaletteProps) {
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState(categories[0]?.id ?? '');
   const searchRef = useRef<HTMLInputElement>(null);
@@ -50,17 +64,17 @@ export function SearchGridPalette({ categories, items, selectedId, onSelect }: S
 
   const handleGridKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
     if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter'].includes(e.key)) return;
-    const buttons = Array.from(gridRef.current?.querySelectorAll<HTMLButtonElement>('button[data-palette-item]') ?? []);
-    const current = buttons.indexOf(document.activeElement as HTMLButtonElement);
-    if (current === -1) { buttons[0]?.focus(); return; }
+    const elements = Array.from(gridRef.current?.querySelectorAll<HTMLElement>('[data-palette-item]') ?? []);
+    const current = elements.indexOf(document.activeElement as HTMLElement);
+    if (current === -1) { elements[0]?.focus(); return; }
     let next = current;
-    if (e.key === 'ArrowRight') next = (current + 1) % buttons.length;
-    if (e.key === 'ArrowLeft') next = (current - 1 + buttons.length) % buttons.length;
-    if (e.key === 'ArrowDown') next = Math.min(buttons.length - 1, current + 4);
-    if (e.key === 'ArrowUp') next = Math.max(0, current - 4);
-    if (e.key === 'Enter') { buttons[current]?.click(); return; }
+    if (e.key === 'ArrowRight') next = (current + 1) % elements.length;
+    if (e.key === 'ArrowLeft') next = (current - 1 + elements.length) % elements.length;
+    if (e.key === 'ArrowDown') next = Math.min(elements.length - 1, current + 3);
+    if (e.key === 'ArrowUp') next = Math.max(0, current - 3);
+    if (e.key === 'Enter') { (elements[current] as HTMLElement | undefined)?.click(); return; }
     e.preventDefault();
-    buttons[next]?.focus();
+    elements[next]?.focus();
   };
 
   return (
@@ -92,29 +106,45 @@ export function SearchGridPalette({ categories, items, selectedId, onSelect }: S
           ))}
         </div>
       </div>
-      <div ref={gridRef} onKeyDown={handleGridKeyDown} className="grid flex-1 auto-rows-max grid-cols-4 gap-1 overflow-auto p-2">
+      <div ref={gridRef} onKeyDown={handleGridKeyDown} className="grid flex-1 auto-rows-max grid-cols-3 gap-1 overflow-auto p-2">
         {filtered.map((item) => {
           const active = item.id === selectedId;
+          const className = `flex aspect-square min-w-0 flex-col items-center justify-center gap-1 overflow-hidden rounded border text-xs ${
+            active
+              ? 'bg-blue-50 border-blue-500 text-blue-700 dark:bg-blue-500/15 dark:border-blue-400 dark:text-blue-300'
+              : 'border-transparent text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800'
+          }`;
+          const onClick = () => onSelect(item.id);
+          if (renderItem) {
+            return (
+              <div key={item.id} className="contents">
+                {renderItem(item, {
+                  active,
+                  onClick,
+                  className,
+                  'data-palette-item': true,
+                  'aria-label': item.name,
+                  tabIndex: 0,
+                })}
+              </div>
+            );
+          }
           return (
             <button
               key={item.id}
               data-palette-item
               type="button"
-              onClick={() => onSelect(item.id)}
+              onClick={onClick}
               aria-label={item.name}
-              className={`flex aspect-square flex-col items-center justify-center gap-1 rounded border text-xs ${
-                active
-                  ? 'bg-blue-50 border-blue-500 text-blue-700 dark:bg-blue-500/15 dark:border-blue-400 dark:text-blue-300'
-                  : 'border-transparent text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800'
-              }`}
+              className={className}
             >
               {item.icon}
-              <span className="truncate px-1">{item.name}</span>
+              <span className="w-full truncate px-1 text-center">{item.name}</span>
             </button>
           );
         })}
         {filtered.length === 0 && (
-          <div className="col-span-4 py-6 text-center text-xs text-slate-500 dark:text-slate-400">No matches</div>
+          <div className="col-span-3 py-6 text-center text-xs text-slate-500 dark:text-slate-400">No matches</div>
         )}
       </div>
     </div>

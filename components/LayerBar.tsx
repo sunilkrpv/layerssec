@@ -1,7 +1,7 @@
 'use client';
 
 import { ArrowLeft, ChevronRight, Layers, FolderKanban } from 'lucide-react';
-import { getLayerPath, type LayerMap } from '@/lib/layerStore';
+import { getLayerPath, ROOT_LAYER_ID, type LayerMap } from '@/lib/layerStore';
 
 interface LayerBarProps {
   layers: LayerMap;
@@ -21,7 +21,9 @@ export default function LayerBar({
   onNavigate,
   projectName,
 }: LayerBarProps) {
-  const path = getLayerPath(layers, currentLayerId);
+  const fullPath = getLayerPath(layers, currentLayerId);
+  const atRoot = currentLayerId === ROOT_LAYER_ID;
+  const path = atRoot ? fullPath : fullPath.filter((l) => l.id !== ROOT_LAYER_ID);
 
   return (
     <div className="flex h-9 flex-shrink-0 items-center gap-2 border-b border-slate-200 bg-slate-50 px-3 dark:border-slate-700 dark:bg-slate-900">

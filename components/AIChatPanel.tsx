@@ -10,6 +10,7 @@ import {
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useTheme } from '@/lib/themeContext';
+import { splitPrimer, primerLabel, type PrimerMessage } from '@/lib/panelPrimer';
 import ThreatResultCard from '@/components/ThreatResultCard';
 import ThreatHistoryPanel from '@/components/ThreatHistoryPanel';
 import { PipelineNudge } from './PipelineNudge';
@@ -476,13 +477,20 @@ export default function AIChatPanel({
 
   // ── AI Assistant state ───────────────────────────────────────────────────
   const welcome = isReadOnly ? WELCOME_READONLY : WELCOME_GENERATE;
+  const { primer: primerFromInitial, rest: initialRest } = initialMessages
+    ? splitPrimer(initialMessages)
+    : { primer: null, rest: [] as Array<{ role: 'user' | 'assistant'; content: string }> };
+  const [primer, setPrimer] = useState<PrimerMessage | null>(primerFromInitial);
   const [messages, setMessages] = useState<Message[]>(() =>
-    initialMessages && initialMessages.length > 0 ? initialMessages : [welcome],
+    initialRest.length > 0 ? initialRest : [welcome],
   );
   useEffect(() => {
     if (initialMessages && initialMessages.length > 0) {
-      setMessages(initialMessages);
+      const { primer: p, rest } = splitPrimer(initialMessages);
+      setPrimer(p);
+      setMessages(rest.length > 0 ? rest : [welcome]);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialMessages]);
 
   const [input, setInput] = useState('');
@@ -1076,6 +1084,17 @@ export default function AIChatPanel({
           {!showHistory && (
             <div className="relative flex-1 overflow-y-auto px-4 py-4">
               <div className="space-y-5">
+                {primer && (
+                  <div className="flex items-start gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs dark:border-slate-700 dark:bg-slate-800">
+                    <Info size={12} className="mt-0.5 flex-shrink-0 text-slate-400 dark:text-slate-500" />
+                    <div className="min-w-0 flex-1">
+                      <div className="font-medium text-slate-600 dark:text-slate-300">Context attached</div>
+                      <div className="truncate text-slate-500 dark:text-slate-400" title={primer.content}>
+                        {primerLabel(primer)}
+                      </div>
+                    </div>
+                  </div>
+                )}
                 {messages.map((msg, i) =>
                   msg.role === 'user' ? (
                     <div key={i} className="flex justify-end">

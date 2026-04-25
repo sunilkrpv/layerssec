@@ -1,8 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { StatusPill, Tooltip, IconButton, Button, EmptyState, SeverityStripeRow, DropdownMenu, ClickToEditPill, PostureBar, TwoPanelSplit, useDensity, densityClasses, SearchGridPalette } from '@/components/ui';
-import { RefreshCw, Trash2, FolderOpen, AlertCircle, AlertTriangle, Activity, TrendingUp, X, Box, Circle, Square, Triangle, Database, Cloud } from 'lucide-react';
+import { StatusPill, Tooltip, IconButton, Button, EmptyState, SeverityStripeRow, DropdownMenu, ClickToEditPill, PostureBar, useDensity, densityClasses, SearchGridPalette } from '@/components/ui';
+import { RefreshCw, Trash2, FolderOpen, AlertCircle, AlertTriangle, Activity, TrendingUp, X, Box, Circle, Square, Triangle, Database, Cloud, MoreHorizontal, Copy, GitCompareArrows, PanelRight, ChevronDown, Sparkles, ShieldAlert, Gauge, Sword, Layers } from 'lucide-react';
 
 function ClickToEditPillDemo() {
   const [status, setStatus] = useState<'open' | 'in-review' | 'mitigated' | 'dismissed' | 'accepted'>('open');
@@ -16,35 +16,6 @@ function ClickToEditPillDemo() {
         onChange={(v) => setStatus(v as typeof status)}
       />
       <span className="text-xs text-slate-500 dark:text-slate-400">current: {status}</span>
-    </div>
-  );
-}
-
-function TwoPanelSplitDemo() {
-  const [open, setOpen] = useState(true);
-  return (
-    <div>
-      {!open && (
-        <button
-          onClick={() => setOpen(true)}
-          className="mb-2 rounded border border-slate-300 px-2 py-1 text-xs dark:border-slate-700"
-        >
-          Reopen panel
-        </button>
-      )}
-      <div className="h-[360px] rounded border border-slate-200 dark:border-slate-800">
-        <TwoPanelSplit
-          left={<div className="p-4 text-sm text-slate-700 dark:text-slate-200">Left (canvas)</div>}
-          right={
-            open ? (
-              <>
-                <TwoPanelSplit.Header title="Inspector" onClose={() => setOpen(false)} />
-                <div className="p-4 text-sm text-slate-700 dark:text-slate-200">Right panel content</div>
-              </>
-            ) : null
-          }
-        />
-      </div>
     </div>
   );
 }
@@ -202,6 +173,27 @@ export default function PrimitivesPage() {
           ]}
           onSelect={(v) => console.log('selected', v)}
         />
+        <div className="mt-3 flex items-center gap-4">
+          <Button variant="primary">Save</Button>
+          <Button variant="primary">Publish</Button>
+          <DropdownMenu
+            trigger={
+              <button
+                type="button"
+                aria-label="More actions"
+                className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200"
+              >
+                <MoreHorizontal size={16} />
+              </button>
+            }
+            items={[
+              { value: 'copy', label: 'Copy', icon: <Copy size={13} /> },
+              { value: 'diff', label: 'Compare versions', icon: <GitCompareArrows size={13} /> },
+              { value: 'clear', label: 'Clear canvas', icon: <Trash2 size={13} />, variant: 'destructive' },
+            ]}
+            onSelect={(v) => console.log('overflow', v)}
+          />
+        </div>
       </section>
 
       <section>
@@ -222,14 +214,47 @@ export default function PrimitivesPage() {
       </section>
 
       <section>
-        <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">TwoPanelSplit</h2>
-        <TwoPanelSplitDemo />
-      </section>
-
-      <section>
         <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">SearchGridPalette</h2>
         <SearchGridPaletteDemo />
       </section>
+
+      <section>
+        <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Inspect popover</h2>
+        <InspectPopoverDemo />
+      </section>
+    </div>
+  );
+}
+
+function InspectPopoverDemo() {
+  const [kind, setKind] = useState<'none' | 'ai' | 'threat' | 'posture' | 'attack' | 'layers'>('none');
+  return (
+    <div className="flex items-center gap-4">
+      <DropdownMenu
+        trigger={
+          <button
+            type="button"
+            aria-label="Inspect panel"
+            className={`flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium transition-colors ${
+              kind !== 'none'
+                ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400'
+                : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200'
+            }`}
+          >
+            <PanelRight size={14} />
+            <span>Inspect</span>
+            <ChevronDown size={11} />
+          </button>
+        }
+        items={[
+          { value: 'ai', label: 'AI Assistant', icon: <Sparkles size={13} className="text-blue-500" />, onSelect: () => setKind('ai') },
+          { value: 'threat', label: 'Threat Model', icon: <ShieldAlert size={13} className="text-red-500" />, onSelect: () => setKind('threat') },
+          { value: 'posture', label: 'Posture Score', icon: <Gauge size={13} className="text-blue-500" />, onSelect: () => setKind('posture') },
+          { value: 'attack', label: 'Attack Mind', icon: <Sword size={13} className="text-red-500" />, onSelect: () => setKind('attack') },
+          { value: 'layers', label: 'Layers tree', icon: <Layers size={13} className="text-slate-400" />, onSelect: () => setKind('layers') },
+        ]}
+      />
+      <span className="text-xs text-slate-500 dark:text-slate-400">active: {kind}</span>
     </div>
   );
 }

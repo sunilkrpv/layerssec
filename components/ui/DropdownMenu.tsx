@@ -1,16 +1,21 @@
 'use client';
 
-import { ReactElement, cloneElement, useEffect, useId, useRef, useState, KeyboardEvent } from 'react';
+import { ReactElement, ReactNode, cloneElement, useEffect, useId, useRef, useState, KeyboardEvent } from 'react';
 
 export interface DropdownMenuItem {
   value: string;
   label: string;
+  icon?: ReactNode;
+  variant?: 'destructive';
+  /** Optional per-item handler — invoked in addition to the top-level `onSelect`. */
+  onSelect?: () => void;
 }
 
 export interface DropdownMenuProps {
   trigger: ReactElement;
   items: DropdownMenuItem[];
-  onSelect: (value: string) => void;
+  /** Optional top-level handler — receives the selected item's `value`. Existing callers rely on this. */
+  onSelect?: (value: string) => void;
 }
 
 export function DropdownMenu({ trigger, items, onSelect }: DropdownMenuProps) {
@@ -41,14 +46,19 @@ export function DropdownMenu({ trigger, items, onSelect }: DropdownMenuProps) {
     }
   };
 
+  const selectItem = (item: DropdownMenuItem) => {
+    item.onSelect?.();
+    onSelect?.(item.value);
+    setOpen(false);
+  };
+
   const handleMenuKeyDown = (e: KeyboardEvent<HTMLUListElement>) => {
     if (e.key === 'Escape') { setOpen(false); return; }
     if (e.key === 'ArrowDown') { e.preventDefault(); setFocused((i) => (i + 1) % items.length); return; }
     if (e.key === 'ArrowUp') { e.preventDefault(); setFocused((i) => (i - 1 + items.length) % items.length); return; }
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
-      onSelect(items[focused].value);
-      setOpen(false);
+      selectItem(items[focused]);
     }
   };
 
@@ -78,13 +88,18 @@ export function DropdownMenu({ trigger, items, onSelect }: DropdownMenuProps) {
               role="option"
               aria-selected={i === focused}
               onMouseEnter={() => setFocused(i)}
-              onClick={() => { onSelect(item.value); setOpen(false); }}
-              className={`cursor-pointer px-3 py-1.5 text-sm ${
+              onClick={() => selectItem(item)}
+              className={`flex cursor-pointer items-center gap-2 px-3 py-1.5 text-sm ${
                 i === focused
-                  ? 'bg-blue-50 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300'
-                  : 'text-slate-700 dark:text-slate-200'
+                  ? item.variant === 'destructive'
+                    ? 'bg-red-50 text-red-700 dark:bg-red-500/15 dark:text-red-300'
+                    : 'bg-blue-50 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300'
+                  : item.variant === 'destructive'
+                    ? 'text-red-600 dark:text-red-400'
+                    : 'text-slate-700 dark:text-slate-200'
               }`}
             >
+              {item.icon && <span className="flex-shrink-0">{item.icon}</span>}
               {item.label}
             </li>
           ))}

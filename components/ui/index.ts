@@ -18,7 +18,5 @@ export { ClickToEditPill } from './ClickToEditPill';
 export type { ClickToEditPillProps } from './ClickToEditPill';
 export { PostureBar } from './PostureBar';
 export type { PostureBarProps, PostureSegment } from './PostureBar';
-export { TwoPanelSplit } from './TwoPanelSplit';
-export type { TwoPanelSplitProps, PanelHeaderProps } from './TwoPanelSplit';
 export { SearchGridPalette } from './SearchGridPalette';
 export type { SearchGridPaletteProps, PaletteCategory, PaletteItem } from './SearchGridPalette';

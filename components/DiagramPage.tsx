@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { ReactFlowProvider, type Node, type Edge, type ReactFlowInstance } from 'reactflow';
 import { toPng } from 'html-to-image';
@@ -64,6 +64,17 @@ import {
 import { CanvasContext } from '@/lib/canvasContext';
 import { LINE_NODE_TYPES } from '@/lib/nodeConfig';
 import { advanceToNudge, loadPipelineState, type PipelinePhase } from '@/lib/pipelineState';
+
+// ─── Right inspector discriminated union ─────────────────────────────────────
+type RightInspector =
+  | { kind: 'none' }
+  | { kind: 'ai' }
+  | { kind: 'threat' }
+  | { kind: 'posture' }
+  | { kind: 'attack' }
+  | { kind: 'layers' }
+  | { kind: 'properties' }
+  | { kind: 'edge' };
 
 // ─── helper: synchronously capture current canvas state ──────────────────────
 function captureCanvas(
@@ -176,7 +187,7 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
 
   // ── Threat panel window events (from AIChatPanel buttons) ─────────────────
   useEffect(() => {
-    const handleOpenThreatPanel = () => setShowThreatModelPanel(true);
+    const handleOpenThreatPanel = () => setInspector({ kind: 'threat' });
     window.addEventListener('layers:open-threat-panel', handleOpenThreatPanel);
     window.addEventListener('layers:open-threat-model', handleOpenThreatPanel);
     return () => {
@@ -201,7 +212,7 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
       if (isTyping) return;
       if (e.key === 'l') {
         e.preventDefault();
-        setShowLayersPanel((v) => !v);
+        setInspector((p) => p.kind === 'layers' ? { kind: 'none' } : { kind: 'layers' });
       } else if (e.key === 'E' && e.shiftKey) {
         e.preventDefault();
         void handleExportPngRef.current?.();
@@ -210,11 +221,11 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
         setShowProjectsModal(true);
       } else if (e.key === 'i') {
         e.preventDefault();
-        setShowChatPanel((v) => !v);
+        setInspector((p) => p.kind === 'ai' ? { kind: 'none' } : { kind: 'ai' });
       } else if (e.key === 'M' && e.shiftKey) {
         // Cmd+Shift+M — Threat Model panel (Cmd+T and Cmd+Shift+T are browser-reserved for tab management)
         e.preventDefault();
-        setShowThreatModelPanel((v) => !v);
+        setInspector((p) => p.kind === 'threat' ? { kind: 'none' } : { kind: 'threat' });
       }
     };
     document.addEventListener('keydown', handleKeyDown);
@@ -227,7 +238,7 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatingStatus, setGeneratingStatus] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [showLayersPanel, setShowLayersPanel] = useState(false);
+  const [inspector, setInspector] = useState<RightInspector>({ kind: 'none' });
   const [animateEdges, setAnimateEdges] = useState(false);
   const [isDecluttering, setIsDecluttering] = useState(false);
   const [showDeclutterSuggestion, setShowDeclutterSuggestion] = useState(false);
@@ -236,13 +247,8 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
   const [activeJobType, setActiveJobType] = useState<'THREAT_ANALYSIS' | 'POSTURE_SCORE' | null>(null);
 
-  // AI chat panel — hidden by default; toggle with Cmd+I
-  const [showChatPanel, setShowChatPanel] = useState(false);
   // Chat history loaded from backend for cloud projects
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
-
-  // Threat Model panel — hidden by default; toggle with Cmd+T
-  const [showThreatModelPanel, setShowThreatModelPanel] = useState(false);
   // Accumulated threats from AI analysis runs, keyed by layerId
   const [threatPanelThreats, setThreatPanelThreats] = useState<ThreatItem[]>([]);
   const [threatModelInfo, setThreatModelInfo] = useState<ThreatModelInfo | null>(null);
@@ -250,7 +256,6 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
   const [canvasBadgeTargetId, setCanvasBadgeTargetId] = useState<string | null>(null);
 
   // Security Posture Score panel
-  const [showPosturePanel, setShowPosturePanel] = useState(false);
   const [latestPostureScore, setLatestPostureScore] = useState<number | null>(null);
 
   // Pipeline nudge state
@@ -259,7 +264,6 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
   );
 
   // Attack Mind Simulator panel
-  const [showAttackMindPanel, setShowAttackMindPanel] = useState(false);
   const [attackMindEntryNodeId, setAttackMindEntryNodeId] = useState<string | null>(null);
   const [attackHighlightMap, setAttackHighlightMap] = useState<AttackHighlightMap>({});
   const [attackEdgeIds, setAttackEdgeIds] = useState<string[]>([]);
@@ -280,16 +284,11 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
     window.history.replaceState(null, '', url.toString());
     // Open the matching panel
     if (action === 'posture') {
-      setShowPosturePanel(true);
-      setShowAttackMindPanel(false);
-      setShowThreatModelPanel(false);
+      setInspector({ kind: 'posture' });
     } else if (action === 'attack') {
-      setShowAttackMindPanel(true);
-      setShowPosturePanel(false);
-      setShowThreatModelPanel(false);
+      setInspector({ kind: 'attack' });
     } else if (action === 'stride') {
-      setShowChatPanel(true);
-      setShowThreatModelPanel(false);
+      setInspector({ kind: 'ai' });
     }
   }, [backendDiagramId, user]);
 
@@ -679,7 +678,7 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
         setCurrentProjectName(project.name);
         setIsReadOnly(false);
         setShowProjectsModal(false);
-        setShowChatPanel(true);
+        setInspector({ kind: 'ai' });
       } catch (err: unknown) {
         setError(err instanceof Error ? err.message : 'Failed to create cloud project');
       }
@@ -791,7 +790,7 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
       ...result.threats,
     ]);
     setThreatModelInfo({ name: 'Current Analysis', isSaved: false });
-    setShowThreatModelPanel(true);
+    setInspector({ kind: 'threat' });
 
     return result.threats;
   }, [currentLayerId, layers]);
@@ -830,7 +829,7 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
     });
     setActiveJobId(jobId);
     setActiveJobType('THREAT_ANALYSIS');
-    setShowThreatModelPanel(true);
+    setInspector({ kind: 'threat' });
   }, [currentLayerId, layers, projectId]);
 
   // useJobPoller — polls the active background job and loads results on completion
@@ -929,9 +928,7 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
   /** Open Attack Mind panel pre-seeded with a specific entry node */
   const handleSimulateAttackFromNode = useCallback((nodeId: string) => {
     setAttackMindEntryNodeId(nodeId);
-    setShowAttackMindPanel(true);
-    setShowPosturePanel(false);
-    setShowThreatModelPanel(false);
+    setInspector({ kind: 'attack' });
     setContextMenu(null);
   }, []);
 
@@ -1513,7 +1510,12 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
 
   const handleEdgeSelect = useCallback((edge: Edge | null) => {
     setSelectedEdge(edge);
-    if (edge) setSelectedNode(null);
+    if (edge) {
+      setSelectedNode(null);
+      setInspector({ kind: 'edge' });
+    } else {
+      setInspector((p) => p.kind === 'edge' ? { kind: 'none' } : p);
+    }
   }, []);
 
   const handleEdgeUpdate = useCallback((edgeId: string, updates: Partial<Edge>) => {
@@ -1531,6 +1533,11 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
   const handleNodeSelect = useCallback((node: Node<NodeData> | null) => {
     setSelectedNode(node);
     setSelectedEdge(null);
+    if (node) {
+      setInspector({ kind: 'properties' });
+    } else {
+      setInspector((p) => p.kind === 'properties' ? { kind: 'none' } : p);
+    }
   }, []);
 
   // ── Inline label editing ──────────────────────────────────────────────────
@@ -1570,8 +1577,13 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
     [navigateTo, editingNodeId, editInitialChar, startEditing, stopEditing, animateEdges],
   );
 
-  // ── Right sidebar visibility ──────────────────────────────────────────────
-  const showRightSidebar = showLayersPanel || !!selectedNode || (!!selectedEdge && !selectedNode);
+  // ── Right inspector visibility flags (derived from `inspector.kind`) ─────
+  const showLayersPanel = inspector.kind === 'layers';
+  const showChatPanel = inspector.kind === 'ai';
+  const showThreatModelPanel = inspector.kind === 'threat';
+  const showPosturePanel = inspector.kind === 'posture';
+  const showAttackMindPanel = inspector.kind === 'attack';
+  const showRightSidebar = showLayersPanel || (!!selectedNode && inspector.kind === 'properties') || (!!selectedEdge && !selectedNode && inspector.kind === 'edge');
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -1600,14 +1612,16 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
             onCopy={() => rfInstanceRef.current?.doCopy()}
             onPaste={() => rfInstanceRef.current?.doPaste()}
             isReadOnly={isReadOnly}
-            onOpenThreatModel={!!user ? () => setShowThreatModelPanel((v) => !v) : undefined}
+            onOpenThreatModel={!!user ? () => setInspector((p) => p.kind === 'threat' ? { kind: 'none' } : { kind: 'threat' }) : undefined}
             onOpenThreatDashboard={() => router.push(`/projects/${projectId}/threats`)}
-            onOpenPostureScore={!!user ? () => { setShowPosturePanel((v) => !v); setShowAttackMindPanel(false); } : undefined}
+            onOpenPostureScore={!!user ? () => setInspector((p) => p.kind === 'posture' ? { kind: 'none' } : { kind: 'posture' }) : undefined}
             postureScore={latestPostureScore}
-            onOpenAttackMind={!!user ? () => { setShowAttackMindPanel((v) => !v); setShowPosturePanel(false); } : undefined}
-            onShowAI={() => setShowChatPanel(true)}
+            onOpenAttackMind={!!user ? () => setInspector((p) => p.kind === 'attack' ? { kind: 'none' } : { kind: 'attack' }) : undefined}
+            onShowAI={() => setInspector({ kind: 'ai' })}
             onShowAIHistory={isLoggedIn() ? () => router.push(`/projects/${projectId}/ai-history`) : undefined}
             onShowSecurityIntel={isLoggedIn() ? () => router.push(`/projects/${projectId}/intel`) : undefined}
+            inspectorKind={inspector.kind}
+            onInspect={(kind) => setInspector((p) => p.kind === kind ? { kind: 'none' } : { kind })}
             isCloudProject={!!backendDiagramId}
             onPublish={() => setShowPublishModal(true)}
             onOpenDiff={() => setShowVersionCompare(true)}
@@ -1684,19 +1698,19 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
 
           {/* ── Main content area ────────────────────────────────────────── */}
           <div className="flex flex-1 overflow-hidden">
-            {/* Components palette — collapses smoothly when Threat Model panel opens */}
+            {/* Components palette */}
             {!isReadOnly && (
-              <div className={`overflow-hidden transition-[max-width] duration-300 ease-in-out flex-shrink-0 ${showThreatModelPanel ? 'max-w-0' : 'max-w-[240px]'}`}>
+              <div className="flex-shrink-0">
                 <NodePalette
                   onDragStart={onPaletteDragStart}
                   onAddNode={handleAddNode}
-                  onOpenThreatModel={!!user ? () => setShowThreatModelPanel((v) => !v) : undefined}
+                  onOpenThreatModel={user ? () => setInspector((p) => p.kind === 'threat' ? { kind: 'none' } : { kind: 'threat' }) : undefined}
                   onOpenThreatDashboard={() => router.push(`/projects/${projectId}/threats`)}
                 />
               </div>
             )}
 
-            {/* Canvas wrapper — relative so overlay + banner can be positioned inside */}
+            {/* Canvas */}
             <div className="relative flex flex-1 overflow-hidden">
               <DiagramCanvas
                 key={`${currentLayerId}_${canvasLoadKey}`}
@@ -1713,20 +1727,20 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
                 onRequestEdit={startEditing}
                 animateEdges={animateEdges}
                 readOnly={isReadOnly}
-                threatOverlays={showThreatModelPanel ? threatPanelThreats.filter((t) => t.layerId === currentLayerId) : undefined}
+                threatOverlays={inspector.kind === 'threat' ? threatPanelThreats.filter((t) => t.layerId === currentLayerId) : undefined}
                 activeThreatTargetId={canvasBadgeTargetId}
                 onThreatNodeClick={(targetId) => {
                   handleHighlightThreatTarget(targetId);
                   setCanvasBadgeTargetId(targetId);
                 }}
-                attackHighlightMap={showAttackMindPanel ? attackHighlightMap : undefined}
-                attackEdgeIds={showAttackMindPanel ? attackEdgeIds : undefined}
+                attackHighlightMap={inspector.kind === 'attack' ? attackHighlightMap : undefined}
+                attackEdgeIds={inspector.kind === 'attack' ? attackEdgeIds : undefined}
               />
 
-              {/* ── Declutter loading overlay ──────────────────────────── */}
+              {/* Declutter loading overlay */}
               {isDecluttering && <DeclutterOverlay />}
 
-              {/* ── Post-generate Declutter suggestion banner ──────────── */}
+              {/* Post-generate Declutter suggestion banner */}
               {showDeclutterSuggestion && !isDecluttering && (
                 <div className="absolute bottom-4 left-1/2 z-30 flex -translate-x-1/2 items-center gap-3 rounded-2xl border border-violet-400/30 bg-slate-900/90 px-4 py-2.5 shadow-xl backdrop-blur-sm">
                   <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-lg bg-violet-500/20 ring-1 ring-violet-400/30">
@@ -1753,7 +1767,7 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
               )}
             </div>
 
-            {/* ── Right sidebar ─────────────────────────────────────────── */}
+            {/* ── Right sidebar (Layers / Properties / Edge) ─────────────── */}
             {showRightSidebar && (
               <div className="flex h-full flex-shrink-0">
                 {showLayersPanel && (
@@ -1761,24 +1775,24 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
                     docked
                     layers={layers}
                     currentLayerId={currentLayerId}
-                    onClose={() => setShowLayersPanel(false)}
+                    onClose={() => setInspector((p) => p.kind === 'layers' ? { kind: 'none' } : p)}
                     onNavigate={navigateTo}
                     onUpdateLayer={handleUpdateLayer}
                     onDeleteLayer={handleDeleteLayer}
                   />
                 )}
-                {selectedNode && (
+                {selectedNode && inspector.kind === 'properties' && (
                   <PropertiesPanel
                     node={selectedNode}
-                    onClose={() => setSelectedNode(null)}
+                    onClose={() => { setSelectedNode(null); setInspector((p) => p.kind === 'properties' ? { kind: 'none' } : p); }}
                     onUpdate={handleNodeUpdate}
                     onDelete={handleNodeDelete}
                   />
                 )}
-                {selectedEdge && !selectedNode && (
+                {selectedEdge && !selectedNode && inspector.kind === 'edge' && (
                   <EdgePropertiesPanel
                     edge={selectedEdge}
-                    onClose={() => setSelectedEdge(null)}
+                    onClose={() => { setSelectedEdge(null); setInspector((p) => p.kind === 'edge' ? { kind: 'none' } : p); }}
                     onUpdate={handleEdgeUpdate}
                     onDelete={handleEdgeDelete}
                   />
@@ -1796,14 +1810,14 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
                 onHighlightTarget={handleHighlightThreatTarget}
                 externalTargetId={canvasBadgeTargetId}
                 onExternalTargetConsumed={() => setCanvasBadgeTargetId(null)}
-                onOpenAIAssistant={() => { setShowChatPanel(true); setShowThreatModelPanel(false); }}
+                onOpenAIAssistant={() => setInspector({ kind: 'ai' })}
                 onRunAsync={handleSubmitThreatAnalysisAsync}
                 activeJobId={activeJobId}
                 activeJobType={activeJobType}
                 onSave={handleSaveThreatModelFromPanel}
                 onLoadModel={handleLoadModelToPanel}
                 onThreatsChanged={setThreatPanelThreats}
-                onClose={() => setShowThreatModelPanel(false)}
+                onClose={() => setInspector((p) => p.kind === 'threat' ? { kind: 'none' } : p)}
               />
             )}
 
@@ -1816,7 +1830,7 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
                 layers={buildProjectSnapshot().layers as Record<string, unknown>}
                 currentLayerId={currentLayerId}
                 onScoreComputed={(score) => setLatestPostureScore(score)}
-                onClose={() => setShowPosturePanel(false)}
+                onClose={() => setInspector((p) => p.kind === 'posture' ? { kind: 'none' } : p)}
               />
             )}
 
@@ -1828,7 +1842,7 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
                 layers={buildProjectSnapshot().layers as Record<string, unknown>}
                 initialEntryNodeId={attackMindEntryNodeId}
                 onHighlightChange={handleAttackHighlightChange}
-                onClose={() => { setShowAttackMindPanel(false); setAttackHighlightMap({}); setAttackEdgeIds([]); setAttackMindEntryNodeId(null); }}
+                onClose={() => { setInspector((p) => p.kind === 'attack' ? { kind: 'none' } : p); setAttackHighlightMap({}); setAttackEdgeIds([]); setAttackMindEntryNodeId(null); }}
               />
             )}
 
@@ -1860,7 +1874,7 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
                 onPipelinePhaseChange={setPipelinePhase}
                 isLoading={isGenerating}
                 status={generatingStatus}
-                onClose={() => setShowChatPanel(false)}
+                onClose={() => setInspector((p) => p.kind === 'ai' ? { kind: 'none' } : p)}
                 hasNodes={hasNodes}
                 isReadOnly={isReadOnly}
                 initialMessages={chatHistory.filter((m) => m.layerId !== '__threat_analysis__').map((m) => ({ role: m.role, content: m.content }))}
