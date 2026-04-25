@@ -18,7 +18,7 @@ import {
 } from '@/lib/api';
 import { ROOT_LAYER_ID, type Layer, type LayerMap } from '@/lib/layerStore';
 import { LINE_NODE_TYPES } from '@/lib/nodeConfig';
-import { getStoredUser, clearTokens } from '@/lib/authStore';
+import { getStoredUser, signOut } from '@/lib/authStore';
 import { useTheme } from '@/lib/themeContext';
 
 const MiniDiagramPreview = dynamic(() => import('./MiniDiagramPreview'), { ssr: false });
@@ -980,7 +980,7 @@ export default function AIHistoryPage({ projectId }: AIHistoryPageProps) {
           {/* User + sign out */}
           {storedUser && (
             <button
-              onClick={() => { clearTokens(); router.push('/login'); }}
+              onClick={() => { signOut(); router.push('/login'); }}
               className="flex items-center gap-1.5 rounded px-2.5 py-1 text-sm text-slate-700 hover:bg-slate-200 hover:text-slate-900 dark:text-slate-200 dark:hover:bg-slate-700 dark:hover:text-white"
               title="Sign out"
             >

@@ -150,6 +150,14 @@ export function apiGetMe(): Promise<UserProfile> {
   return apiFetch<UserProfile>('/api/users/me');
 }
 
+export function apiLogout(refreshToken: string): Promise<void> {
+  return fetch(`${BASE_URL}/api/auth/logout`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ refreshToken }),
+  }).then(() => undefined);
+}
+
 // ─── Projects ─────────────────────────────────────────────────────────────────
 
 export interface Project {

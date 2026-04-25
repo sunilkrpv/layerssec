@@ -3,7 +3,7 @@
  * All functions are safe to call on the server (they no-op when window is undefined).
  */
 
-import type { UserProfile } from './api';
+import { apiLogout, type UserProfile } from './api';
 
 const ACCESS_KEY = 'access_token';
 const REFRESH_KEY = 'refresh_token';
@@ -20,6 +20,15 @@ export function clearTokens(): void {
   localStorage.removeItem(ACCESS_KEY);
   localStorage.removeItem(REFRESH_KEY);
   localStorage.removeItem(USER_KEY);
+}
+
+export function signOut(): void {
+  if (typeof window === 'undefined') return;
+  const rt = localStorage.getItem(REFRESH_KEY);
+  clearTokens();
+  if (rt) {
+    void apiLogout(rt).catch(() => undefined);
+  }
 }
 
 export function getAccessToken(): string | null {

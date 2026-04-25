@@ -8,6 +8,7 @@ import {
   Sparkles, History, Lock, GitCompareArrows, Sword, Shield,
   Save, Loader2, ImageDown,
   Gauge, MoreHorizontal, PanelRight,
+  Undo2, Redo2,
 } from 'lucide-react';
 import LayersLogo from '@/components/LayersLogo';
 import AboutModal from '@/components/AboutModal';
@@ -63,6 +64,14 @@ interface ToolbarProps {
   onExportPng?: () => void;
   /** Current security pipeline phase — shows dot indicator on Shield icon */
   pipelinePhase?: 'idle' | 'nudge' | 'threat_running' | 'threat_done' | 'posture_running' | 'complete';
+  /** Undo the last diagram change (⌘Z) */
+  onUndo?: () => void;
+  /** Redo the last undone diagram change (⌘⇧Z / ⌘Y) */
+  onRedo?: () => void;
+  /** Whether the undo stack has any entries */
+  canUndo?: boolean;
+  /** Whether the redo stack has any entries */
+  canRedo?: boolean;
 }
 
 function ToolBtn({
@@ -140,6 +149,10 @@ export default function Toolbar({
   onOpenDiff,
   onExportPng,
   pipelinePhase,
+  onUndo,
+  onRedo,
+  canUndo = false,
+  canRedo = false,
 }: ToolbarProps) {
   const [aboutOpen, setAboutOpen] = useState(false);
   const postureScoreColor =
@@ -253,6 +266,26 @@ export default function Toolbar({
           ...(!isReadOnly ? [{ value: 'clear', label: 'Clear canvas', icon: <Trash2 size={13} />, variant: 'destructive' as const, onSelect: onClear }] : []),
         ]}
       />
+
+      {/* ── Undo / Redo (editing mode only) ─────────────────────────────── */}
+      {!isReadOnly && onUndo && onRedo && (
+        <BtnGroup>
+          <ToolBtn
+            onClick={onUndo}
+            title="Undo (⌘Z)"
+            disabled={!canUndo}
+          >
+            <Undo2 size={16} />
+          </ToolBtn>
+          <ToolBtn
+            onClick={onRedo}
+            title="Redo (⌘⇧Z)"
+            disabled={!canRedo}
+          >
+            <Redo2 size={16} />
+          </ToolBtn>
+        </BtnGroup>
+      )}
 
       {/* ── Inspect popover ───────────────────────────────────────────────── */}
       {onInspect && (

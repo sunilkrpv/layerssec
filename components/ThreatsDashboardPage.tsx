@@ -18,7 +18,7 @@ import {
   type ProjectThreat, type ThreatSeverity, type StrideCategory,
   type ThreatStatus, type ThreatModelSummary, type ThreatItem,
 } from '@/lib/api';
-import { getStoredUser, clearTokens } from '@/lib/authStore';
+import { getStoredUser, signOut } from '@/lib/authStore';
 import { useTheme } from '@/lib/themeContext';
 
 // ── Config ────────────────────────────────────────────────────────────────────
@@ -1091,7 +1091,7 @@ export default function ThreatsDashboardPage({ projectId }: Props) {
 
           {storedUser && (
             <button
-              onClick={() => { clearTokens(); router.push('/login'); }}
+              onClick={() => { signOut(); router.push('/login'); }}
               className="flex items-center gap-1.5 rounded px-2.5 py-1 text-sm text-slate-700 hover:bg-slate-200 hover:text-slate-900 dark:text-slate-200 dark:hover:bg-slate-700 dark:hover:text-white"
               title="Sign out"
             >

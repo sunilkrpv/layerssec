@@ -9,12 +9,13 @@ import {
   ArrowRightCircle, BookOpen, Sun, Moon, Monitor, LogOut, Search, User, LayoutDashboard, Activity,
 } from 'lucide-react';
 import LayersLogo from '@/components/LayersLogo';
+import DeleteProjectModal from '@/components/DeleteProjectModal';
 import {
   apiListProjects, apiListProjectVersions, apiCheckoutVersion,
-  apiCreateProject, apiUpdateProject, apiDeleteProject,
+  apiCreateProject, apiUpdateProject,
   type ProjectWithVersioning, type DiagramVersion, DraftExistsError,
 } from '@/lib/api';
-import { isLoggedIn, getStoredUser, clearTokens } from '@/lib/authStore';
+import { isLoggedIn, getStoredUser, signOut } from '@/lib/authStore';
 import { useTheme } from '@/lib/themeContext';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -240,61 +241,6 @@ function NewProjectModal({ onClose, onCreate }: NewProjectModalProps) {
             </button>
           </div>
         </form>
-      </div>
-    </div>
-  );
-}
-
-// ── Delete Confirmation Modal ─────────────────────────────────────────────────
-
-interface DeleteConfirmModalProps {
-  project: ProjectWithVersioning;
-  onConfirm: () => void;
-  onCancel: () => void;
-  isDeleting: boolean;
-  error: string | null;
-}
-
-function DeleteConfirmModal({ project, onConfirm, onCancel, isDeleting, error }: DeleteConfirmModalProps) {
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm"
-      onClick={(e) => { if (e.target === e.currentTarget && !isDeleting) onCancel(); }}
-    >
-      <div className="w-full max-w-sm mx-4 rounded-2xl bg-white p-6 shadow-2xl dark:bg-slate-900">
-        <div className="mb-1 flex h-10 w-10 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/30">
-          <Trash2 size={18} className="text-red-600 dark:text-red-400" />
-        </div>
-        <h2 className="mt-3 text-base font-bold text-slate-900 dark:text-slate-100">Delete project?</h2>
-        <p className="mt-1.5 text-sm text-slate-600 dark:text-slate-400">
-          <span className="font-semibold text-slate-800 dark:text-slate-200">{project.name}</span> and all its
-          versions, diagrams, and chat history will be permanently deleted.
-        </p>
-
-        {error && (
-          <p className="mt-3 flex items-center gap-1.5 text-xs text-red-600 dark:text-red-400">
-            <AlertCircle size={12} />
-            {error}
-          </p>
-        )}
-
-        <div className="mt-5 flex gap-2">
-          <button
-            onClick={onCancel}
-            disabled={isDeleting}
-            className="flex-1 rounded-xl border border-slate-200 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-60 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={onConfirm}
-            disabled={isDeleting}
-            className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-red-600 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-60"
-          >
-            {isDeleting ? <Loader2 size={13} className="animate-spin" /> : null}
-            Delete Project
-          </button>
-        </div>
       </div>
     </div>
   );
@@ -642,8 +588,6 @@ export default function ProjectsListPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
 
   const [deleteTarget, setDeleteTarget] = useState<ProjectWithVersioning | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const [editingNameId, setEditingNameId] = useState<string | null>(null);
   const [editingNameValue, setEditingNameValue] = useState('');
@@ -719,21 +663,10 @@ export default function ProjectsListPage() {
 
   // ── Delete ──────────────────────────────────────────────────────────────────
 
-  const handleDeleteConfirm = async () => {
-    if (!deleteTarget) return;
-    setIsDeleting(true);
-    setDeleteError(null);
-    try {
-      await apiDeleteProject(deleteTarget.id);
-      setProjects((prev) => prev.filter((p) => p.id !== deleteTarget.id));
-      if (selectedProject?.id === deleteTarget.id) setSelectedProject(null);
-      setDeleteTarget(null);
-    } catch (e) {
-      setDeleteError(e instanceof Error ? e.message : 'Delete failed');
-    } finally {
-      setIsDeleting(false);
-    }
-  };
+  const handleDeleted = useCallback((projectId: string) => {
+    setProjects((prev) => prev.filter((p) => p.id !== projectId));
+    setSelectedProject((prev) => (prev?.id === projectId ? null : prev));
+  }, []);
 
   return (
     <div className="flex h-screen flex-col bg-slate-50 dark:bg-slate-950">
@@ -784,7 +717,7 @@ export default function ProjectsListPage() {
           {/* User + sign out */}
           {user && (
             <button
-              onClick={() => { clearTokens(); router.push('/login'); }}
+              onClick={() => { signOut(); router.push('/login'); }}
               className="flex items-center gap-1.5 rounded px-2.5 py-1 text-sm text-slate-700 hover:bg-slate-200 hover:text-slate-900 dark:text-slate-200 dark:hover:bg-slate-700 dark:hover:text-white"
               title="Sign out"
             >
@@ -977,7 +910,7 @@ export default function ProjectsListPage() {
                             {/* Delete */}
                             <button
                               title="Delete project"
-                              onClick={(e) => { e.stopPropagation(); setDeleteError(null); setDeleteTarget(p); }}
+                              onClick={(e) => { e.stopPropagation(); setDeleteTarget(p); }}
                               className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-400"
                             >
                               <Trash2 size={13} />
@@ -1006,12 +939,10 @@ export default function ProjectsListPage() {
       )}
 
       {deleteTarget && (
-        <DeleteConfirmModal
-          project={deleteTarget}
-          onConfirm={handleDeleteConfirm}
-          onCancel={() => { if (!isDeleting) setDeleteTarget(null); }}
-          isDeleting={isDeleting}
-          error={deleteError}
+        <DeleteProjectModal
+          project={{ id: deleteTarget.id, name: deleteTarget.name }}
+          onClose={() => setDeleteTarget(null)}
+          onDeleted={handleDeleted}
         />
       )}
 

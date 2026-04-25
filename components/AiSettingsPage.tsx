@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useOnboarding } from '@/lib/onboardingStore';
+import { validateSafeHttpsUrl } from '@/lib/urlSafety';
 import {
   Settings, Cpu, Zap, BarChart3, Check, AlertCircle, Loader2,
   ChevronDown, Eye, EyeOff, Key, ShieldCheck, Trash2, Terminal,
@@ -552,7 +553,18 @@ export default function AiSettingsPage() {
     if (first) setModel(first.id);
   };
 
+  const openAiBaseUrlError = useMemo(() => {
+    const trimmed = openAiBaseUrl.trim();
+    if (!trimmed) return null;
+    const result = validateSafeHttpsUrl(trimmed);
+    return result.ok ? null : result.reason;
+  }, [openAiBaseUrl]);
+
   const handleSave = async () => {
+    if (provider === 'OPENAI' && openAiBaseUrlError) {
+      setError(`Custom API base URL: ${openAiBaseUrlError}`);
+      return;
+    }
     setSaving(true);
     setError(null);
     setSaved(false);
@@ -702,11 +714,23 @@ export default function AiSettingsPage() {
               value={openAiBaseUrl}
               onChange={(e) => setOpenAiBaseUrl(e.target.value)}
               placeholder="https://api.openai.com"
-              className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 font-mono text-[13px] text-slate-800 placeholder-slate-400 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:placeholder-slate-500"
+              aria-invalid={openAiBaseUrlError ? true : undefined}
+              className={`w-full rounded-lg border bg-slate-50 px-3 py-2 font-mono text-[13px] text-slate-800 placeholder-slate-400 outline-none focus:ring-2 dark:bg-slate-900 dark:text-slate-100 dark:placeholder-slate-500 ${
+                openAiBaseUrlError
+                  ? 'border-red-400 focus:border-red-500 focus:ring-red-400/20 dark:border-red-700 dark:focus:border-red-500'
+                  : 'border-slate-200 focus:border-blue-400 focus:ring-blue-400/20 dark:border-slate-600'
+              }`}
             />
-            <p className="mt-1.5 text-[11px] text-slate-400 dark:text-slate-500">
-              Use for OpenAI-compatible providers (Azure, Together AI, LM Studio, etc.)
-            </p>
+            {openAiBaseUrlError ? (
+              <p className="mt-1.5 flex items-center gap-1.5 text-[11px] text-red-600 dark:text-red-400">
+                <AlertCircle size={11} />
+                {openAiBaseUrlError}
+              </p>
+            ) : (
+              <p className="mt-1.5 text-[11px] text-slate-400 dark:text-slate-500">
+                Must be <code className="font-mono">https://</code> only, no path or query. Localhost and private addresses are blocked.
+              </p>
+            )}
           </section>
         )}
 
@@ -734,8 +758,8 @@ export default function AiSettingsPage() {
           <button
             data-onboarding="ai-save-button"
             onClick={handleSave}
-            disabled={saving}
-            className="flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-[13px] font-semibold text-white transition hover:bg-blue-700 disabled:opacity-50"
+            disabled={saving || (provider === 'OPENAI' && !!openAiBaseUrlError)}
+            className="flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-[13px] font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {saving ? <Loader2 size={14} className="animate-spin" /> : saved ? <Check size={14} /> : <Zap size={14} />}
             {saving ? 'Saving…' : saved ? 'Saved!' : 'Save settings'}
