@@ -661,6 +661,11 @@ export async function apiExportThreatReport(projectId: string): Promise<void> {
   URL.revokeObjectURL(url);
 }
 
+/** Fetch a single threat by id for the detail page. */
+export function apiGetThreat(projectId: string, threatId: string): Promise<ProjectThreat> {
+  return apiFetch<ProjectThreat>(`/api/projects/${projectId}/threats/${threatId}`);
+}
+
 // ── Posture Score ─────────────────────────────────────────────────────────
 
 export interface PostureScoreDimension {
