@@ -1,7 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { EncryptionService } from '../encryption/encryption.service';
 import { UpdateAiSettingsDto } from './dto/update-ai-settings.dto';
+import { validateSafeHttpsUrl } from '../common/url-safety';
 import { AiProvider } from '@prisma/client';
 
 export interface AiSettingsResponse {
@@ -36,13 +37,26 @@ export class UserSettingsService {
   }
 
   async updateAiSettings(userId: string, dto: UpdateAiSettingsDto): Promise<AiSettingsResponse> {
+    // Defense-in-depth: re-validate openAiBaseUrl even though the DTO decorator
+    // already guards it. Never trust a single layer for SSRF-relevant fields.
+    let normalizedOpenAiBaseUrl: string | null | undefined;
+    if (dto.openAiBaseUrl !== undefined) {
+      if (!dto.openAiBaseUrl) {
+        normalizedOpenAiBaseUrl = null;
+      } else {
+        const result = validateSafeHttpsUrl(dto.openAiBaseUrl);
+        if (result.ok === false) throw new BadRequestException(result.reason);
+        normalizedOpenAiBaseUrl = result.normalized;
+      }
+    }
+
     // Build the update payload — only include fields that were actually sent
     const updateData: Record<string, unknown> = {};
     if (dto.provider !== undefined) updateData.provider = dto.provider as AiProvider;
     if (dto.model !== undefined) updateData.model = dto.model;
     if (dto.maxOutputTokens !== undefined) updateData.maxOutputTokens = dto.maxOutputTokens;
     if (dto.ollamaBaseUrl !== undefined) updateData.ollamaBaseUrl = dto.ollamaBaseUrl || null;
-    if (dto.openAiBaseUrl !== undefined) updateData.openAiBaseUrl = dto.openAiBaseUrl || null;
+    if (normalizedOpenAiBaseUrl !== undefined) updateData.openAiBaseUrl = normalizedOpenAiBaseUrl;
 
     // API keys — encrypt non-empty values, null to clear
     if (dto.anthropicApiKey !== undefined) {
@@ -65,7 +79,7 @@ export class UserSettingsService {
         model: dto.model ?? 'claude-sonnet-4-6',
         maxOutputTokens: dto.maxOutputTokens ?? null,
         ollamaBaseUrl: dto.ollamaBaseUrl || null,
-        openAiBaseUrl: dto.openAiBaseUrl || null,
+        openAiBaseUrl: normalizedOpenAiBaseUrl ?? null,
         encryptedAnthropicKey: dto.anthropicApiKey
           ? this.encryption.encrypt(dto.anthropicApiKey)
           : null,

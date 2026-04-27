@@ -199,6 +199,34 @@ export class ThreatService {
     return { data, total, page: params.page, limit: params.limit, summary };
   }
 
+  // ── Get a single project threat by ID (IDOR/BOLA-safe) ──────────────────
+
+  async getProjectThreat(projectId: string, threatId: string, userId: string) {
+    const threat = await this.prisma.threat.findFirst({
+      where: {
+        id: threatId,
+        threatModel: {
+          projectId,
+          project: { ownerId: userId },
+        },
+      },
+      include: {
+        threatModel: {
+          select: {
+            id: true,
+            name: true,
+            diagramVersion: true,
+            savedAt: true,
+            diagramId: true,
+            project: { select: { id: true, name: true } },
+          },
+        },
+      },
+    });
+    if (!threat) throw new NotFoundException('Threat not found');
+    return threat;
+  }
+
   // ── Update a single threat's fields ──────────────────────────────────────
 
   async updateThreat(

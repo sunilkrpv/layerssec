@@ -68,6 +68,16 @@ export class ThreatController {
     res.end(buffer);
   }
 
+  // GET /api/projects/:projectId/threats/:threatId  — single threat with IDOR/BOLA protection
+  @Get('projects/:projectId/threats/:threatId')
+  getProjectThreat(
+    @Param('projectId', ParseUUIDPipe) projectId: string,
+    @Param('threatId', ParseUUIDPipe) threatId: string,
+    @CurrentUser('id') userId: string,
+  ) {
+    return this.threat.getProjectThreat(projectId, threatId, userId);
+  }
+
   // GET /api/projects/:projectId/threats  — paginated + filtered threats dashboard
   @Get('projects/:projectId/threats')
   listProjectThreats(

@@ -1,4 +1,5 @@
 import { IsEnum, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
+import { IsSafeHttpsUrl } from '../../common/url-safety';
 
 export enum AiProviderDto {
   ANTHROPIC = 'ANTHROPIC',
@@ -28,6 +29,7 @@ export class UpdateAiSettingsDto {
 
   @IsOptional()
   @IsString()
+  @IsSafeHttpsUrl()
   openAiBaseUrl?: string;
 
   /**

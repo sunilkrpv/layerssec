@@ -21,10 +21,26 @@ model User {
   aiSettings      UserAiSettings?
   aiJobs          AiJob[]
   onboarding      UserOnboarding?
+  refreshTokens   RefreshToken[]
   createdAt       DateTime        @default(now()) @map("created_at")
   updatedAt       DateTime        @updatedAt @map("updated_at")
 
   @@map("users")
+}
+
+model RefreshToken {
+  id           String    @id @db.Uuid
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId       String    @map("user_id") @db.Uuid
+  familyId     String    @map("family_id") @db.Uuid
+  expiresAt    DateTime  @map("expires_at")
+  revokedAt    DateTime? @map("revoked_at")
+  replacedById String?   @map("replaced_by_id") @db.Uuid
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@index([familyId])
+  @@map("refresh_tokens")
 }
 
 model UserOnboarding {

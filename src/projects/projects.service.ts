@@ -88,9 +88,28 @@ export class ProjectsService {
 
   async remove(id: string, userId: string) {
     await this.ensureOwnership(id, userId);
-    // Clean up ChromaDB context before deleting from DB — non-blocking, errors swallowed
-    this.ragIndexing.deleteProjectContext(id, userId).catch(() => {});
-    return this.prisma.project.delete({ where: { id } });
+
+    const diagrams = await this.prisma.diagram.findMany({
+      where: { projectId: id },
+      select: { id: true },
+    });
+    const diagramIds = diagrams.map((d) => d.id);
+
+    await this.prisma.$transaction([
+      this.prisma.aiInteraction.deleteMany({
+        where: { diagramId: { in: diagramIds } },
+      }),
+      this.prisma.project.delete({ where: { id } }),
+    ]);
+
+    this.ragIndexing.deleteProjectContext(id, userId).catch((err) => {
+      this.logger.error(
+        `ChromaDB cleanup failed for project ${id}; vectors may persist`,
+        err instanceof Error ? err.stack : String(err),
+      );
+    });
+
+    return { id };
   }
 
   /** GET /projects/summary — all projects with latest security metadata for sidebar */
