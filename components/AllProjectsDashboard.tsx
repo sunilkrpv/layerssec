@@ -11,7 +11,7 @@ import { type ProjectSummary, type AiJobListItem } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import EmptyProjectsState from './onboarding/EmptyProjectsState';
 import ProjectEditModal from './ProjectEditModal';
-import DeleteProjectModal from './DeleteProjectModal';
+import DeleteProjectModal from './projects/DeleteProjectModal';
 import ProjectsGuidePanel from './ProjectsGuidePanel';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

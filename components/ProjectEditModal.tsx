@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Trash2, X } from 'lucide-react';
 import { apiUpdateProject } from '@/lib/api';
-import DeleteProjectModal from './DeleteProjectModal';
+import DeleteProjectModal from './projects/DeleteProjectModal';
 
 const NAME_MAX = 100;
 const DESC_MAX = 1024;
