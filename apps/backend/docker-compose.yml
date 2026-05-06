@@ -1,0 +1,110 @@
+version: '3.8'
+
+services:
+  # ── Infrastructure ────────────────────────────────────────────────────────
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    # No external port — only reachable by containers on the Docker network
+    environment:
+      POSTGRES_USER: layers
+      POSTGRES_PASSWORD: ${DB_PASS}
+      POSTGRES_DB: layers
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U layers']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  chromadb:
+    image: chromadb/chroma:latest
+    restart: unless-stopped
+    # No external port — only reachable by containers on the Docker network
+    volumes:
+      - chroma_data:/chroma/chroma
+    environment:
+      - IS_PERSISTENT=TRUE
+      - ANONYMIZED_TELEMETRY=FALSE
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    # No external port — only reachable by containers on the Docker network
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASS}
+
+  # ── Application ───────────────────────────────────────────────────────────
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - '127.0.0.1:4000:4000'   # localhost only — Nginx proxies inbound traffic
+    env_file:
+      - .env.docker          # create from .env.example — see README
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      DATABASE_URL: postgresql://layers:${DB_PASS}@postgres:5432/layers
+      DIRECT_URL: postgresql://layers:${DB_PASS}@postgres:5432/layers
+      REDIS_URL: redis://:${REDIS_PASS}@redis:6379
+      CHROMA_URL: http://chromadb:8000
+      CORS_ORIGIN: https://${DOMAIN}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      chromadb:
+        condition: service_started
+
+  frontend:
+    build:
+      context: ../layers
+      dockerfile: Dockerfile
+      args:
+        # NEXT_PUBLIC_API_URL is baked in at build time; browser calls this directly.
+        # Do NOT add /api here — lib/api.ts already prefixes every call with /api/...
+        NEXT_PUBLIC_API_URL: https://api.layerssec.com
+    ports:
+      - '127.0.0.1:3000:3000'   # localhost only — Nginx proxies inbound traffic
+    environment:
+      NODE_ENV: production
+    depends_on:
+      - backend
+
+  # ── Reverse Proxy ─────────────────────────────────────────────────────────
+
+  nginx:
+    image: nginx:alpine
+    restart: unless-stopped
+    ports:
+      - '127.0.0.1:80:80'     # Cloudflare Tunnel connects to localhost — never 0.0.0.0
+      - '127.0.0.1:443:443'
+    volumes:
+      - ../layers-infra/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ../layers-infra/certs:/etc/nginx/certs:ro
+    depends_on:
+      - frontend
+      - backend
+
+  # ── Monitoring ────────────────────────────────────────────────────────────
+
+  uptime-kuma:
+    image: louislam/uptime-kuma:1
+    restart: unless-stopped
+    ports:
+      - '127.0.0.1:3001:3001'  # accessible via Tailscale only, not the internet
+    volumes:
+      - kuma_data:/app/data
+
+volumes:
+  postgres_data:
+  chroma_data:
+  redis_data:
+  kuma_data:

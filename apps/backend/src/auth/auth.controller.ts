@@ -1,0 +1,40 @@
+import {
+  Controller,
+  Post,
+  Body,
+  HttpCode,
+  HttpStatus,
+  NotFoundException,
+} from '@nestjs/common';
+import { AuthService } from './auth.service';
+import { RegisterDto } from './dto/register.dto';
+import { LoginDto } from './dto/login.dto';
+
+@Controller('auth')
+export class AuthController {
+  constructor(private auth: AuthService) {}
+
+  @Post('register')
+  register(@Body() dto: RegisterDto) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new NotFoundException();
+    }
+    return this.auth.register(dto);
+  }
+
+  @Post('login')
+  login(@Body() dto: LoginDto) {
+    return this.auth.login(dto);
+  }
+
+  @Post('refresh')
+  refresh(@Body('refreshToken') refreshToken: string) {
+    return this.auth.refreshTokens(refreshToken);
+  }
+
+  @Post('logout')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async logout(@Body('refreshToken') refreshToken: string) {
+    await this.auth.logout(refreshToken);
+  }
+}

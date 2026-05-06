@@ -1,0 +1,2045 @@
+'use client';
+
+import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type ReactNode } from 'react';
+import { useRouter } from 'next/navigation';
+import { ReactFlowProvider, type Node, type Edge, type ReactFlowInstance } from 'reactflow';
+import { toPng } from 'html-to-image';
+
+import DiagramCanvas, { type ExtendedRFInstance } from '@/components/DiagramCanvas';
+import NodePalette from '@/components/NodePalette';
+import PropertiesPanel from '@/components/PropertiesPanel';
+import EdgePropertiesPanel from '@/components/EdgePropertiesPanel';
+import MenuBar from '@/components/MenuBar';
+import Toolbar from '@/components/Toolbar';
+import LayerBar from '@/components/LayerBar';
+import LayersPanel from '@/components/LayersPanel';
+import NodeContextMenu from '@/components/NodeContextMenu';
+import PaneContextMenu from '@/components/PaneContextMenu';
+import DrillDownModal from '@/components/DrillDownModal';
+import ReassignLayerModal from '@/components/ReassignLayerModal';
+import DeleteLayerModal from '@/components/DeleteLayerModal';
+import AssignLayerModal from '@/components/AssignLayerModal';
+import AIChatPanel from '@/components/AIChatPanel';
+import ThreatModelPanel, { type ThreatModelInfo } from '@/components/ThreatModelPanel';
+import PostureScorePanel from '@/components/PostureScorePanel';
+import AttackMindPanel, { type AttackMindHighlight } from '@/components/AttackMindPanel';
+import DeclutterOverlay from '@/components/DeclutterOverlay';
+import { type AttackHighlightMap } from '@/components/AttackPathOverlay';
+import { Lock, ArrowRight } from 'lucide-react';
+import AuthModal from '@/components/AuthModal';
+import ProjectsModal from '@/components/ProjectsModal';
+import PublishModal from '@/components/PublishModal';
+import VersionCompareSheet from '@/components/VersionCompareSheet';
+import type { AssignableLayer } from '@/components/AssignLayerModal';
+
+import type { NodeData, NodeType, GenerateResponse } from '@/lib/types';
+import type { UserProfile, Project, ChatMessage, ThreatItem, ThreatModelFull } from '@/lib/api';
+import {
+  apiUpdateDiagram, apiCreateDiagram, apiGenerateDiagram,
+  apiPublishDiagram, apiListProjectVersions, apiGetProjectDraft,
+  apiGetDiagram, apiGetProject, apiCheckoutVersion, DraftExistsError,
+  apiChatGenerate, apiChatEvaluate, apiGetChatHistory,
+  apiRunThreatAnalysis, apiSaveThreatModel, apiDeclutter,
+  apiSubmitThreatAnalysis, apiSubmitPostureScore, apiGetJobStatus,
+  apiThreatAgentChat, apiPostureScoreStream, apiAttackMindStream,
+  type AiJobStatusResponse, type ThreatChatPayload,
+} from '@/lib/api';
+import { useJobPoller } from '@/hooks/useJobPoller';
+import { getStoredUser, clearTokens, isLoggedIn, signOut } from '@/lib/authStore';
+import {
+  makeInitialLayers,
+  createChildLayer,
+  createStandaloneLayer,
+  findChildLayer,
+  getLayerPath,
+  updateLayer,
+  collectDescendantIds,
+  deleteLayerCascade,
+  getOrphanedLayers,
+  ROOT_LAYER_ID,
+  type LayerMap,
+  type Layer,
+  type ProjectFile,
+} from '@/lib/layerStore';
+import { CanvasContext } from '@/lib/canvasContext';
+import { LINE_NODE_TYPES } from '@/lib/nodeConfig';
+import { advanceToNudge, loadPipelineState, type PipelinePhase } from '@/lib/pipelineState';
+
+// ─── Right inspector discriminated union ─────────────────────────────────────
+type RightInspector =
+  | { kind: 'none' }
+  | { kind: 'ai' }
+  | { kind: 'threat' }
+  | { kind: 'posture' }
+  | { kind: 'attack' }
+  | { kind: 'layers' }
+  | { kind: 'properties' }
+  | { kind: 'edge' };
+
+// ─── helper: synchronously capture current canvas state ──────────────────────
+function captureCanvas(
+  ref: React.MutableRefObject<ExtendedRFInstance | null>,
+): { nodes: Node[]; edges: Edge[] } | null {
+  const instance = ref.current as ReactFlowInstance | null;
+  if (!instance) return null;
+  const obj = instance.toObject();
+  return { nodes: obj.nodes as Node[], edges: obj.edges };
+}
+
+// ─── helper: read currLayer from the current URL search params ───────────────
+function readCurrLayerParam(): string | null {
+  if (typeof window === 'undefined') return null;
+  return new URLSearchParams(window.location.search).get('currLayer');
+}
+
+interface DiagramPageProps {
+  projectId: string;
+  /** Diagram ID passed from the Server Component page via ?view=diagramId search param.
+   *  When set, load this specific diagram rather than the project draft. */
+  viewDiagramId?: string;
+}
+
+export default function DiagramPage({ projectId, viewDiagramId }: DiagramPageProps) {
+  const router = useRouter();
+  const rfInstanceRef = useRef<ExtendedRFInstance | null>(null);
+  const canvasRef = useRef<HTMLDivElement | null>(null);
+  // Clipboard lifted here so it persists when DiagramCanvas remounts on layer switch
+  const clipboardRef = useRef<{ nodes: Node<NodeData>[]; edges: Edge[] }>({ nodes: [], edges: [] });
+
+  // ── Layer state — init navStack from URL currLayer param ─────────────────
+  const [layers, setLayers] = useState<LayerMap>(() => makeInitialLayers());
+  const [navStack, setNavStack] = useState<string[]>([ROOT_LAYER_ID]);
+
+  // ── File management ───────────────────────────────────────────────────────
+  const [autoSave, setAutoSave] = useState(true);
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [canUndo, setCanUndo] = useState(false);
+  const [canRedo, setCanRedo] = useState(false);
+
+  // Guard ref — set to false on sign-out / 401 so debounced saves don't overwrite clean state
+  const saveEnabledRef = useRef(true);
+
+  // Refs so auto-save interval / debounced saves can access latest state without stale closures
+  const layersRef = useRef(layers);
+  const navStackRef = useRef(navStack);
+  const autoSaveRef = useRef(true); // mirrors autoSave state for use inside callbacks
+  useEffect(() => { layersRef.current = layers; }, [layers]);
+  useEffect(() => { navStackRef.current = navStack; }, [navStack]);
+  useEffect(() => { autoSaveRef.current = autoSave; }, [autoSave]);
+
+  // ── Auth state ────────────────────────────────────────────────────────────
+  const [user, setUser] = useState<UserProfile | null>(() => getStoredUser());
+  /** ID of the backend Diagram currently open (enables cloud auto-save). */
+  const [backendDiagramId, setBackendDiagramId] = useState<string | null>(null);
+  const backendDiagramIdRef = useRef<string | null>(null);
+  useEffect(() => { backendDiagramIdRef.current = backendDiagramId; }, [backendDiagramId]);
+
+  /** Name of the currently open cloud project — shown in the UI. */
+  const [currentProjectName, setCurrentProjectName] = useState<string | null>(null);
+
+  /** Whether the currently open cloud diagram is read-only (published). */
+  const [isReadOnly, setIsReadOnly] = useState(false);
+  const isReadOnlyRef = useRef(false);
+  useEffect(() => { isReadOnlyRef.current = isReadOnly; }, [isReadOnly]);
+
+  /** Stable ref so global keyboard shortcuts can call the latest handleExportPng without re-wiring. */
+  const handleExportPngRef = useRef<(() => void) | null>(null);
+
+  const [showPublishModal, setShowPublishModal] = useState(false);
+  const [isPublishing, setIsPublishing] = useState(false);
+  const [showCheckoutConfirm, setShowCheckoutConfirm] = useState(false);
+  const [showVersionCompare, setShowVersionCompare] = useState(false);
+  /** Number of published versions in the current project (used to compute next version number). */
+  const [publishedVersionCount, setPublishedVersionCount] = useState(0);
+
+  /**
+   * Incremented every time loadCanvasFromData is called.
+   * Forces DiagramCanvas to remount with fresh initialNodes even when currentLayerId
+   * does not change (e.g. server data loaded while already on ROOT layer).
+   */
+  const [canvasLoadKey, setCanvasLoadKey] = useState(0);
+
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showProjectsModal, setShowProjectsModal] = useState(false);
+
+  // ── Auth guard — redirect to /login if no session ────
+  useEffect(() => {
+    if (!isLoggedIn()) {
+      router.replace('/login');
+    }
+  }, [router]);
+
+  // ── 401 handler — session expired anywhere in the app ─────────────────────
+  useEffect(() => {
+    const handle401 = () => {
+      saveEnabledRef.current = false;
+      clearTokens();
+      setLayers(makeInitialLayers());
+      setNavStack([ROOT_LAYER_ID]);
+      setUser(null);
+      setBackendDiagramId(null);
+      setCurrentProjectName(null);
+      setShowProjectsModal(false);
+      router.replace('/login');
+    };
+    window.addEventListener('layers:unauthorized', handle401);
+    return () => window.removeEventListener('layers:unauthorized', handle401);
+  }, [router]);
+
+  // ── Threat panel window events (from AIChatPanel buttons) ─────────────────
+  useEffect(() => {
+    const handleOpenThreatPanel = () => setInspector({ kind: 'threat' });
+    window.addEventListener('layers:open-threat-panel', handleOpenThreatPanel);
+    window.addEventListener('layers:open-threat-model', handleOpenThreatPanel);
+    return () => {
+      window.removeEventListener('layers:open-threat-panel', handleOpenThreatPanel);
+      window.removeEventListener('layers:open-threat-model', handleOpenThreatPanel);
+    };
+  }, []);
+
+  // ── Attack Mind window event (from AIChatPanel) ────────────────────────────
+  useEffect(() => {
+    const openAttackSim = () => { /* optionally handle layers:open-attack-sim */ };
+    window.addEventListener('layers:open-attack-sim', openAttackSim);
+    return () => window.removeEventListener('layers:open-attack-sim', openAttackSim);
+  }, []);
+
+  // ── Global keyboard shortcuts (Cmd+L: layers panel, Cmd+P: projects modal) ─
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey)) return;
+      const isTyping =
+        e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement;
+      if (isTyping) return;
+      if (e.key === 'l') {
+        e.preventDefault();
+        setInspector((p) => p.kind === 'layers' ? { kind: 'none' } : { kind: 'layers' });
+      } else if (e.key === 'E' && e.shiftKey) {
+        e.preventDefault();
+        void handleExportPngRef.current?.();
+      } else if (e.key === 'p') {
+        e.preventDefault();
+        setShowProjectsModal(true);
+      } else if (e.key === 'i') {
+        e.preventDefault();
+        setInspector((p) => p.kind === 'ai' ? { kind: 'none' } : { kind: 'ai' });
+      } else if (e.key === 'M' && e.shiftKey) {
+        // Cmd+Shift+M — Threat Model panel (Cmd+T and Cmd+Shift+T are browser-reserved for tab management)
+        e.preventDefault();
+        setInspector((p) => p.kind === 'threat' ? { kind: 'none' } : { kind: 'threat' });
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  // ── UI state ──────────────────────────────────────────────────────────────
+  const [selectedNode, setSelectedNode] = useState<Node<NodeData> | null>(null);
+  const [selectedEdge, setSelectedEdge] = useState<Edge | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generatingStatus, setGeneratingStatus] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [inspector, setInspector] = useState<RightInspector>({ kind: 'none' });
+  const [animateEdges, setAnimateEdges] = useState(false);
+  const [isDecluttering, setIsDecluttering] = useState(false);
+  const [showDeclutterSuggestion, setShowDeclutterSuggestion] = useState(false);
+
+  // Async AI job tracking
+  const [activeJobId, setActiveJobId] = useState<string | null>(null);
+  const [activeJobType, setActiveJobType] = useState<'THREAT_ANALYSIS' | 'POSTURE_SCORE' | null>(null);
+
+  // Chat history loaded from backend for cloud projects
+  const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
+  // Accumulated threats from AI analysis runs, keyed by layerId
+  const [threatPanelThreats, setThreatPanelThreats] = useState<ThreatItem[]>([]);
+  const [threatModelInfo, setThreatModelInfo] = useState<ThreatModelInfo | null>(null);
+  // When user clicks a canvas threat badge → highlights that node in ThreatModelPanel
+  const [canvasBadgeTargetId, setCanvasBadgeTargetId] = useState<string | null>(null);
+
+  // Security Posture Score panel
+  const [latestPostureScore, setLatestPostureScore] = useState<number | null>(null);
+
+  // Pipeline nudge state
+  const [pipelinePhase, setPipelinePhase] = useState<PipelinePhase>(() =>
+    loadPipelineState(projectId).phase
+  );
+
+  // Attack Mind Simulator panel
+  const [attackMindEntryNodeId, setAttackMindEntryNodeId] = useState<string | null>(null);
+  const [attackHighlightMap, setAttackHighlightMap] = useState<AttackHighlightMap>({});
+  const [attackEdgeIds, setAttackEdgeIds] = useState<string[]>([]);
+
+  // ── Deep-link action from ?action= URL param ─────────────────────────────
+  // Read once on mount; open the matching panel as soon as backendDiagramId is ready.
+  const pendingActionRef = useRef<string | null>(
+    typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('action') : null,
+  );
+  useEffect(() => {
+    const action = pendingActionRef.current;
+    if (!action || !backendDiagramId || !user) return;
+    // Consume — only open once
+    pendingActionRef.current = null;
+    // Remove the param from the URL without triggering a navigation
+    const url = new URL(window.location.href);
+    url.searchParams.delete('action');
+    window.history.replaceState(null, '', url.toString());
+    // Open the matching panel
+    if (action === 'posture') {
+      setInspector({ kind: 'posture' });
+    } else if (action === 'attack') {
+      setInspector({ kind: 'attack' });
+    } else if (action === 'stride') {
+      setInspector({ kind: 'ai' });
+    }
+  }, [backendDiagramId, user]);
+
+  // Right-click context menu
+  const [contextMenu, setContextMenu] = useState<{
+    x: number;
+    y: number;
+    node: Node<NodeData>;
+    selectedNodes: Node<NodeData>[];
+    hasReassignableTargets: boolean;
+    hasAssignableOrphans: boolean;
+  } | null>(null);
+  const [paneContextMenu, setPaneContextMenu] = useState<{ x: number; y: number } | null>(null);
+
+  // Drill-down naming modal
+  const [drillTarget, setDrillTarget] = useState<Node<NodeData> | null>(null);
+
+  // Reassign layer modal
+  const [reassignTarget, setReassignTarget] = useState<{
+    sourceNodeId: string;
+    layerId: string;
+    layerName: string;
+    targetCandidates: Node<NodeData>[];
+  } | null>(null);
+
+  // Delete layer confirmation modal
+  const [deleteLayerTarget, setDeleteLayerTarget] = useState<string | null>(null);
+
+  // Assign layer modal — shows orphaned layers + layers owned by sibling shapes
+  const [assignLayerTarget, setAssignLayerTarget] = useState<{
+    nodeId: string;
+    nodeLabel: string;
+    availableLayers: AssignableLayer[];
+  } | null>(null);
+
+  // ── Derived values ────────────────────────────────────────────────────────
+  const currentLayerId = navStack[navStack.length - 1];
+  const currentLayer = layers[currentLayerId];
+  const hasNodes = (currentLayer?.nodes.length ?? 0) > 0;
+
+  // Serialized diagram data for threat agent chat — derived from layer state
+  const threatAgentNodes = useMemo(() =>
+    (currentLayer?.nodes ?? [])
+      .filter((n) => n.type !== 'trustboundary')
+      .map((n) => ({
+        id: n.id,
+        type: n.type ?? 'unknown',
+        label: (n.data as { label?: string })?.label ?? n.id,
+        technology: (n.data as { technology?: string })?.technology,
+        description: (n.data as { description?: string })?.description,
+        trustLevel: (n.data as { trustLevel?: string })?.trustLevel,
+      })),
+    [currentLayer],
+  );
+
+  const threatAgentEdges = useMemo(() =>
+    (currentLayer?.edges ?? []).map((e) => ({
+      id: e.id,
+      source: e.source,
+      target: e.target,
+      label: typeof e.label === 'string' ? e.label : undefined,
+    })),
+    [currentLayer],
+  );
+
+  const threatAgentTrustBoundaries = useMemo(() =>
+    (currentLayer?.nodes ?? [])
+      .filter((n) => n.type === 'trustboundary')
+      .map((n) => ({
+        id: n.id,
+        label: (n.data as { label?: string })?.label ?? 'Trust Boundary',
+        trustLevel: (n.data as { trustLevel?: string })?.trustLevel ?? 'custom',
+      })),
+    [currentLayer],
+  );
+
+  // Threat agent chat history — messages saved with layerId='__threat_analysis__'
+  const threatAgentHistory = useMemo(() =>
+    chatHistory
+      .filter((m) => m.layerId === '__threat_analysis__')
+      .map((m) => ({ role: m.role, content: m.content })),
+    [chatHistory],
+  );
+
+  // ── URL sync — update browser URL whenever the active layer changes ───────
+  useEffect(() => {
+    window.history.replaceState(
+      null,
+      '',
+      `/projects/${projectId}?currLayer=${currentLayerId}`,
+    );
+  }, [currentLayerId, projectId]);
+
+  // ── Auto-save interval (every 60 s when ON + backend diagram is set) ─────
+  useEffect(() => {
+    if (!autoSave) return;
+    const id = setInterval(async () => {
+      // Always capture live canvas state (flushes current layer via rfInstanceRef)
+      const projectData = buildProjectSnapshotRef.current();
+
+      // Cloud save
+      const diagId = backendDiagramIdRef.current;
+      if (diagId) {
+        try {
+          await apiUpdateDiagram(diagId, projectData);
+          setLastSaved(new Date());
+        } catch (err) {
+          console.error('[Auto-save cloud] Failed:', err);
+        }
+      }
+    }, 60_000);
+    return () => clearInterval(id);
+  }, [autoSave]);
+
+  // ── Persist helpers ───────────────────────────────────────────────────────
+
+  // snapshot must be captured BEFORE calling setLayers — never inside the updater,
+  // because React may run updaters after the old DiagramCanvas has begun unmounting
+  // (React Flow's Zustand store tears down, toObject() returns empty).
+  const flushCurrentLayer = useCallback(
+    (prev: LayerMap, layerId: string, snapshot: { nodes: Node[]; edges: Edge[] } | null): LayerMap => {
+      if (!snapshot) return prev;
+      return {
+        ...prev,
+        [layerId]: { ...prev[layerId], nodes: snapshot.nodes, edges: snapshot.edges },
+      };
+    },
+    [],
+  );
+
+  // handleLayerSave: only persists to localStorage. Cloud saves happen explicitly
+  // via the Save button or the 60 s auto-save interval, both of which call
+  // buildProjectSnapshot() to capture the live canvas at that moment.
+  const handleLayerSave = useCallback(
+    (nodes: Node<NodeData>[], edges: Edge[]) => {
+      if (!saveEnabledRef.current) return;
+      setLayers((prev) => {
+        const updated = {
+          ...prev,
+          [currentLayerId]: { ...prev[currentLayerId], nodes, edges },
+        };
+        return updated;
+      });
+    },
+    [currentLayerId],
+  );
+
+  // ── Auto-load cloud project by URL ────────────────────────────────────────
+  // When navigating directly to /projects/:uuid, fetch draft (or latest published) from backend.
+  // If viewDiagramId prop is set (from ?view= search param), load that specific diagram.
+  const autoLoadedRef = useRef(false);
+  useEffect(() => {
+    if (!isLoggedIn() || backendDiagramId || autoLoadedRef.current) return;
+    autoLoadedRef.current = true;
+
+    (async () => {
+      try {
+        // Load project name in background — non-blocking, failure is non-fatal
+        apiGetProject(projectId)
+          .then((proj) => setCurrentProjectName(proj.name))
+          .catch(() => {/* non-fatal */});
+
+        // Load chat history in background — non-blocking
+        apiGetChatHistory(projectId)
+          .then((msgs) => setChatHistory(msgs))
+          .catch(() => {/* non-fatal */});
+
+        // viewDiagramId prop — load a specific diagram by ID (passed from page searchParams)
+        if (viewDiagramId) {
+          const full = await apiGetDiagram(viewDiagramId);
+          loadCanvasFromDataRef.current(full.canvasData as ProjectFile);
+          setBackendDiagramId(full.id);
+          const isDraft = (full as { status?: string }).status === 'draft';
+          setIsReadOnly(!isDraft);
+          if (isDraft) {
+            // Load version count in background so Publish button shows correct next version
+            apiListProjectVersions(projectId)
+              .then((v) => setPublishedVersionCount(v.filter((d) => d.status === 'published').length))
+              .catch(() => {/* non-fatal */});
+          }
+          return;
+        }
+
+        // Fast path: check for an existing draft first
+        const draft = await apiGetProjectDraft(projectId);
+        if (draft) {
+          // Use draft directly — no redundant apiGetDiagram call
+          loadCanvasFromDataRef.current(draft.canvasData as ProjectFile);
+          setBackendDiagramId(draft.id);
+          setIsReadOnly(false);
+          // Load version count in background
+          apiListProjectVersions(projectId)
+            .then((v) => setPublishedVersionCount(v.filter((d) => d.status === 'published').length))
+            .catch(() => {/* non-fatal */});
+          return;
+        }
+
+        // No draft — check for published versions (failure treated as no versions)
+        let pubVersions: Array<{ id: string; status: string; createdAt: string }> = [];
+        try {
+          const versions = await apiListProjectVersions(projectId);
+          pubVersions = versions.filter((v) => v.status === 'published');
+          setPublishedVersionCount(pubVersions.length);
+        } catch {/* non-fatal — treat as no published versions */}
+
+        if (pubVersions.length > 0) {
+          const latest = pubVersions[pubVersions.length - 1];
+          const full = await apiGetDiagram(latest.id);
+          loadCanvasFromDataRef.current(full.canvasData as ProjectFile);
+          setBackendDiagramId(full.id);
+          setIsReadOnly(true);
+        } else {
+          // Brand new project — create a blank draft so saves work immediately
+          const emptyCanvas: ProjectFile = { layers: makeInitialLayers(), navStack: [ROOT_LAYER_ID] };
+          const newDiagram = await apiCreateDiagram(projectId, 'main', emptyCanvas);
+          loadCanvasFromDataRef.current(emptyCanvas);
+          setBackendDiagramId(newDiagram.id);
+          setIsReadOnly(false);
+        }
+      } catch (err) {
+        // 401 is dispatched as layers:unauthorized and handled globally
+        if (err instanceof Error && err.name === 'ApiUnauthorizedError') return;
+        console.error('[Auto-load] Failed to load project:', err);
+        setError('Failed to load project — saves may not work. Please refresh the page.');
+      }
+    })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectId, viewDiagramId]);
+
+  // ── File operations ───────────────────────────────────────────────────────
+
+  /** Load canvas data (ProjectFile) into memory — shared by auto-load and handleOpenCloudProject. */
+  const loadCanvasFromData = useCallback((canvasData: ProjectFile) => {
+    const importedLayers: LayerMap =
+      canvasData?.layers && typeof canvasData.layers === 'object' && Object.keys(canvasData.layers).length > 0
+        ? canvasData.layers
+        : makeInitialLayers();
+    setLayers(importedLayers);
+    // Honor ?currLayer= URL param if the layer exists in the loaded diagram
+    const currLayerParam = readCurrLayerParam();
+    const resolvedNavStack = (() => {
+      if (currLayerParam && importedLayers[currLayerParam]) {
+        const path = getLayerPath(importedLayers, currLayerParam);
+        if (path.length > 0) return path.map((l) => l.id);
+      }
+      return canvasData?.navStack?.length ? canvasData.navStack : [ROOT_LAYER_ID];
+    })();
+    setNavStack(resolvedNavStack);
+    // Force DiagramCanvas to remount with the fresh initialNodes even when
+    // currentLayerId doesn't change (e.g. server data loaded while already on ROOT).
+    setCanvasLoadKey((k) => k + 1);
+    setSelectedNode(null);
+    setSelectedEdge(null);
+    setLastSaved(null);
+  }, []);
+
+  // Stable ref so the auto-load effect (above) can call the latest version without stale closure
+  const loadCanvasFromDataRef = useRef(loadCanvasFromData);
+  useEffect(() => { loadCanvasFromDataRef.current = loadCanvasFromData; }, [loadCanvasFromData]);
+
+  /** Build the current in-memory project snapshot (flushing canvas first). */
+  const buildProjectSnapshot = useCallback((): ProjectFile => {
+    const snapshot = captureCanvas(rfInstanceRef);
+    const latestLayers = snapshot
+      ? {
+          ...layersRef.current,
+          [currentLayerId]: {
+            ...layersRef.current[currentLayerId],
+            nodes: snapshot.nodes,
+            edges: snapshot.edges,
+          },
+        }
+      : layersRef.current;
+    return { layers: latestLayers, navStack: navStackRef.current };
+  }, [currentLayerId]);
+
+  // Stable ref so intervals/closures always call the latest buildProjectSnapshot
+  const buildProjectSnapshotRef = useRef(buildProjectSnapshot);
+  useEffect(() => {
+    buildProjectSnapshotRef.current = buildProjectSnapshot;
+  }, [buildProjectSnapshot]);
+
+  /**
+   * Retry cloud project setup after an auto-load failure.
+   * Finds or creates a backendDiagramId then immediately saves current canvas.
+   */
+  const retryAutoLoad = useCallback(async () => {
+    if (!isLoggedIn()) return;
+    setError(null);
+    try {
+      let diagId = backendDiagramIdRef.current;
+      if (!diagId) {
+        const draft = await apiGetProjectDraft(projectId);
+        if (draft) {
+          diagId = draft.id;
+        } else {
+          const emptyCanvas: ProjectFile = { layers: makeInitialLayers(), navStack: [ROOT_LAYER_ID] };
+          const newDiagram = await apiCreateDiagram(projectId, 'main', emptyCanvas);
+          diagId = newDiagram.id;
+        }
+        setBackendDiagramId(diagId);
+      }
+      // Immediately save the current canvas state
+      const data = buildProjectSnapshotRef.current();
+      await apiUpdateDiagram(diagId, data);
+      setLastSaved(new Date());
+      setError(null);
+    } catch (err) {
+      if (err instanceof Error && err.name === 'ApiUnauthorizedError') return;
+      setError('Failed to reconnect — please check your connection and try again.');
+    }
+  }, [projectId]);
+
+  /** Manually save the current diagram to the cloud now. */
+  const handleSaveFile = useCallback(async () => {
+    const diagId = backendDiagramIdRef.current;
+    if (!diagId || !isLoggedIn()) return;
+    if (isReadOnlyRef.current) {
+      setError('This is a published version and cannot be edited. Use "Check Out to Edit" to create a new draft.');
+      return;
+    }
+    setIsSaving(true);
+    try {
+      const data = buildProjectSnapshotRef.current();
+      await apiUpdateDiagram(diagId, data);
+      setLastSaved(new Date());
+      setError(null);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Save failed.');
+    } finally {
+      setIsSaving(false);
+    }
+  }, []);
+
+  /** Advance the security pipeline to the "nudge" phase once a cloud diagram is rendered. */
+  const handleDiagramReady = useCallback(() => {
+    if (isLoggedIn()) {
+      advanceToNudge(projectId);
+      setPipelinePhase('nudge');
+    }
+  }, [projectId]);
+
+  // ── Auth handlers ─────────────────────────────────────────────────────────
+
+  const handleAuthSuccess = useCallback((newUser: UserProfile) => {
+    setUser(newUser);
+    setShowAuthModal(false);
+    // After signing in, show projects immediately
+    setShowProjectsModal(true);
+    // Keep startup modal open behind the projects modal so user can dismiss it after
+  }, []);
+
+  const handleSignOut = useCallback(() => {
+    saveEnabledRef.current = false;
+    signOut();
+    setLayers(makeInitialLayers());
+    setNavStack([ROOT_LAYER_ID]);
+    setUser(null);
+    setBackendDiagramId(null);
+    setCurrentProjectName(null);
+    router.push('/login');
+  }, [router]);
+
+  /** Called when user opens a project from ProjectsModal. */
+  const handleOpenCloudProject = useCallback(
+    (project: Project, canvasData: ProjectFile, diagramId: string) => {
+      loadCanvasFromData(canvasData);
+      setBackendDiagramId(diagramId || null);
+      setCurrentProjectName(project.name);
+      setIsReadOnly(false);
+      setShowProjectsModal(false);
+    },
+    [loadCanvasFromData],
+  );
+
+  /**
+   * Called when user creates a new cloud project.
+   * Creates a blank diagram in the backend and loads it.
+   */
+  const handleCreateCloudProject = useCallback(
+    async (project: Project) => {
+      try {
+        const emptyCanvas: ProjectFile = { layers: makeInitialLayers(), navStack: [ROOT_LAYER_ID] };
+        const diagram = await apiCreateDiagram(project.id, 'main', emptyCanvas);
+        loadCanvasFromData(emptyCanvas);
+        setBackendDiagramId(diagram.id);
+        setCurrentProjectName(project.name);
+        setIsReadOnly(false);
+        setShowProjectsModal(false);
+        setInspector({ kind: 'ai' });
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : 'Failed to create cloud project');
+      }
+    },
+    [loadCanvasFromData],
+  );
+
+  // ── Publish / checkout handlers ───────────────────────────────────────────
+
+  /** Freeze the current draft as a published version. */
+  const handlePublish = useCallback(async (comment: string) => {
+    if (!backendDiagramId) return;
+    setIsPublishing(true);
+    try {
+      await apiPublishDiagram(backendDiagramId, comment || undefined);
+      setIsReadOnly(true);
+      setShowPublishModal(false);
+      setPublishedVersionCount((n) => n + 1);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Publish failed');
+    } finally {
+      setIsPublishing(false);
+    }
+  }, [backendDiagramId]);
+
+  /** Create a new draft from the current published version (from within the editor). */
+  const handleCheckoutFromEditor = useCallback(async () => {
+    if (!backendDiagramId) return;
+    try {
+      const newDraft = await apiCheckoutVersion(projectId, backendDiagramId);
+      loadCanvasFromData(newDraft.canvasData as ProjectFile);
+      setBackendDiagramId(newDraft.id);
+      setIsReadOnly(false);
+    } catch (e) {
+      if (e instanceof DraftExistsError) {
+        const confirmed = window.confirm('A draft already exists for this project. Open it?');
+        if (confirmed) {
+          const existing = await apiGetProjectDraft(projectId);
+          if (existing) {
+            loadCanvasFromData(existing.canvasData as ProjectFile);
+            setBackendDiagramId(existing.id);
+            setIsReadOnly(false);
+          }
+        }
+      } else {
+        setError(e instanceof Error ? e.message : 'Checkout failed');
+      }
+    }
+  }, [backendDiagramId, projectId, loadCanvasFromData]);
+
+  // ── Diagram evaluation (streaming) ────────────────────────────────────────
+
+  const handleEvaluate = useCallback(
+    async (onChunk: (chunk: string) => void, userQuestion?: string) => {
+      const nodes = (rfInstanceRef.current as ReactFlowInstance | null)?.getNodes() ?? [];
+      const edges = (rfInstanceRef.current as ReactFlowInstance | null)?.getEdges() ?? [];
+      const layerName = layers[currentLayerId]?.name ?? 'Diagram';
+      await apiChatEvaluate(
+        { nodes, edges, layerName, userQuestion, projectId, layerId: currentLayerId },
+        onChunk,
+      );
+    },
+    [currentLayerId, layers, projectId],
+  );
+
+  // ── STRIDE Threat Analysis ────────────────────────────────────────────────
+
+  const handleThreatAnalysis = useCallback(async (): Promise<ThreatItem[]> => {
+    const nodes = (rfInstanceRef.current as ReactFlowInstance | null)?.getNodes() ?? [];
+    const edges = (rfInstanceRef.current as ReactFlowInstance | null)?.getEdges() ?? [];
+    const layer = layers[currentLayerId];
+
+    // Split trust boundary nodes from regular nodes
+    const trustBoundaries = nodes
+      .filter((n) => n.type === 'trustboundary')
+      .map((n) => ({ id: n.id, label: n.data?.label ?? 'Trust Boundary', trustLevel: n.data?.trustLevel ?? 'custom' }));
+
+    const regularNodes = nodes
+      .filter((n) => n.type !== 'trustboundary')
+      .map((n) => ({
+        id: n.id,
+        type: n.type ?? 'unknown',
+        label: n.data?.label ?? n.id,
+        technology: n.data?.technology,
+        description: n.data?.description,
+        trustLevel: n.data?.trustLevel,
+      }));
+
+    const serializedEdges = edges.map((e) => ({
+      id: e.id,
+      source: e.source,
+      target: e.target,
+      label: typeof e.label === 'string' ? e.label : undefined,
+    }));
+
+    const diagramId = backendDiagramIdRef.current ?? '';
+    const result = await apiRunThreatAnalysis({
+      diagramId,
+      layerId: currentLayerId,
+      layerName: layer?.name ?? 'Diagram',
+      nodes: regularNodes,
+      edges: serializedEdges,
+      trustBoundaries,
+    });
+
+    // Merge new threats for this layer into the panel (replace any prior run for this layer)
+    setThreatPanelThreats((prev) => [
+      ...prev.filter((t) => t.layerId !== currentLayerId),
+      ...result.threats,
+    ]);
+    setThreatModelInfo({ name: 'Current Analysis', isSaved: false });
+    setInspector({ kind: 'threat' });
+
+    return result.threats;
+  }, [currentLayerId, layers]);
+
+  /** Multi-turn threat agent chat — delegates to apiThreatAgentChat SSE generator. */
+  const handleThreatAgentChat = useCallback(
+    (payload: ThreatChatPayload) => apiThreatAgentChat(payload),
+    [],
+  );
+
+  /** Submit threat analysis as a background job — returns immediately, results populate on completion. */
+  const handleSubmitThreatAnalysisAsync = useCallback(async () => {
+    if (!backendDiagramIdRef.current) return;
+    const nodes = (rfInstanceRef.current as ReactFlowInstance | null)?.getNodes() ?? [];
+    const edges = (rfInstanceRef.current as ReactFlowInstance | null)?.getEdges() ?? [];
+    const layer = layers[currentLayerId];
+    const diagramVersion = layers[currentLayerId] ? 1 : 1; // version from backend when available
+
+    const trustBoundaries = nodes
+      .filter((n) => n.type === 'trustboundary')
+      .map((n) => ({ id: n.id, label: n.data?.label ?? 'Trust Boundary', trustLevel: n.data?.trustLevel ?? 'custom' }));
+    const regularNodes = nodes
+      .filter((n) => n.type !== 'trustboundary')
+      .map((n) => ({ id: n.id, type: n.type ?? 'unknown', label: n.data?.label ?? n.id, technology: n.data?.technology, description: n.data?.description }));
+    const serializedEdges = edges.map((e) => ({ id: e.id, source: e.source, target: e.target, label: typeof e.label === 'string' ? e.label : undefined }));
+
+    const { jobId } = await apiSubmitThreatAnalysis({
+      projectId,
+      diagramId: backendDiagramIdRef.current,
+      diagramVersion,
+      layerId: currentLayerId,
+      layerName: layer?.name,
+      nodes: regularNodes,
+      edges: serializedEdges,
+      trustBoundaries,
+    });
+    setActiveJobId(jobId);
+    setActiveJobType('THREAT_ANALYSIS');
+    setInspector({ kind: 'threat' });
+  }, [currentLayerId, layers, projectId]);
+
+  // useJobPoller — polls the active background job and loads results on completion
+  useJobPoller(activeJobId, {
+    onComplete: async (resultRef) => {
+      setActiveJobId(null);
+      setActiveJobType(null);
+      if (!resultRef) return;
+      try {
+        const { apiGetThreatModel } = await import('@/lib/api');
+        const model = await apiGetThreatModel(resultRef);
+        setThreatPanelThreats((prev) => [
+          ...prev.filter((t) => t.layerId !== currentLayerId),
+          ...model.threats,
+        ]);
+        setThreatModelInfo({ name: model.name, isSaved: true, threatModelId: model.id });
+      } catch { /* silently ignore load error — user can reload manually */ }
+    },
+    onFail: () => {
+      setActiveJobId(null);
+      setActiveJobType(null);
+    },
+  });
+
+  const handleSaveThreatModel = useCallback(
+    async (name: string, threats: ThreatItem[]) => {
+      if (!backendDiagramIdRef.current) {
+        throw new Error('Sign in to save threat models');
+      }
+      const nodes = (rfInstanceRef.current as ReactFlowInstance | null)?.getNodes() ?? [];
+      const edges = (rfInstanceRef.current as ReactFlowInstance | null)?.getEdges() ?? [];
+      const layer = layers[currentLayerId];
+      const snapshotData = { nodes, edges, layerName: layer?.name };
+
+      await apiSaveThreatModel(projectId, {
+        name,
+        diagramId: backendDiagramIdRef.current,
+        diagramVersion: 1,
+        snapshotData,
+        threats,
+      });
+    },
+    [currentLayerId, layers, projectId],
+  );
+
+  /** Save all current transient threats as a named model (called from ThreatModelPanel) */
+  const handleSaveThreatModelFromPanel = useCallback(
+    async (name: string) => {
+      if (!backendDiagramIdRef.current) {
+        throw new Error('Sign in to save threat models');
+      }
+      const nodes = (rfInstanceRef.current as ReactFlowInstance | null)?.getNodes() ?? [];
+      const edges = (rfInstanceRef.current as ReactFlowInstance | null)?.getEdges() ?? [];
+      const snapshotData = { nodes, edges };
+      const saved = await apiSaveThreatModel(projectId, {
+        name,
+        diagramId: backendDiagramIdRef.current,
+        diagramVersion: 1,
+        snapshotData,
+        threats: threatPanelThreats,
+      });
+      setThreatPanelThreats(saved.threats);
+      setThreatModelInfo({ name, isSaved: true, threatModelId: saved.id });
+    },
+    [projectId, threatPanelThreats],
+  );
+
+  /** Load a saved threat model into the panel */
+  const handleLoadModelToPanel = useCallback((model: ThreatModelFull) => {
+    setThreatPanelThreats(model.threats);
+    setThreatModelInfo({ name: model.name, version: model.diagramVersion, isSaved: true, threatModelId: model.id });
+  }, []);
+
+  /** Highlight a node or edge on the canvas by targetId */
+  const handleHighlightThreatTarget = useCallback((targetId: string) => {
+    (rfInstanceRef.current as ExtendedRFInstance | null)?.highlightThreatTarget(targetId);
+  }, []);
+
+  /** Handle Attack Mind step hover — update canvas highlight map */
+  const handleAttackHighlightChange = useCallback((highlight: AttackMindHighlight) => {
+    if (highlight.nodeIds.length === 0) {
+      setAttackHighlightMap({});
+      setAttackEdgeIds([]);
+      return;
+    }
+    const map: AttackHighlightMap = {};
+    // Build step number from stepKey: `pathId-step-N`
+    const stepNum = highlight.stepKey ? parseInt(highlight.stepKey.split('-step-')[1] ?? '0', 10) : 1;
+    for (const nodeId of highlight.nodeIds) {
+      map[nodeId] = [stepNum];
+    }
+    setAttackHighlightMap(map);
+    setAttackEdgeIds(highlight.edgeIds ?? []);
+  }, []);
+
+  /** Open Attack Mind panel pre-seeded with a specific entry node */
+  const handleSimulateAttackFromNode = useCallback((nodeId: string) => {
+    setAttackMindEntryNodeId(nodeId);
+    setInspector({ kind: 'attack' });
+    setContextMenu(null);
+  }, []);
+
+  // ── Layer navigation ──────────────────────────────────────────────────────
+
+  const navigateTo = useCallback(
+    (targetLayerId: string) => {
+      const snapshot = captureCanvas(rfInstanceRef);
+      setLayers((prev) => {
+        const updated = flushCurrentLayer(prev, currentLayerId, snapshot);
+        return updated;
+      });
+      setNavStack((stack) => {
+        const idx = stack.indexOf(targetLayerId);
+        if (idx !== -1) return stack.slice(0, idx + 1);
+        return [...stack, targetLayerId];
+      });
+      setSelectedNode(null);
+      setSelectedEdge(null);
+      setContextMenu(null);
+    },
+    [currentLayerId, flushCurrentLayer],
+  );
+
+  const handleBack = useCallback(() => {
+    if (navStack.length <= 1) return;
+    const snapshot = captureCanvas(rfInstanceRef);
+    setLayers((prev) => {
+      const updated = flushCurrentLayer(prev, currentLayerId, snapshot);
+      return updated;
+    });
+    setNavStack((stack) => stack.slice(0, -1));
+    setSelectedNode(null);
+    setSelectedEdge(null);
+    setContextMenu(null);
+  }, [navStack.length, currentLayerId, flushCurrentLayer]);
+
+  // ── Layer update (rename / description) ───────────────────────────────────
+
+  const handleUpdateLayer = useCallback(
+    (layerId: string, updates: { name?: string; description?: string }) => {
+      setLayers((prev) => {
+        const updated = updateLayer(prev, layerId, updates);
+        return updated;
+      });
+    },
+    [],
+  );
+
+  // ── Layer delete ──────────────────────────────────────────────────────────
+
+  const handleDeleteLayer = useCallback((layerId: string) => {
+    if (!layerId) return; // guard against malformed layers with empty/missing ID
+    setDeleteLayerTarget(layerId);
+  }, []);
+
+  const handleDeleteLayerConfirm = useCallback(() => {
+    if (!deleteLayerTarget) return;
+
+    const deletedIds = collectDescendantIds(layers, deleteLayerTarget);
+    const deletedLayer = layers[deleteLayerTarget];
+    const snapshot = captureCanvas(rfInstanceRef);
+
+    setLayers((prev) => {
+      const flushed = flushCurrentLayer(prev, currentLayerId, snapshot);
+      const updated = deleteLayerCascade(flushed, deleteLayerTarget);
+      return updated;
+    });
+
+    // If we are currently inside the deleted layer (or a descendant), pop navStack to safety
+    if (deletedIds.has(currentLayerId)) {
+      setNavStack((stack) => {
+        const safe = stack.filter((id) => !deletedIds.has(id));
+        return safe.length > 0 ? safe : [ROOT_LAYER_ID];
+      });
+      setSelectedNode(null);
+      setSelectedEdge(null);
+    }
+
+    // Clear badge on the parent node in the live canvas (only if parent is current layer)
+    if (deletedLayer?.parentLayerId === currentLayerId && deletedLayer.parentNodeId) {
+      rfInstanceRef.current?.updateNodeData(deletedLayer.parentNodeId, { _childLayerId: undefined });
+    }
+
+    // Persist to cloud
+    const diagId = backendDiagramIdRef.current;
+    if (diagId) {
+      setTimeout(() => {
+        const projectData = buildProjectSnapshotRef.current();
+        apiUpdateDiagram(diagId, projectData)
+          .then(() => setLastSaved(new Date()))
+          .catch((err) => console.error('[Delete layer cloud save] Failed:', err));
+      }, 200);
+    }
+
+    setDeleteLayerTarget(null);
+  }, [deleteLayerTarget, layers, currentLayerId, flushCurrentLayer]);
+
+  // ── Assign orphaned layer ─────────────────────────────────────────────────
+
+  const handleAssignLayer = useCallback(() => {
+    const node = contextMenu?.node;
+    if (!node) return;
+
+    // Orphaned layers (no parentNodeId — standalone/unattached)
+    const orphans = getOrphanedLayers(layers);
+
+    // Layers currently owned by OTHER shapes in the same parent layer (1 level deep)
+    const allCanvasNodes = (rfInstanceRef.current?.getNodes() ?? []) as Node<NodeData>[];
+    const nodeLabel = (id: string) =>
+      allCanvasNodes.find((n) => n.id === id)?.data?.label ?? '(unlabelled)';
+
+    const siblingOwned = Object.values(layers).filter(
+      (l) => l.parentLayerId === currentLayerId && l.parentNodeId !== null && l.parentNodeId !== node.id,
+    );
+
+    const availableLayers: AssignableLayer[] = [
+      ...orphans.map((l) => ({
+        id: l.id,
+        name: l.name,
+        description: l.description,
+        nodeCount: l.nodes.length,
+      })),
+      ...siblingOwned.map((l) => ({
+        id: l.id,
+        name: l.name,
+        description: l.description,
+        nodeCount: l.nodes.length,
+        currentOwnerLabel: nodeLabel(l.parentNodeId!),
+      })),
+    ];
+
+    if (availableLayers.length === 0) return;
+    setAssignLayerTarget({ nodeId: node.id, nodeLabel: node.data.label, availableLayers });
+    setContextMenu(null);
+  }, [contextMenu, layers, currentLayerId]);
+
+  const handleAssignLayerConfirm = useCallback(
+    (layerId: string) => {
+      if (!assignLayerTarget) return;
+      const { nodeId } = assignLayerTarget;
+
+      // If this layer was previously owned by another shape, we need to clear that badge
+      const previousOwnerNodeId = layers[layerId]?.parentNodeId ?? null;
+      const hasPreviousOwner = previousOwnerNodeId !== null && previousOwnerNodeId !== nodeId;
+
+      const snapshot = captureCanvas(rfInstanceRef);
+      setLayers((prev) => {
+        const flushed = flushCurrentLayer(prev, currentLayerId, snapshot);
+        const parentLayer = flushed[currentLayerId];
+        if (!parentLayer) return prev;
+        const updated: LayerMap = {
+          ...flushed,
+          [layerId]: { ...flushed[layerId], parentLayerId: currentLayerId, parentNodeId: nodeId },
+          [currentLayerId]: {
+            ...parentLayer,
+            nodes: parentLayer.nodes.map((n) => {
+              if (n.id === nodeId) return { ...n, data: { ...n.data, _childLayerId: layerId } };
+              // Clear the badge from the previous owner
+              if (hasPreviousOwner && n.id === previousOwnerNodeId) {
+                const { _childLayerId: _removed, ...restData } = n.data as NodeData;
+                return { ...n, data: restData };
+              }
+              return n;
+            }),
+          },
+        };
+        return updated;
+      });
+
+      // Update live canvas badges immediately
+      rfInstanceRef.current?.updateNodeData(nodeId, { _childLayerId: layerId });
+      if (hasPreviousOwner && previousOwnerNodeId) {
+        rfInstanceRef.current?.updateNodeData(previousOwnerNodeId, { _childLayerId: undefined });
+      }
+
+      // Persist to cloud
+      const diagId = backendDiagramIdRef.current;
+      if (diagId) {
+        setTimeout(() => {
+          const projectData = buildProjectSnapshotRef.current();
+          apiUpdateDiagram(diagId, projectData)
+            .then(() => setLastSaved(new Date()))
+            .catch((err) => console.error('[Assign layer cloud save] Failed:', err));
+        }, 200);
+      }
+
+      setAssignLayerTarget(null);
+      setSelectedNode(null);
+    },
+    [assignLayerTarget, layers, currentLayerId, flushCurrentLayer],
+  );
+
+  // ── Context menu ──────────────────────────────────────────────────────────
+
+  const handleNodeContextMenu = useCallback(
+    (event: React.MouseEvent, node: Node<NodeData>) => {
+      const sel = (rfInstanceRef.current?.getNodes() ?? []).filter(
+        (n) => n.selected,
+      ) as Node<NodeData>[];
+
+      // Determine if reassign option should be offered:
+      // node must have a child layer AND there must be sibling shapes without one
+      let hasReassignableTargets = false;
+      const childLayer = findChildLayer(layers, currentLayerId, node.id);
+      if (childLayer && !LINE_NODE_TYPES.has(node.type as string)) {
+        const nodesWithLayers = new Set(
+          Object.values(layers)
+            .filter((l) => l.parentLayerId === currentLayerId && l.parentNodeId !== null)
+            .map((l) => l.parentNodeId as string),
+        );
+        const allNodes = (rfInstanceRef.current?.getNodes() ?? []) as Node<NodeData>[];
+        hasReassignableTargets = allNodes.some(
+          (n) =>
+            n.id !== node.id &&
+            !LINE_NODE_TYPES.has(n.type as string) &&
+            !nodesWithLayers.has(n.id),
+        );
+      }
+
+      // Determine if "Assign Layer" option should be offered:
+      // node must NOT have a child layer, must not be a line type, AND there are layers to assign
+      // (either orphaned layers OR layers currently owned by a sibling shape in this parent layer).
+      let hasAssignableOrphans = false;
+      if (!childLayer && !LINE_NODE_TYPES.has(node.type as string)) {
+        const hasSiblingLayers = Object.values(layers).some(
+          (l) => l.parentLayerId === currentLayerId && l.parentNodeId !== null && l.parentNodeId !== node.id,
+        );
+        hasAssignableOrphans = hasSiblingLayers || getOrphanedLayers(layers).length > 0;
+      }
+
+      setContextMenu({ x: event.clientX, y: event.clientY, node, selectedNodes: sel, hasReassignableTargets, hasAssignableOrphans });
+    },
+    [layers, currentLayerId],
+  );
+
+  const handlePaneContextMenu = useCallback((event: React.MouseEvent) => {
+    setPaneContextMenu({ x: event.clientX, y: event.clientY });
+  }, []);
+
+  const handleDrillDown = useCallback(() => {
+    const node = contextMenu?.node;
+    if (!node) return;
+    setContextMenu(null);
+    const existing = findChildLayer(layers, currentLayerId, node.id);
+    if (existing) {
+      navigateTo(existing.id);
+    } else {
+      setDrillTarget(node);
+    }
+  }, [contextMenu, layers, currentLayerId, navigateTo]);
+
+  const handleDrillDownConfirm = useCallback(
+    (layerName: string) => {
+      if (!drillTarget) return;
+      const snapshot = captureCanvas(rfInstanceRef);
+      // Create the new layer BEFORE setLayers so updater is pure (no side-effects inside)
+      const newLayer = createChildLayer(currentLayerId, drillTarget.id, layerName);
+      const drillTargetId = drillTarget.id;
+      setLayers((prev) => {
+        const withCurrentSaved = flushCurrentLayer(prev, currentLayerId, snapshot);
+        const parentLayer = withCurrentSaved[currentLayerId];
+        const updatedNodes = parentLayer.nodes.map((n) =>
+          n.id === drillTargetId
+            ? { ...n, data: { ...(n.data as NodeData), _childLayerId: newLayer.id } }
+            : n,
+        );
+        const updated: LayerMap = {
+          ...withCurrentSaved,
+          [currentLayerId]: { ...parentLayer, nodes: updatedNodes },
+          [newLayer.id]: newLayer,
+        };
+        return updated;
+      });
+      // All other state mutations outside the updater to avoid double-invocation in Strict Mode
+      setNavStack((stack) => [...stack, newLayer.id]);
+      setDrillTarget(null);
+      setSelectedNode(null);
+    },
+    [drillTarget, currentLayerId, flushCurrentLayer],
+  );
+
+  const handleReassignLayer = useCallback(() => {
+    const node = contextMenu?.node;
+    if (!node) return;
+    const childLayer = findChildLayer(layers, currentLayerId, node.id);
+    if (!childLayer) return;
+
+    const nodesWithLayers = new Set(
+      Object.values(layers)
+        .filter((l) => l.parentLayerId === currentLayerId && l.parentNodeId !== null)
+        .map((l) => l.parentNodeId as string),
+    );
+    const allNodes = (rfInstanceRef.current?.getNodes() ?? []) as Node<NodeData>[];
+    const candidates = allNodes.filter(
+      (n) =>
+        n.id !== node.id &&
+        !LINE_NODE_TYPES.has(n.type as string) &&
+        !nodesWithLayers.has(n.id),
+    );
+
+    setReassignTarget({
+      sourceNodeId: node.id,
+      layerId: childLayer.id,
+      layerName: childLayer.name,
+      targetCandidates: candidates,
+    });
+    setContextMenu(null);
+  }, [contextMenu, layers, currentLayerId]);
+
+  const handleReassignLayerConfirm = useCallback(
+    (targetNodeId: string) => {
+      if (!reassignTarget) return;
+      const { sourceNodeId, layerId } = reassignTarget;
+
+      const snapshot = captureCanvas(rfInstanceRef);
+      setLayers((prev) => {
+        const flushed = flushCurrentLayer(prev, currentLayerId, snapshot);
+        const parentLayer = flushed[currentLayerId];
+        if (!parentLayer) return prev;
+
+        // Remove _childLayerId from old owner, add to new owner
+        const updatedNodes = parentLayer.nodes.map((n) => {
+          if (n.id === sourceNodeId) {
+            const { _childLayerId: _removed, ...restData } = n.data as NodeData;
+            return { ...n, data: restData };
+          }
+          if (n.id === targetNodeId) {
+            return { ...n, data: { ...n.data, _childLayerId: layerId } };
+          }
+          return n;
+        });
+
+        const updated: LayerMap = {
+          ...flushed,
+          [currentLayerId]: { ...parentLayer, nodes: updatedNodes },
+          [layerId]: { ...flushed[layerId], parentNodeId: targetNodeId },
+        };
+        return updated;
+      });
+
+      // Also update the live ReactFlow canvas so the badge moves immediately
+      rfInstanceRef.current?.updateNodeData(sourceNodeId, { _childLayerId: undefined });
+      rfInstanceRef.current?.updateNodeData(targetNodeId, { _childLayerId: layerId });
+
+      // Persist to cloud
+      const diagId = backendDiagramIdRef.current;
+      if (diagId) {
+        setTimeout(() => {
+          const projectData = buildProjectSnapshotRef.current();
+          apiUpdateDiagram(diagId, projectData)
+            .then(() => setLastSaved(new Date()))
+            .catch((err) => console.error('[Reassign layer cloud save] Failed:', err));
+        }, 200);
+      }
+
+      setReassignTarget(null);
+      setSelectedNode(null);
+    },
+    [reassignTarget, currentLayerId, flushCurrentLayer],
+  );
+
+  const handleContextMenuDelete = useCallback(() => {
+    if (!contextMenu) return;
+    rfInstanceRef.current?.deleteNode(contextMenu.node.id);
+    if (selectedNode?.id === contextMenu.node.id) setSelectedNode(null);
+    setContextMenu(null);
+  }, [contextMenu, selectedNode]);
+
+  const handleBringToFront = useCallback(() => {
+    if (!contextMenu) return;
+    rfInstanceRef.current?.bringToFront(contextMenu.node.id);
+    setContextMenu(null);
+  }, [contextMenu]);
+
+  const handleSendToBack = useCallback(() => {
+    if (!contextMenu) return;
+    rfInstanceRef.current?.sendToBack(contextMenu.node.id);
+    setContextMenu(null);
+  }, [contextMenu]);
+
+  const handleGroup = useCallback(() => {
+    if (!contextMenu) return;
+    const ids = contextMenu.selectedNodes.map((n) => n.id);
+    rfInstanceRef.current?.groupNodes(ids);
+    setContextMenu(null);
+    setSelectedNode(null);
+  }, [contextMenu]);
+
+  const handleUngroup = useCallback(() => {
+    if (!contextMenu) return;
+    rfInstanceRef.current?.ungroupNode(contextMenu.node.id);
+    setContextMenu(null);
+    setSelectedNode(null);
+  }, [contextMenu]);
+
+  // ── Palette drag ──────────────────────────────────────────────────────────
+
+  const onPaletteDragStart = useCallback(
+    (event: DragEvent<HTMLDivElement>, nodeType: NodeType) => {
+      event.dataTransfer.setData('application/reactflow', nodeType);
+      event.dataTransfer.effectAllowed = 'copy';
+    },
+    [],
+  );
+
+  // ── AI generation ─────────────────────────────────────────────────────────
+
+  const handleGenerate = useCallback(async (prompt: string) => {
+    setIsGenerating(true);
+    setError(null);
+    setGeneratingStatus('Thinking...');
+    try {
+      const diagram = await apiChatGenerate({
+        prompt,
+        projectId,
+        diagramId: backendDiagramIdRef.current ?? undefined,
+        layerId: currentLayerId,
+        layerName: layers[currentLayerId]?.name,
+      }) as GenerateResponse;
+      setGeneratingStatus('Rendering diagram...');
+      rfInstanceRef.current?.loadDiagram(diagram);
+      handleDiagramReady();
+      setTimeout(() => {
+        (rfInstanceRef.current as ReactFlowInstance | null)?.fitView({ padding: 0.15 });
+      }, 100);
+      // Offer Declutter after generation so user can clean up the layout
+      if (!isReadOnly) setShowDeclutterSuggestion(true);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to generate diagram');
+      throw err;
+    } finally {
+      setIsGenerating(false);
+      setGeneratingStatus('');
+    }
+  }, [currentLayerId, handleDiagramReady, isReadOnly, layers, projectId]);
+
+  // ── AI Declutter ──────────────────────────────────────────────────────────
+
+  const handleDeclutter = useCallback(async () => {
+    const nodes = (rfInstanceRef.current as ReactFlowInstance | null)?.getNodes() ?? [];
+    const edges = (rfInstanceRef.current as ReactFlowInstance | null)?.getEdges() ?? [];
+    if (nodes.length === 0) return;
+    setIsDecluttering(true);
+    setShowDeclutterSuggestion(false);
+    try {
+      const result = await apiDeclutter({
+        nodes,
+        edges,
+        layerName: layers[currentLayerId]?.name,
+        projectId,
+        diagramId: backendDiagramIdRef.current ?? undefined,
+        layerId: currentLayerId,
+      });
+      rfInstanceRef.current?.applyLayout(result.positions);
+      setTimeout(() => {
+        (rfInstanceRef.current as ReactFlowInstance | null)?.fitView({ padding: 0.15 });
+      }, 150);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Declutter failed');
+    } finally {
+      setIsDecluttering(false);
+    }
+  }, [currentLayerId, layers, projectId]);
+
+  // ── Generate preview (no canvas apply) — caller decides where to put it ──
+
+  const handleGeneratePreview = useCallback(
+    async (prompt: string): Promise<{ nodes: unknown[]; edges: unknown[] }> => {
+      setIsGenerating(true);
+      setError(null);
+      setGeneratingStatus('Generating...');
+      try {
+        const diagram = (await apiChatGenerate({
+          prompt,
+          projectId,
+          diagramId: backendDiagramIdRef.current ?? undefined,
+          layerId: currentLayerId,
+          layerName: layers[currentLayerId]?.name,
+        })) as GenerateResponse;
+        return { nodes: diagram.nodes as unknown[], edges: diagram.edges as unknown[] };
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : 'Failed to generate diagram');
+        throw err;
+      } finally {
+        setIsGenerating(false);
+        setGeneratingStatus('');
+      }
+    },
+    [currentLayerId, layers, projectId],
+  );
+
+  // ── Apply pre-generated diagram to current or a new layer ─────────────────
+
+  const handleApplyGeneratedDiagram = useCallback(
+    async (nodes: unknown[], edges: unknown[], layerName?: string) => {
+      if (layerName) {
+        const newLayer = createStandaloneLayer(layerName);
+        const snapshot = captureCanvas(rfInstanceRef);
+        setLayers((prev) => {
+          const flushed = flushCurrentLayer(prev, currentLayerId, snapshot);
+          const updated = { ...flushed, [newLayer.id]: newLayer };
+          return updated;
+        });
+        setNavStack((stack) => [...stack, newLayer.id]);
+        setSelectedNode(null);
+        setSelectedEdge(null);
+        await new Promise<void>((resolve) => setTimeout(resolve, 300));
+      }
+      rfInstanceRef.current?.loadDiagram({ nodes, edges } as GenerateResponse);
+      setTimeout(() => {
+        (rfInstanceRef.current as ReactFlowInstance | null)?.fitView({ padding: 0.15 });
+      }, 100);
+    },
+    [currentLayerId, flushCurrentLayer],
+  );
+
+  // ── Generate on a new standalone layer ────────────────────────────────────
+
+  const handleGenerateNewLayer = useCallback(
+    async (prompt: string, layerName: string) => {
+      const newLayer = createStandaloneLayer(layerName);
+
+      const snapshot = captureCanvas(rfInstanceRef);
+      setLayers((prev) => {
+        const flushed = flushCurrentLayer(prev, currentLayerId, snapshot);
+        const updated = { ...flushed, [newLayer.id]: newLayer };
+        return updated;
+      });
+      setNavStack((stack) => [...stack, newLayer.id]);
+      setSelectedNode(null);
+      setSelectedEdge(null);
+
+      await new Promise<void>((resolve) => setTimeout(resolve, 300));
+      await handleGenerate(prompt);
+    },
+    [currentLayerId, flushCurrentLayer, handleGenerate],
+  );
+
+  // ── Canvas operations ─────────────────────────────────────────────────────
+
+  const handleClear = useCallback(() => {
+    rfInstanceRef.current?.clearDiagram();
+    setSelectedNode(null);
+    setSelectedEdge(null);
+  }, []);
+
+  const handleExportPng = useCallback(async () => {
+    const el = canvasRef.current;
+    if (!el) return;
+    try {
+      const dataUrl = await toPng(el, { cacheBust: true, pixelRatio: 2 });
+      const a = document.createElement('a');
+      a.href = dataUrl;
+      a.download = `${currentLayer?.name ?? 'diagram'}.png`;
+      a.click();
+    } catch (err) {
+      console.error('PNG export failed:', err);
+    }
+  }, [currentLayer?.name]);
+
+  useEffect(() => { handleExportPngRef.current = handleExportPng; }, [handleExportPng]);
+
+  // ── Node operations ───────────────────────────────────────────────────────
+
+  const handleNodeUpdate = useCallback((nodeId: string, data: Partial<NodeData>) => {
+    rfInstanceRef.current?.updateNodeData(nodeId, data);
+    setSelectedNode((prev) =>
+      prev?.id === nodeId ? { ...prev, data: { ...prev.data, ...data } } : prev,
+    );
+  }, []);
+
+  const handleNodeDelete = useCallback((nodeId: string) => {
+    rfInstanceRef.current?.deleteNode(nodeId);
+    setSelectedNode(null);
+  }, []);
+
+  // ── Edge operations ───────────────────────────────────────────────────────
+
+  const handleEdgeSelect = useCallback((edge: Edge | null) => {
+    setSelectedEdge(edge);
+    if (edge) {
+      setSelectedNode(null);
+      setInspector({ kind: 'edge' });
+    } else {
+      setInspector((p) => p.kind === 'edge' ? { kind: 'none' } : p);
+    }
+  }, []);
+
+  const handleEdgeUpdate = useCallback((edgeId: string, updates: Partial<Edge>) => {
+    rfInstanceRef.current?.updateEdge(edgeId, updates);
+    setSelectedEdge((prev) => (prev?.id === edgeId ? { ...prev, ...updates } : prev));
+  }, []);
+
+  const handleEdgeDelete = useCallback((edgeId: string) => {
+    rfInstanceRef.current?.deleteEdge(edgeId);
+    setSelectedEdge(null);
+  }, []);
+
+  // ── Node select ───────────────────────────────────────────────────────────
+
+  const handleNodeSelect = useCallback((node: Node<NodeData> | null) => {
+    setSelectedNode(node);
+    setSelectedEdge(null);
+    if (node) {
+      setInspector({ kind: 'properties' });
+    } else {
+      setInspector((p) => p.kind === 'properties' ? { kind: 'none' } : p);
+    }
+  }, []);
+
+  // ── Inline label editing ──────────────────────────────────────────────────
+
+  const [editingNodeId, setEditingNodeId] = useState<string | null>(null);
+  const [editInitialChar, setEditInitialChar] = useState<string | null>(null);
+
+  const startEditing = useCallback((nodeId: string, initialChar?: string) => {
+    setEditingNodeId(nodeId);
+    setEditInitialChar(initialChar ?? null);
+  }, []);
+
+  const stopEditing = useCallback(() => {
+    setEditingNodeId(null);
+    setEditInitialChar(null);
+  }, []);
+
+  // ── Click-to-add from palette ─────────────────────────────────────────────
+
+  const handleAddNode = useCallback((nodeType: NodeType) => {
+    rfInstanceRef.current?.addNodeAtCenter(nodeType);
+  }, []);
+
+  // ── CanvasContext value ───────────────────────────────────────────────────
+  const canvasContextValue = useMemo(
+    () => ({
+      navigateTo,
+      updateNodeData: (nodeId: string, data: Partial<NodeData>) =>
+        rfInstanceRef.current?.updateNodeData(nodeId, data),
+      editingNodeId,
+      editInitialChar,
+      startEditing,
+      stopEditing,
+      pushHistoryNow: () => rfInstanceRef.current?.pushHistoryNow(),
+      animateLines: animateEdges,
+    }),
+    [navigateTo, editingNodeId, editInitialChar, startEditing, stopEditing, animateEdges],
+  );
+
+  // ── Right inspector visibility flags (derived from `inspector.kind`) ─────
+  const showLayersPanel = inspector.kind === 'layers';
+  const showChatPanel = inspector.kind === 'ai';
+  const showThreatModelPanel = inspector.kind === 'threat';
+  const showPosturePanel = inspector.kind === 'posture';
+  const showAttackMindPanel = inspector.kind === 'attack';
+  const showRightSidebar = showLayersPanel || (!!selectedNode && inspector.kind === 'properties') || (!!selectedEdge && !selectedNode && inspector.kind === 'edge');
+
+  // ── Render ────────────────────────────────────────────────────────────────
+
+  return (
+    <CanvasContext.Provider value={canvasContextValue}>
+      <ReactFlowProvider>
+        <div className="flex h-screen flex-col overflow-hidden">
+          {/* ── Menu bar ────────────────────────────────────────────────── */}
+          <MenuBar
+            userEmail={user?.email ?? null}
+            onSignIn={() => setShowAuthModal(true)}
+            onSignOut={handleSignOut}
+            isCloudProject={!!backendDiagramId}
+          />
+
+          {/* ── Toolbar ─────────────────────────────────────────────────── */}
+          <Toolbar
+            onClear={handleClear}
+            autoSave={autoSave}
+            onToggleAutoSave={() => setAutoSave((v) => !v)}
+            lastSaved={lastSaved}
+            onSaveFile={backendDiagramId && !isReadOnly ? handleSaveFile : undefined}
+            isSaving={isSaving}
+            onExportPng={handleExportPng}
+            onMyProjects={() => router.push('/projects')}
+            onCopy={() => rfInstanceRef.current?.doCopy()}
+            onPaste={() => rfInstanceRef.current?.doPaste()}
+            onUndo={() => rfInstanceRef.current?.undo()}
+            onRedo={() => rfInstanceRef.current?.redo()}
+            canUndo={canUndo}
+            canRedo={canRedo}
+            isReadOnly={isReadOnly}
+            onOpenThreatModel={!!user ? () => setInspector((p) => p.kind === 'threat' ? { kind: 'none' } : { kind: 'threat' }) : undefined}
+            onOpenThreatDashboard={() => router.push(`/projects/${projectId}/threats`)}
+            onOpenPostureScore={!!user ? () => setInspector((p) => p.kind === 'posture' ? { kind: 'none' } : { kind: 'posture' }) : undefined}
+            postureScore={latestPostureScore}
+            onOpenAttackMind={!!user ? () => setInspector((p) => p.kind === 'attack' ? { kind: 'none' } : { kind: 'attack' }) : undefined}
+            onShowAI={() => setInspector({ kind: 'ai' })}
+            onShowAIHistory={isLoggedIn() ? () => router.push(`/projects/${projectId}/ai-history`) : undefined}
+            onShowSecurityIntel={isLoggedIn() ? () => router.push(`/projects/${projectId}/intel`) : undefined}
+            inspectorKind={inspector.kind}
+            onInspect={(kind) => setInspector((p) => p.kind === kind ? { kind: 'none' } : { kind })}
+            isCloudProject={!!backendDiagramId}
+            onPublish={() => setShowPublishModal(true)}
+            onOpenDiff={() => setShowVersionCompare(true)}
+            pipelinePhase={pipelinePhase}
+          />
+
+          {/* ── Layer breadcrumb bar ─────────────────────────────────────── */}
+          <LayerBar
+            layers={layers}
+            currentLayerId={currentLayerId}
+            canGoBack={navStack.length > 1}
+            onBack={handleBack}
+            onNavigate={navigateTo}
+            projectName={currentProjectName}
+          />
+
+          {error && (
+            <div className="flex items-center gap-2 border-b border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-900/20 dark:text-red-400">
+              <span className="font-medium">Error:</span>
+              <span>{error}</span>
+              <div className="ml-auto flex items-center gap-2">
+                <button
+                    onClick={retryAutoLoad}
+                    className="rounded border border-red-300 px-2 py-0.5 text-xs font-medium hover:bg-red-100 dark:border-red-800 dark:hover:bg-red-900/30"
+                  >
+                    Retry
+                  </button>
+                <button
+                  onClick={() => setError(null)}
+                  className="text-red-400 hover:text-red-600"
+                >
+                  Dismiss
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* ── Published read-only banner ───────────────────────────────── */}
+          {isReadOnly && (
+            <div
+              className="relative flex flex-shrink-0 items-center gap-3 overflow-hidden px-4 py-2.5"
+              style={{ background: 'linear-gradient(90deg, #1e1b4b 0%, #1e3a8a 60%, #0f172a 100%)' }}
+            >
+              {/* Subtle mesh glow */}
+              <div className="pointer-events-none absolute inset-0">
+                <div className="absolute -left-10 top-0 h-16 w-32 rounded-full bg-indigo-400/10 blur-2xl" />
+                <div className="absolute right-32 top-0 h-12 w-24 rounded-full bg-blue-400/8 blur-2xl" />
+              </div>
+              {/* Lock icon */}
+              <div className="relative flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-md bg-white/10 ring-1 ring-white/20">
+                <Lock size={11} className="text-indigo-300" />
+              </div>
+              {/* Labels */}
+              <div className="relative flex items-center gap-2">
+                <span className="text-xs font-semibold text-white">Published version</span>
+                {publishedVersionCount > 0 && (
+                  <span className="rounded-full bg-blue-500/30 px-1.5 py-0.5 text-[10px] font-semibold text-indigo-200 ring-1 ring-indigo-400/30">
+                    v{publishedVersionCount}
+                  </span>
+                )}
+                <span className="text-indigo-400/60">·</span>
+                <span className="text-xs text-indigo-300/70">Read only</span>
+              </div>
+              {/* CTA */}
+              <button
+                onClick={() => setShowCheckoutConfirm(true)}
+                className="relative ml-auto flex items-center gap-1.5 rounded-lg bg-white/10 px-3 py-1.5 text-xs font-semibold text-white ring-1 ring-white/20 backdrop-blur-sm transition hover:bg-white/20"
+              >
+                Check Out to Edit
+                <ArrowRight size={11} />
+              </button>
+            </div>
+          )}
+
+          {/* ── Main content area ────────────────────────────────────────── */}
+          <div className="flex flex-1 overflow-hidden">
+            {/* Components palette */}
+            {!isReadOnly && (
+              <div className="flex-shrink-0">
+                <NodePalette
+                  onDragStart={onPaletteDragStart}
+                  onAddNode={handleAddNode}
+                  onOpenThreatModel={user ? () => setInspector((p) => p.kind === 'threat' ? { kind: 'none' } : { kind: 'threat' }) : undefined}
+                  onOpenThreatDashboard={() => router.push(`/projects/${projectId}/threats`)}
+                />
+              </div>
+            )}
+
+            {/* Canvas */}
+            <div className="relative flex flex-1 overflow-hidden">
+              <DiagramCanvas
+                key={`${currentLayerId}_${canvasLoadKey}`}
+                initialNodes={(currentLayer?.nodes ?? []) as Node<NodeData>[]}
+                initialEdges={currentLayer?.edges ?? []}
+                onLayerSave={handleLayerSave}
+                onNodeContextMenu={handleNodeContextMenu}
+                onPaneContextMenu={handlePaneContextMenu}
+                onNodeSelect={handleNodeSelect}
+                onEdgeSelect={handleEdgeSelect}
+                rfInstanceRef={rfInstanceRef}
+                canvasRef={canvasRef}
+                clipboardRef={clipboardRef}
+                onRequestEdit={startEditing}
+                animateEdges={animateEdges}
+                readOnly={isReadOnly}
+                threatOverlays={inspector.kind === 'threat' ? threatPanelThreats.filter((t) => t.layerId === currentLayerId) : undefined}
+                activeThreatTargetId={canvasBadgeTargetId}
+                onThreatNodeClick={(targetId) => {
+                  handleHighlightThreatTarget(targetId);
+                  setCanvasBadgeTargetId(targetId);
+                }}
+                attackHighlightMap={showAttackMindPanel ? attackHighlightMap : undefined}
+                attackEdgeIds={showAttackMindPanel ? attackEdgeIds : undefined}
+                onHistoryChange={({ canUndo, canRedo }) => {
+                  setCanUndo(canUndo);
+                  setCanRedo(canRedo);
+                }}
+              />
+
+              {/* Declutter loading overlay */}
+              {isDecluttering && <DeclutterOverlay />}
+
+              {/* Post-generate Declutter suggestion banner */}
+              {showDeclutterSuggestion && !isDecluttering && (
+                <div className="absolute bottom-4 left-1/2 z-30 flex -translate-x-1/2 items-center gap-3 rounded-2xl border border-violet-400/30 bg-slate-900/90 px-4 py-2.5 shadow-xl backdrop-blur-sm">
+                  <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-lg bg-violet-500/20 ring-1 ring-violet-400/30">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-violet-400">
+                      <path d="M15 4V2" /><path d="M15 16v-2" /><path d="M8 9h2" /><path d="M20 9h2" /><path d="M17.8 11.8 19 13" /><path d="M15 9h.01" /><path d="M17.8 6.2 19 5" /><path d="m3 21 9-9" /><path d="M12.2 6.2 11 5" />
+                    </svg>
+                  </div>
+                  <p className="text-xs text-slate-300">
+                    <span className="font-medium text-white">Diagram generated.</span> Want to clean up the layout?
+                  </p>
+                  <button
+                    onClick={() => { setShowDeclutterSuggestion(false); void handleDeclutter(); }}
+                    className="rounded-lg bg-violet-600 px-3 py-1 text-xs font-semibold text-white transition hover:bg-violet-500"
+                  >
+                    Declutter
+                  </button>
+                  <button
+                    onClick={() => setShowDeclutterSuggestion(false)}
+                    className="rounded-lg px-2 py-1 text-xs text-slate-400 transition hover:text-slate-200"
+                  >
+                    Dismiss
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* ── Right sidebar (Layers / Properties / Edge) ─────────────── */}
+            {showRightSidebar && (
+              <div className="flex h-full flex-shrink-0">
+                {showLayersPanel && (
+                  <LayersPanel
+                    docked
+                    layers={layers}
+                    currentLayerId={currentLayerId}
+                    onClose={() => setInspector((p) => p.kind === 'layers' ? { kind: 'none' } : p)}
+                    onNavigate={navigateTo}
+                    onUpdateLayer={handleUpdateLayer}
+                    onDeleteLayer={handleDeleteLayer}
+                  />
+                )}
+                {selectedNode && inspector.kind === 'properties' && (
+                  <PropertiesPanel
+                    node={selectedNode}
+                    onClose={() => { setSelectedNode(null); setInspector((p) => p.kind === 'properties' ? { kind: 'none' } : p); }}
+                    onUpdate={handleNodeUpdate}
+                    onDelete={handleNodeDelete}
+                  />
+                )}
+                {selectedEdge && !selectedNode && inspector.kind === 'edge' && (
+                  <EdgePropertiesPanel
+                    edge={selectedEdge}
+                    onClose={() => { setSelectedEdge(null); setInspector((p) => p.kind === 'edge' ? { kind: 'none' } : p); }}
+                    onUpdate={handleEdgeUpdate}
+                    onDelete={handleEdgeDelete}
+                  />
+                )}
+              </div>
+            )}
+
+            {/* ── Threat Model panel — docked right, cloud projects only ──────── */}
+            {showThreatModelPanel && !!user && (
+              <ThreatModelPanel
+                currentLayerId={currentLayerId}
+                threats={threatPanelThreats}
+                modelInfo={threatModelInfo}
+                projectId={projectId}
+                onHighlightTarget={handleHighlightThreatTarget}
+                externalTargetId={canvasBadgeTargetId}
+                onExternalTargetConsumed={() => setCanvasBadgeTargetId(null)}
+                onOpenAIAssistant={() => setInspector({ kind: 'ai' })}
+                onRunAsync={handleSubmitThreatAnalysisAsync}
+                activeJobId={activeJobId}
+                activeJobType={activeJobType}
+                onSave={handleSaveThreatModelFromPanel}
+                onLoadModel={handleLoadModelToPanel}
+                onThreatsChanged={setThreatPanelThreats}
+                onClose={() => setInspector((p) => p.kind === 'threat' ? { kind: 'none' } : p)}
+              />
+            )}
+
+            {/* ── Security Posture Score panel — cloud projects only ────────── */}
+            {showPosturePanel && !!user && backendDiagramId && (
+              <PostureScorePanel
+                projectId={projectId}
+                diagramId={backendDiagramId}
+                diagramVersion={1}
+                layers={buildProjectSnapshot().layers as Record<string, unknown>}
+                currentLayerId={currentLayerId}
+                onScoreComputed={(score) => setLatestPostureScore(score)}
+                onClose={() => setInspector((p) => p.kind === 'posture' ? { kind: 'none' } : p)}
+              />
+            )}
+
+            {/* ── Attack Mind Simulator panel — cloud projects only ─────────── */}
+            {showAttackMindPanel && !!user && backendDiagramId && (
+              <AttackMindPanel
+                projectId={projectId}
+                diagramId={backendDiagramId}
+                layers={buildProjectSnapshot().layers as Record<string, unknown>}
+                initialEntryNodeId={attackMindEntryNodeId}
+                onHighlightChange={handleAttackHighlightChange}
+                onClose={() => { setInspector((p) => p.kind === 'attack' ? { kind: 'none' } : p); setAttackHighlightMap({}); setAttackEdgeIds([]); setAttackMindEntryNodeId(null); }}
+              />
+            )}
+
+            {/* ── AI chat panel — docked right, only when signed in ─────────── */}
+            {showChatPanel && !!user && (
+              <AIChatPanel
+                onGenerate={handleGenerate}
+                onGenerateNewLayer={handleGenerateNewLayer}
+                onGeneratePreview={handleGeneratePreview}
+                onApplyGeneratedDiagram={handleApplyGeneratedDiagram}
+                onEvaluate={handleEvaluate}
+                onThreatAnalysis={handleThreatAnalysis}
+                onSaveThreatModel={handleSaveThreatModel}
+                onThreatAgentChat={handleThreatAgentChat}
+                diagramId={backendDiagramId ?? undefined}
+                layerId={currentLayerId}
+                layerName={currentLayer?.name}
+                diagramNodes={threatAgentNodes}
+                diagramEdges={threatAgentEdges}
+                diagramTrustBoundaries={threatAgentTrustBoundaries}
+                initialThreatMessages={threatAgentHistory}
+                onRunPostureScore={isLoggedIn() ? (payload) => apiPostureScoreStream(payload) : undefined}
+                onRunAttackMind={isLoggedIn() ? (payload) => apiAttackMindStream(payload) : undefined}
+                diagramVersion={1}
+                diagramLayers={layers}
+                projectId={projectId}
+                onShowSecurityIntel={isLoggedIn() ? () => router.push(`/projects/${projectId}/intel`) : undefined}
+                onDiagramReady={handleDiagramReady}
+                onPipelinePhaseChange={setPipelinePhase}
+                isLoading={isGenerating}
+                status={generatingStatus}
+                onClose={() => setInspector((p) => p.kind === 'ai' ? { kind: 'none' } : p)}
+                hasNodes={hasNodes}
+                isReadOnly={isReadOnly}
+                initialMessages={chatHistory.filter((m) => m.layerId !== '__threat_analysis__').map((m) => ({ role: m.role, content: m.content }))}
+              />
+            )}
+          </div>
+        </div>
+
+        {/* ── Pane context menu (canvas right-click) ──────────────────────── */}
+        {paneContextMenu && (
+          <PaneContextMenu
+            x={paneContextMenu.x}
+            y={paneContextMenu.y}
+            animateEdges={animateEdges}
+            onToggleAnimateEdges={() => setAnimateEdges((v) => !v)}
+            onClose={() => setPaneContextMenu(null)}
+            onDeclutter={hasNodes && !isReadOnly ? () => { setPaneContextMenu(null); void handleDeclutter(); } : undefined}
+          />
+        )}
+
+        {/* ── Context menu ────────────────────────────────────────────────── */}
+        {contextMenu && (
+          <NodeContextMenu
+            x={contextMenu.x}
+            y={contextMenu.y}
+            nodeLabel={contextMenu.node.data.label}
+            hasChildLayer={!!findChildLayer(layers, currentLayerId, contextMenu.node.id)}
+            isLine={LINE_NODE_TYPES.has(contextMenu.node.type as string)}
+            isGroup={contextMenu.node.type === 'group'}
+            selectedCount={contextMenu.selectedNodes.length}
+            onDrillDown={handleDrillDown}
+            onDelete={handleContextMenuDelete}
+            onClose={() => setContextMenu(null)}
+            onBringToFront={handleBringToFront}
+            onSendToBack={handleSendToBack}
+            onGroup={handleGroup}
+            onUngroup={handleUngroup}
+            hasReassignableTargets={contextMenu.hasReassignableTargets}
+            onReassignLayer={handleReassignLayer}
+            hasAssignableOrphans={contextMenu.hasAssignableOrphans}
+            onAssignLayer={handleAssignLayer}
+            onSimulateAttack={!!user ? () => handleSimulateAttackFromNode(contextMenu.node.id) : undefined}
+          />
+        )}
+
+        {/* ── Drill-down naming modal ──────────────────────────────────────── */}
+        {drillTarget && (
+          <DrillDownModal
+            defaultName={`${drillTarget.data.label} Layer`}
+            onConfirm={handleDrillDownConfirm}
+            onCancel={() => setDrillTarget(null)}
+          />
+        )}
+
+        {/* ── Reassign layer modal ─────────────────────────────────────────── */}
+        {reassignTarget && (
+          <ReassignLayerModal
+            layerName={reassignTarget.layerName}
+            targetCandidates={reassignTarget.targetCandidates}
+            onConfirm={handleReassignLayerConfirm}
+            onCancel={() => setReassignTarget(null)}
+          />
+        )}
+
+        {/* ── Delete layer confirmation modal ─────────────────────────────────── */}
+        {deleteLayerTarget != null && layers[deleteLayerTarget] != null && (
+          <DeleteLayerModal
+            layerName={layers[deleteLayerTarget].name || 'Untitled Layer'}
+            descendantCount={collectDescendantIds(layers, deleteLayerTarget).size - 1}
+            onConfirm={handleDeleteLayerConfirm}
+            onCancel={() => setDeleteLayerTarget(null)}
+          />
+        )}
+
+        {/* ── Assign layer modal ───────────────────────────────────────── */}
+        {assignLayerTarget && (
+          <AssignLayerModal
+            shapeLabel={assignLayerTarget.nodeLabel}
+            availableLayers={assignLayerTarget.availableLayers}
+            onConfirm={handleAssignLayerConfirm}
+            onCancel={() => setAssignLayerTarget(null)}
+          />
+        )}
+
+        {/* ── Auth modal ───────────────────────────────────────────────────── */}
+        {showAuthModal && (
+          <AuthModal
+            onSuccess={handleAuthSuccess}
+            onClose={() => setShowAuthModal(false)}
+          />
+        )}
+
+        {/* ── Projects modal ───────────────────────────────────────────────── */}
+        {showProjectsModal && (
+          <ProjectsModal
+            onOpen={handleOpenCloudProject}
+            onCreate={handleCreateCloudProject}
+            onClose={() => setShowProjectsModal(false)}
+          />
+        )}
+
+        {/* ── Version compare sheet ────────────────────────────────────────── */}
+        {showVersionCompare && (
+          <VersionCompareSheet
+            projectId={projectId}
+            onClose={() => setShowVersionCompare(false)}
+          />
+        )}
+
+        {/* ── Check Out confirmation modal ─────────────────────────────────── */}
+        {showCheckoutConfirm && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
+            onClick={() => setShowCheckoutConfirm(false)}
+          >
+            <div
+              className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-700 dark:bg-slate-800"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h2 className="text-base font-semibold text-slate-900 dark:text-slate-100">Check Out to Edit?</h2>
+              <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+                Checking out creates a new <strong>draft</strong> based on this published version. The published version remains intact and read-only — your draft will need to be re-published when ready.
+              </p>
+              <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+                Only one draft can exist at a time. If a draft already exists, you will be prompted to open it instead.
+              </p>
+              <div className="mt-5 flex justify-end gap-2">
+                <button
+                  onClick={() => setShowCheckoutConfirm(false)}
+                  className="rounded-lg px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => { setShowCheckoutConfirm(false); handleCheckoutFromEditor(); }}
+                  className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+                >
+                  Check Out
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── Publish modal ────────────────────────────────────────────────── */}
+        {showPublishModal && (
+          <PublishModal
+            nextVersionNumber={publishedVersionCount + 1}
+            isPublishing={isPublishing}
+            onPublish={handlePublish}
+            onCancel={() => setShowPublishModal(false)}
+          />
+        )}
+
+      </ReactFlowProvider>
+    </CanvasContext.Provider>
+  );
+}

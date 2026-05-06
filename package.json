@@ -1,0 +1,23 @@
+{
+  "name": "layers-monorepo",
+  "private": true,
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "frontend": "npm run dev --workspace=layers-web",
+    "backend": "npm run start:dev --workspace=layers-rest",
+    "frontend:build": "npm run build --workspace=layers-web",
+    "backend:build": "npm run build --workspace=layers-rest",
+    "frontend:start": "npm run start --workspace=layers-web",
+    "backend:start": "npm run start:prod --workspace=layers-rest"
+  },
+  "devDependencies": {
+    "turbo": "^2.3.3"
+  },
+  "packageManager": "npm@10.0.0"
+}
