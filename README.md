@@ -115,8 +115,8 @@ This is a monorepo orchestrated with [Turborepo](https://turbo.build) and npm wo
 ```
 layerssec/
 ├── apps/
-│   ├── frontend/   ← Next.js web app (formerly sunilkrpv/layers)
-│   └── backend/    ← NestJS REST API (formerly sunilkrpv/layers-rest)
+│   ├── frontend/   ← Next.js web app
+│   └── backend/    ← NestJS REST API
 ├── assets/         ← Website / README assets
 ├── package.json    ← Root workspace + turbo scripts
 └── turbo.json      ← Task pipeline
@@ -185,6 +185,80 @@ Other root scripts:
 | `npm run frontend:start` / `npm run backend:start` | Start a single app in production mode |
 
 Open [http://localhost:3000](http://localhost:3000).
+
+---
+
+## Turborepo usage
+
+Turbo orchestrates tasks across `apps/*` workspaces. Pipeline defined in `turbo.json`.
+
+### Run both apps in parallel
+
+```bash
+npm run dev
+```
+
+Boots `next dev` (frontend) + `nest start --watch` (backend) in one process. Logs interleaved, prefixed by app name. Ctrl+C stops both.
+
+### Run a single app via turbo filter
+
+```bash
+# Frontend only
+npx turbo run dev --filter=layers-web
+
+# Backend only
+npx turbo run dev --filter=layers-rest
+```
+
+Workspace names come from each app's `package.json` (`layers-web`, `layers-rest`).
+
+### Build everything (cached)
+
+```bash
+npm run build
+```
+
+Turbo builds in topological order, caches outputs (`apps/frontend/.next`, `apps/backend/dist`). Re-run with no source changes → cache hit, instant. Cache lives in `.turbo/`.
+
+### Lint / test across workspace
+
+```bash
+npm run lint
+npm run test
+```
+
+Runs in parallel across all apps. Failure in one app fails the task.
+
+### Inspect task graph
+
+```bash
+npx turbo run build --dry-run
+```
+
+Prints what turbo will run + which tasks depend on which. Use before big changes to verify pipeline.
+
+### Force rebuild (skip cache)
+
+```bash
+npx turbo run build --force
+```
+
+### Common dev workflow
+
+```bash
+# Start everything
+npm run dev
+
+# In another terminal: run a one-off task without stopping dev
+npx turbo run lint --filter=layers-web
+
+# Build prod artifacts
+npm run build
+
+# Run prod backend + frontend
+npm run backend:start &
+npm run frontend:start
+```
 
 ---
 
