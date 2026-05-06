@@ -1,0 +1,27 @@
+-- AlterTable
+ALTER TABLE "ai_jobs" ALTER COLUMN "id" DROP DEFAULT,
+ALTER COLUMN "created_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "started_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "completed_at" SET DATA TYPE TIMESTAMP(3);
+
+-- AlterTable
+ALTER TABLE "attack_simulations" ALTER COLUMN "id" DROP DEFAULT,
+ALTER COLUMN "content" DROP DEFAULT,
+ALTER COLUMN "created_at" SET DATA TYPE TIMESTAMP(3);
+
+-- AlterTable
+ALTER TABLE "chat_messages" ADD COLUMN     "input_tokens" INTEGER,
+ADD COLUMN     "model" TEXT,
+ADD COLUMN     "output_tokens" INTEGER,
+ADD COLUMN     "provider" TEXT;
+
+-- AlterTable
+ALTER TABLE "posture_scores" ALTER COLUMN "id" DROP DEFAULT,
+ALTER COLUMN "analyzed_at" SET DATA TYPE TIMESTAMP(3);
+
+-- AlterTable
+ALTER TABLE "user_ai_settings" ALTER COLUMN "id" DROP DEFAULT,
+ALTER COLUMN "created_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "updated_at" DROP DEFAULT,
+ALTER COLUMN "updated_at" SET DATA TYPE TIMESTAMP(3);
+
