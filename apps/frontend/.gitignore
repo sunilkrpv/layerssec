@@ -1,0 +1,8 @@
+node_modules
+.next
+.prd
+.env.local
+docs/superpowers
+.claude/worktrees
+tsconfig.tsbuildinfo.superpowers/
+.superpowers

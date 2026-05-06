@@ -1,0 +1,114 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-white text-slate-900 dark:bg-slate-950 dark:text-slate-100;
+  }
+}
+
+html,
+body,
+#__next {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+/* Remove React Flow attribution watermark */
+.react-flow__attribution {
+  display: none;
+}
+
+/* Connection handles */
+.react-flow__handle {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #94a3b8;
+  border: 2px solid #f8fafc;
+  transition: background 0.15s, transform 0.15s;
+}
+
+.react-flow__handle:hover {
+  background: #3b82f6;
+  transform: scale(1.3);
+}
+
+/* Edges */
+.react-flow__edge-path {
+  stroke-width: 2;
+}
+
+/* Controls panel */
+.react-flow__controls {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.react-flow__controls-button {
+  border: none;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+/* ── Dark mode: React Flow chrome ───────────────────────────────────────── */
+.dark .react-flow__handle {
+  background: #475569;
+  border-color: #0f172a;
+}
+
+.dark .react-flow__controls {
+  background: #1e293b;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.dark .react-flow__controls-button {
+  background: #1e293b;
+  border-bottom-color: #334155;
+  fill: #94a3b8;
+}
+
+.dark .react-flow__controls-button:hover {
+  background: #334155;
+}
+
+.dark .react-flow__background {
+  background: #0f172a;
+}
+
+.dark .react-flow__selection {
+  background: rgba(99, 179, 237, 0.1);
+  border: 1.5px dashed #63b3ed;
+}
+
+/* ── Dotted-line node animation ─────────────────────────────────────────── */
+@keyframes moveDash {
+  from { background-position: 0 0; }
+  to   { background-position: 24px 0; }
+}
+
+.animate-dash {
+  animation: moveDash 0.55s linear infinite;
+}
+
+/* ── Threat model node/edge highlight ──────────────────────────────────── */
+@keyframes threatPulse {
+  0%, 100% { outline-color: #f59e0b; box-shadow: 0 0 0 4px rgba(245,158,11,0.15); }
+  50%       { outline-color: #fbbf24; box-shadow: 0 0 0 8px rgba(245,158,11,0.08); }
+}
+
+.react-flow__node.threat-highlighted {
+  outline: 2.5px solid #f59e0b !important;
+  outline-offset: 4px;
+  border-radius: 10px;
+  animation: threatPulse 1.4s ease-in-out 2;
+  z-index: 9999 !important;
+}
+
+.react-flow__edge.threat-highlighted .react-flow__edge-path,
+.react-flow__edge.threat-highlighted .react-flow__edge-interaction {
+  stroke: #f59e0b !important;
+  stroke-width: 3px !important;
+}
