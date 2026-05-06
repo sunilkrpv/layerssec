@@ -108,6 +108,20 @@ From there, a continuous loop:
 
 ---
 
+## Repository layout
+
+This is a monorepo orchestrated with [Turborepo](https://turbo.build) and npm workspaces.
+
+```
+layerssec/
+├── apps/
+│   ├── frontend/   ← Next.js web app (formerly sunilkrpv/layers)
+│   └── backend/    ← NestJS REST API (formerly sunilkrpv/layers-rest)
+├── assets/         ← Website / README assets
+├── package.json    ← Root workspace + turbo scripts
+└── turbo.json      ← Task pipeline
+```
+
 ## Running locally
 
 ### Prerequisites
@@ -115,17 +129,20 @@ From there, a continuous loop:
 - Node.js 20+
 - Docker and Docker Compose
 
-### 1. Clone both repos
+### 1. Clone the monorepo
 
 ```bash
-git clone https://github.com/sunilkrpv/layers-rest layers-rest
-git clone https://github.com/sunilkrpv/layers layers
+git clone https://github.com/sunilkrpv/layerssec
+cd layerssec
+npm install
 ```
+
+`npm install` from the root installs dependencies for both `apps/frontend` and `apps/backend` via workspaces.
 
 ### 2. Start infrastructure
 
 ```bash
-cd layers-rest
+cd apps/backend
 cp .env.example .env.local
 # Fill in JWT secrets in .env.local
 docker-compose up -d
@@ -136,24 +153,36 @@ This starts PostgreSQL 16, ChromaDB and Redis 7.
 ### 3. Run database migrations
 
 ```bash
-npm install
+# from apps/backend
 npm run db:migrate
 ```
 
-### 4. Start the backend
+### 4. Run apps from the repo root
+
+From the root of the monorepo:
 
 ```bash
-npm run start:dev
-```
+# Frontend dev server (next dev)
+npm run frontend
 
-### 5. Start the frontend
+# Backend dev server (nest start --watch)
+npm run backend
 
-```bash
-cd ../layers
-cp .env.example .env.local
-npm install
+# Both via turbo (parallel)
 npm run dev
 ```
+
+Other root scripts:
+
+| Script | What it does |
+|---|---|
+| `npm run dev` | Run all apps in dev mode via turbo |
+| `npm run build` | Build all apps |
+| `npm run lint` | Lint all apps |
+| `npm run test` | Run tests across the workspace |
+| `npm run frontend` / `npm run backend` | Run a single app in dev |
+| `npm run frontend:build` / `npm run backend:build` | Build a single app |
+| `npm run frontend:start` / `npm run backend:start` | Start a single app in production mode |
 
 Open [http://localhost:3000](http://localhost:3000).
 
@@ -161,7 +190,7 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ## Environment variables
 
-### Backend (`layers-rest/.env.example`)
+### Backend (`apps/backend/.env.example`)
 
 | Variable | Description |
 |---|---|
@@ -181,7 +210,7 @@ Open [http://localhost:3000](http://localhost:3000).
 
 **Encrypted AI credentials** - user-supplied API keys (Anthropic, OpenAI) are stored AES-256-GCM encrypted in Postgres. The encryption key never leaves the backend process.
 
-**Frontend-only diff engine** - `diffProjects()` in `lib/diffEngine.ts` runs entirely in the browser. No backend round-trip for architecture version comparison.
+**Frontend-only diff engine** - `diffProjects()` in `apps/frontend/lib/diffEngine.ts` runs entirely in the browser. No backend round-trip for architecture version comparison.
 
 **Recursive layer model** - each node can drill into a child layer. Layers are persisted as a flat `Record<string, Layer>` structure with cascade delete logic.
 
