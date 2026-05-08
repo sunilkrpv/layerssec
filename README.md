@@ -1,8 +1,29 @@
-# Layers
+<p align="center">
+  <img src="assets/layers.svg" width="120" />
+</p>
 
-**Security-first architecture threat modeling, posture scoring and attack simulation - AI-native.**
+<h1 align="center">layers</h1>
 
-Most threat modeling happens after architecture decisions are locked in. By then, every finding is expensive rework. Layers brings threat analysis, posture scoring and attack simulation to design time - where it's still cheap to fix.
+<p align="center">
+  <strong>security-first architecture threat modeling, posture scoring and attack simulation | AI-native</strong>
+</p>
+
+<p align="center">
+  <a href="https://github.com/sunilkrpv/layerssec/stargazers"><img src="https://img.shields.io/github/stars/sunilkrpv/layerssec?style=flat&color=yellow" alt="Stars"></a>
+  <a href="https://github.com/sunilkrpv/layerssec/commits/main"><img src="https://img.shields.io/github/last-commit/sunilkrpv/layerssec?style=flat" alt="Last Commit"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/sunilkrpv/layerssec?style=flat" alt="License"></a>
+</p>
+
+<p align="center">
+  <a href="#what-it-does">What it does</a> •
+  <a href="#features">Features</a> •
+  <a href="#running-locally">Running locally</a> •
+  <a href="#self-hosting-with-docker">Self-hosting</a> •
+  <a href="#tech-stack">Tech stack</a> •
+  <a href="#license">License</a>
+</p>
+
+Build your defense in depth! Most threat modeling happens after architecture decisions are locked in. By then, every finding is expensive rework. Layers brings threat analysis, posture scoring and attack simulation to design time - where it's still cheap to fix.
 
 ![Layers - architecture diagramming with threat modeling](assets/homepage.png)
 
@@ -46,14 +67,13 @@ From there, a continuous loop:
 
 | Layer | Technology |
 |---|---|
-| Frontend | Next.js 15, React 19, React Flow 11, Tailwind CSS, TypeScript |
+| Frontend | Next.js 16, React 19, React Flow 11, Tailwind CSS, TypeScript |
 | Backend | NestJS 10, Node.js |
 | AI | Anthropic Claude (primary), OpenAI, Ollama - user-selectable per project |
 | ORM | Prisma 5 |
 | Database | PostgreSQL 16 |
 | Vector store | ChromaDB (RAG / semantic history search) |
 | Job queue | BullMQ + Redis 7 (async AI job pipeline) |
-| Storage | Supabase (thumbnails / blob storage) |
 | PDF | PDFKit (pure JS, no Java dependency) |
 
 ---
@@ -145,10 +165,17 @@ npm install
 cd apps/backend
 cp .env.example .env.local
 # Fill in JWT secrets in .env.local
-docker-compose up -d
 ```
 
-This starts PostgreSQL 16, ChromaDB and Redis 7.
+Then start Postgres, ChromaDB and Redis. The simplest way is the full-stack
+self-host compose described below — it brings up the same three services
+plus the apps. If you only want the data services and intend to run the
+apps via `npm run dev`, scope to those services from the repo root:
+
+```bash
+cp .env.example .env       # in repo root
+docker compose up -d postgres chromadb redis
+```
 
 ### 3. Run database migrations
 
@@ -185,6 +212,38 @@ Other root scripts:
 | `npm run frontend:start` / `npm run backend:start` | Start a single app in production mode |
 
 Open [http://localhost:3000](http://localhost:3000).
+
+---
+
+## Self-hosting with Docker
+
+The repo ships a single compose file at the root that brings up the full stack — Postgres, Redis, ChromaDB, backend and frontend.
+
+```bash
+cp .env.example .env
+# Fill in DB_PASS, REDIS_PASS, JWT_SECRET, JWT_REFRESH_SECRET,
+# ENCRYPTION_KEY, ANTHROPIC_API_KEY in .env
+docker compose up -d --build
+```
+
+App at [http://localhost:3000](http://localhost:3000), API at [http://localhost:4000](http://localhost:4000). Backend runs `prisma migrate deploy` on container start.
+
+### Production deployment
+
+For internet-facing deployments add a reverse proxy in front of the stack to terminate TLS and route traffic. Common options:
+
+- **Nginx / Caddy / Traefik** as a sibling container reverse-proxying `frontend:3000` and `backend:4000`
+- **Cloudflare Tunnel** pointed at `localhost:3000` and `localhost:4000`
+- **A managed PaaS** (Fly.io, Railway, Render) using the same Dockerfiles
+
+When fronting the stack with a custom domain, set in `.env` before rebuilding:
+
+```
+NEXT_PUBLIC_API_URL=https://yourdomain.com
+CORS_ORIGIN=https://yourdomain.com
+```
+
+`NEXT_PUBLIC_API_URL` is baked into the frontend bundle at build time, so any change requires a `--build` rebuild of the `frontend` service.
 
 ---
 

@@ -1,0 +1,88 @@
+# Full stack — postgres + redis + chromadb + backend + frontend.
+# Frontend on http://localhost:3000, backend on http://localhost:4000.
+#
+# For internet-facing deployments, front this stack with a reverse proxy
+# (Nginx / Caddy / Traefik / Cloudflare Tunnel) to terminate TLS and route
+# traffic to frontend:3000 and backend:4000.
+
+services:
+  # ── Infrastructure ────────────────────────────────────────────────────────
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: layers
+      POSTGRES_PASSWORD: ${DB_PASS}
+      POSTGRES_DB: layers
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U layers']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  chromadb:
+    image: chromadb/chroma:latest
+    restart: unless-stopped
+    volumes:
+      - chroma_data:/chroma/chroma
+    environment:
+      - IS_PERSISTENT=TRUE
+      - ANONYMIZED_TELEMETRY=FALSE
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASS}
+
+  # ── Application ───────────────────────────────────────────────────────────
+
+  backend:
+    build:
+      context: ./apps/backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - '127.0.0.1:4000:4000'
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      DATABASE_URL: postgresql://layers:${DB_PASS}@postgres:5432/layers
+      DIRECT_URL: postgresql://layers:${DB_PASS}@postgres:5432/layers
+      REDIS_URL: redis://:${REDIS_PASS}@redis:6379
+      CHROMA_URL: http://chromadb:8000
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      chromadb:
+        condition: service_started
+
+  frontend:
+    build:
+      context: ./apps/frontend
+      dockerfile: Dockerfile
+      args:
+        # Baked at build time; browser calls this directly.
+        # Override in prod overlay for HTTPS domain.
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:4000}
+    restart: unless-stopped
+    ports:
+      - '127.0.0.1:3000:3000'
+    environment:
+      NODE_ENV: production
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
+  chroma_data:
+  redis_data:
