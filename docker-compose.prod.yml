@@ -1,0 +1,46 @@
+# Production overlay — adds Nginx (TLS terminator + reverse proxy) and
+# Uptime Kuma. Mounts nginx.conf and TLS certs from the sibling
+# `../layers-infra/` repo. Use only with a real domain + certs.
+#
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#
+# Required env vars in .env:
+#   DOMAIN=yourdomain.com
+#   NEXT_PUBLIC_API_URL=https://yourdomain.com
+#   CORS_ORIGIN=https://yourdomain.com
+#
+# Required files in ../layers-infra/:
+#   nginx/nginx.conf            — replace DOMAIN_PLACEHOLDER with your domain
+#   certs/fullchain.pem         — TLS cert chain
+#   certs/privkey.pem           — TLS private key
+
+services:
+  # ── Reverse Proxy ─────────────────────────────────────────────────────────
+
+  nginx:
+    image: nginx:alpine
+    restart: unless-stopped
+    ports:
+      # Bind to localhost only — Cloudflare Tunnel / external proxy connects here.
+      - '127.0.0.1:80:80'
+      - '127.0.0.1:443:443'
+    volumes:
+      - ../layers-infra/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ../layers-infra/certs:/etc/nginx/certs:ro
+    depends_on:
+      - frontend
+      - backend
+
+  # ── Monitoring ────────────────────────────────────────────────────────────
+
+  uptime-kuma:
+    image: louislam/uptime-kuma:1
+    restart: unless-stopped
+    ports:
+      - '127.0.0.1:3001:3001'
+    volumes:
+      - kuma_data:/app/data
+
+volumes:
+  kuma_data:

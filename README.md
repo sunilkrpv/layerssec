@@ -145,10 +145,17 @@ npm install
 cd apps/backend
 cp .env.example .env.local
 # Fill in JWT secrets in .env.local
-docker-compose up -d
 ```
 
-This starts PostgreSQL 16, ChromaDB and Redis 7.
+Then start Postgres, ChromaDB and Redis. The simplest way is the full-stack
+self-host compose described below — it brings up the same three services
+plus the apps. If you only want the data services and intend to run the
+apps via `npm run dev`, scope to those services from the repo root:
+
+```bash
+cp .env.example .env       # in repo root
+docker compose up -d postgres chromadb redis
+```
 
 ### 3. Run database migrations
 
@@ -185,6 +192,56 @@ Other root scripts:
 | `npm run frontend:start` / `npm run backend:start` | Start a single app in production mode |
 
 Open [http://localhost:3000](http://localhost:3000).
+
+---
+
+## Self-hosting with Docker
+
+The repo ships with two compose files at the root:
+
+| File | Purpose |
+|---|---|
+| `docker-compose.yml` | Base stack — Postgres, Redis, ChromaDB, backend, frontend. No TLS, no custom domain. Frontend on `:3000`, backend on `:4000`. |
+| `docker-compose.prod.yml` | Overlay — adds Nginx (TLS + reverse proxy) and Uptime Kuma. Mounts `nginx.conf` and TLS certs from a sibling `../layers-infra/` repo. |
+
+### Base stack (most users)
+
+```bash
+cp .env.example .env
+# Fill in DB_PASS, REDIS_PASS, JWT_SECRET, JWT_REFRESH_SECRET,
+# ENCRYPTION_KEY, ANTHROPIC_API_KEY in .env
+docker compose up -d --build
+```
+
+App at [http://localhost:3000](http://localhost:3000), API at [http://localhost:4000](http://localhost:4000). Backend runs `prisma migrate deploy` on container start.
+
+### Production overlay (TLS + custom domain)
+
+Requires a sibling checkout of `layers-infra` providing:
+
+```
+../layers-infra/
+├── nginx/nginx.conf      # replace DOMAIN_PLACEHOLDER with your domain
+└── certs/
+    ├── fullchain.pem
+    └── privkey.pem
+```
+
+In `.env`, set:
+
+```
+DOMAIN=yourdomain.com
+NEXT_PUBLIC_API_URL=https://yourdomain.com
+CORS_ORIGIN=https://yourdomain.com
+```
+
+Then bring up base + overlay:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+```
+
+`NEXT_PUBLIC_API_URL` is baked into the frontend bundle at build time, so any change to it requires a `--build` rebuild of the `frontend` service.
 
 ---
 
