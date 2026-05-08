@@ -1,10 +1,9 @@
-# Base stack — OSS / self-host without TLS or custom domain.
-# Brings up postgres + redis + chromadb + backend + frontend.
+# Full stack — postgres + redis + chromadb + backend + frontend.
 # Frontend on http://localhost:3000, backend on http://localhost:4000.
 #
-# For production deploy with Nginx + TLS + custom domain, layer the
-# prod overlay on top:
-#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+# For internet-facing deployments, front this stack with a reverse proxy
+# (Nginx / Caddy / Traefik / Cloudflare Tunnel) to terminate TLS and route
+# traffic to frontend:3000 and backend:4000.
 
 services:
   # ── Infrastructure ────────────────────────────────────────────────────────
