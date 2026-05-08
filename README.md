@@ -1,8 +1,29 @@
-# Layers
+<p align="center">
+  <img src="assets/layers.svg" width="120" />
+</p>
 
-**Security-first architecture threat modeling, posture scoring and attack simulation - AI-native.**
+<h1 align="center">layers</h1>
 
-Most threat modeling happens after architecture decisions are locked in. By then, every finding is expensive rework. Layers brings threat analysis, posture scoring and attack simulation to design time - where it's still cheap to fix.
+<p align="center">
+  <strong>security-first architecture threat modeling, posture scoring and attack simulation | AI-native</strong>
+</p>
+
+<p align="center">
+  <a href="https://github.com/sunilkrpv/layerssec/stargazers"><img src="https://img.shields.io/github/stars/sunilkrpv/layerssec?style=flat&color=yellow" alt="Stars"></a>
+  <a href="https://github.com/sunilkrpv/layerssec/commits/main"><img src="https://img.shields.io/github/last-commit/sunilkrpv/layerssec?style=flat" alt="Last Commit"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/sunilkrpv/layerssec?style=flat" alt="License"></a>
+</p>
+
+<p align="center">
+  <a href="#what-it-does">What it does</a> •
+  <a href="#features">Features</a> •
+  <a href="#running-locally">Running locally</a> •
+  <a href="#self-hosting-with-docker">Self-hosting</a> •
+  <a href="#tech-stack">Tech stack</a> •
+  <a href="#license">License</a>
+</p>
+
+Build your defense in depth! Most threat modeling happens after architecture decisions are locked in. By then, every finding is expensive rework. Layers brings threat analysis, posture scoring and attack simulation to design time - where it's still cheap to fix.
 
 ![Layers - architecture diagramming with threat modeling](assets/homepage.png)
 
@@ -46,14 +67,13 @@ From there, a continuous loop:
 
 | Layer | Technology |
 |---|---|
-| Frontend | Next.js 15, React 19, React Flow 11, Tailwind CSS, TypeScript |
+| Frontend | Next.js 16, React 19, React Flow 11, Tailwind CSS, TypeScript |
 | Backend | NestJS 10, Node.js |
 | AI | Anthropic Claude (primary), OpenAI, Ollama - user-selectable per project |
 | ORM | Prisma 5 |
 | Database | PostgreSQL 16 |
 | Vector store | ChromaDB (RAG / semantic history search) |
 | Job queue | BullMQ + Redis 7 (async AI job pipeline) |
-| Storage | Supabase (thumbnails / blob storage) |
 | PDF | PDFKit (pure JS, no Java dependency) |
 
 ---
@@ -197,14 +217,7 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ## Self-hosting with Docker
 
-The repo ships with two compose files at the root:
-
-| File | Purpose |
-|---|---|
-| `docker-compose.yml` | Base stack — Postgres, Redis, ChromaDB, backend, frontend. No TLS, no custom domain. Frontend on `:3000`, backend on `:4000`. |
-| `docker-compose.prod.yml` | Overlay — adds Nginx (TLS + reverse proxy) and Uptime Kuma. Mounts `nginx.conf` and TLS certs from a sibling `../layers-infra/` repo. |
-
-### Base stack (most users)
+The repo ships a single compose file at the root that brings up the full stack — Postgres, Redis, ChromaDB, backend and frontend.
 
 ```bash
 cp .env.example .env
@@ -215,33 +228,22 @@ docker compose up -d --build
 
 App at [http://localhost:3000](http://localhost:3000), API at [http://localhost:4000](http://localhost:4000). Backend runs `prisma migrate deploy` on container start.
 
-### Production overlay (TLS + custom domain)
+### Production deployment
 
-Requires a sibling checkout of `layers-infra` providing:
+For internet-facing deployments add a reverse proxy in front of the stack to terminate TLS and route traffic. Common options:
 
-```
-../layers-infra/
-├── nginx/nginx.conf      # replace DOMAIN_PLACEHOLDER with your domain
-└── certs/
-    ├── fullchain.pem
-    └── privkey.pem
-```
+- **Nginx / Caddy / Traefik** as a sibling container reverse-proxying `frontend:3000` and `backend:4000`
+- **Cloudflare Tunnel** pointed at `localhost:3000` and `localhost:4000`
+- **A managed PaaS** (Fly.io, Railway, Render) using the same Dockerfiles
 
-In `.env`, set:
+When fronting the stack with a custom domain, set in `.env` before rebuilding:
 
 ```
-DOMAIN=yourdomain.com
 NEXT_PUBLIC_API_URL=https://yourdomain.com
 CORS_ORIGIN=https://yourdomain.com
 ```
 
-Then bring up base + overlay:
-
-```bash
-docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
-```
-
-`NEXT_PUBLIC_API_URL` is baked into the frontend bundle at build time, so any change to it requires a `--build` rebuild of the `frontend` service.
+`NEXT_PUBLIC_API_URL` is baked into the frontend bundle at build time, so any change requires a `--build` rebuild of the `frontend` service.
 
 ---
 
