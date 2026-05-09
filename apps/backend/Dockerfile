@@ -5,6 +5,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends openssl python3
 WORKDIR /app
 
 COPY package.json package-lock.json ./
+COPY prisma ./prisma
 RUN npm ci
 
 # Stage 2: Build
