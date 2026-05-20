@@ -1,5 +1,5 @@
 // apps/frontend/lib/trustMap.ts
-import type { Node, Edge } from 'reactflow';
+import type { Node } from 'reactflow';
 import type { LayerMap } from './layerStore';
 import type { NodeData } from './types';
 import type { ProjectThreat, ThreatSeverity } from './api';
@@ -154,13 +154,18 @@ export function buildTrustMapView(layers: LayerMap, threats: ProjectThreat[]): T
 
   const unbounded: TrustMapCard[] = [];
 
+  const boundariesByLayer = new Map<string, typeof boundaries>();
+  for (const b of boundaries) {
+    const list = boundariesByLayer.get(b.layerId) ?? [];
+    list.push(b);
+    boundariesByLayer.set(b.layerId, list);
+  }
+
   for (const layer of Object.values(layers)) {
-    const layerBoundaries = boundaries.filter((b) => b.layerId === layer.id);
+    const layerBoundaries = boundariesByLayer.get(layer.id) ?? [];
 
     for (const n of layer.nodes) {
       if (n.type === 'trustboundary') continue;
-      const cardKey = makeCardKey(layer.id, n.id);
-      if (cardByKey.has(cardKey)) continue;
 
       // Parent rule
       if (n.parentNode) {
@@ -170,7 +175,9 @@ export function buildTrustMapView(layers: LayerMap, threats: ProjectThreat[]): T
           cardByKey.set(card.key, card);
           const bk = makeCardKey(parentMatch.layerId, parentMatch.node.id);
           boundaryKeyByCard.set(card.key, bk);
-          columnByBoundaryKey.get(bk)!.cards.push(card);
+          const col = columnByBoundaryKey.get(bk);
+          if (!col) { unbounded.push(card); continue; }
+          col.cards.push(card);
           continue;
         }
       }
@@ -185,7 +192,9 @@ export function buildTrustMapView(layers: LayerMap, threats: ProjectThreat[]): T
         cardByKey.set(card.key, card);
         const bk = makeCardKey(winner.layerId, winner.node.id);
         boundaryKeyByCard.set(card.key, bk);
-        columnByBoundaryKey.get(bk)!.cards.push(card);
+        const col = columnByBoundaryKey.get(bk);
+        if (!col) { unbounded.push(card); continue; }
+        col.cards.push(card);
         continue;
       }
 
@@ -206,7 +215,7 @@ export function buildTrustMapView(layers: LayerMap, threats: ProjectThreat[]): T
 
   const flows: TrustMapFlow[] = [];
   for (const layer of Object.values(layers)) {
-    for (const edge of layer.edges as Edge[]) {
+    for (const edge of layer.edges) {
       const srcKey = makeCardKey(layer.id, edge.source);
       const tgtKey = makeCardKey(layer.id, edge.target);
       const srcBoundary = boundaryKeyByCard.get(srcKey);
