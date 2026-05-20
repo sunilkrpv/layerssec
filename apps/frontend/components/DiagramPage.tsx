@@ -92,6 +92,12 @@ function readCurrLayerParam(): string | null {
   return new URLSearchParams(window.location.search).get('currLayer');
 }
 
+// ─── helper: read selectNode from the current URL search params ──────────────
+function readSelectNodeParam(): string | null {
+  if (typeof window === 'undefined') return null;
+  return new URLSearchParams(window.location.search).get('selectNode');
+}
+
 interface DiagramPageProps {
   projectId: string;
   /** Diagram ID passed from the Server Component page via ?view=diagramId search param.
@@ -159,6 +165,12 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
    * does not change (e.g. server data loaded while already on ROOT layer).
    */
   const [canvasLoadKey, setCanvasLoadKey] = useState(0);
+
+  // Pending node selection from ?selectNode=<id> URL param (Trust Map deep-link).
+  // Read once on mount; consumed once the matching layer's canvas has mounted.
+  const [pendingSelectNodeId, setPendingSelectNodeId] = useState<string | null>(
+    () => readSelectNodeParam(),
+  );
 
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showProjectsModal, setShowProjectsModal] = useState(false);
@@ -383,6 +395,34 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
       `/projects/${projectId}?currLayer=${currentLayerId}`,
     );
   }, [currentLayerId, projectId]);
+
+  // ── Honor ?selectNode= deep-link from Trust Map ───────────────────────────
+  // Once the correct layer is loaded and contains the requested node, mark it
+  // selected in React Flow and strip the selectNode param from the URL.
+  useEffect(() => {
+    if (!pendingSelectNodeId) return;
+    if (!currentLayer) return;
+    const exists = currentLayer.nodes.some((n) => n.id === pendingSelectNodeId);
+    if (!exists) return;
+
+    // Wait one frame so the React Flow instance is initialized after a
+    // canvas remount (keyed on `${currentLayerId}_${canvasLoadKey}`).
+    const raf = requestAnimationFrame(() => {
+      const instance = rfInstanceRef.current as ReactFlowInstance | null;
+      if (!instance) return;
+      instance.setNodes((ns) =>
+        ns.map((n) => ({ ...n, selected: n.id === pendingSelectNodeId })),
+      );
+      // Strip selectNode from the URL while preserving currLayer.
+      window.history.replaceState(
+        null,
+        '',
+        `/projects/${projectId}?currLayer=${currentLayerId}`,
+      );
+      setPendingSelectNodeId(null);
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [pendingSelectNodeId, currentLayer, currentLayerId, canvasLoadKey, projectId]);
 
   // ── Auto-save interval (every 60 s when ON + backend diagram is set) ─────
   useEffect(() => {
