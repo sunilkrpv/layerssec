@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   ShieldCheck, ArrowLeft, Loader2, AlertCircle,
@@ -16,7 +16,8 @@ import {
 import { getStoredUser, signOut } from '@/lib/authStore';
 import { useTheme } from '@/lib/themeContext';
 import type { LayerMap, ProjectFile } from '@/lib/layerStore';
-import { buildTrustMapView, type TrustMapView } from '@/lib/trustMap';
+import { buildTrustMapView, type TrustMapCard, type TrustMapView } from '@/lib/trustMap';
+import KanbanColumn from './trust-map/KanbanColumn';
 
 interface Props {
   projectId: string;
@@ -70,6 +71,22 @@ export default function TrustMapPage({ projectId }: Props) {
 
   const flowCount = view?.flows.length ?? 0;
   const cardCount = view?.cardCount ?? 0;
+
+  const [hoveredCardKey, setHoveredCardKey] = useState<string | null>(null);
+  const cardRefsRef = useRef<Map<string, HTMLDivElement>>(new Map());
+
+  const registerCardRef = useCallback((cardKey: string, el: HTMLDivElement | null) => {
+    const map = cardRefsRef.current;
+    if (el) map.set(cardKey, el);
+    else map.delete(cardKey);
+  }, []);
+
+  const handleCardClick = useCallback((card: TrustMapCard) => {
+    router.push(`/projects/${projectId}?currLayer=${card.layerId}&selectNode=${card.nodeId}`);
+  }, [router, projectId]);
+
+  const highlightedCardKeys = new Set<string>();
+  void hoveredCardKey;
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-white dark:bg-gray-950">
@@ -156,7 +173,37 @@ export default function TrustMapPage({ projectId }: Props) {
                 <span className="text-slate-400">·</span>
                 <span>{flowCount} flows</span>
               </div>
-              <div className="flex-1 overflow-auto p-4 text-sm text-slate-400">columns placeholder</div>
+              <div className="relative flex-1 overflow-x-auto overflow-y-hidden">
+                <div className="flex h-full min-w-max gap-3 p-4">
+                  {view!.columns.map((col) => (
+                    <KanbanColumn
+                      key={col.boundaryKey}
+                      column={col}
+                      highlightedCardKeys={highlightedCardKeys}
+                      onCardClick={handleCardClick}
+                      onCardHover={setHoveredCardKey}
+                      registerCardRef={registerCardRef}
+                    />
+                  ))}
+                  {view!.unboundedCards.length > 0 && (
+                    <KanbanColumn
+                      column={{
+                        boundaryId: '__unassigned__',
+                        boundaryKey: '__unassigned__',
+                        layerId: '',
+                        layerName: '',
+                        label: 'Unassigned',
+                        trustLevel: 'custom',
+                        cards: view!.unboundedCards,
+                      }}
+                      highlightedCardKeys={highlightedCardKeys}
+                      onCardClick={handleCardClick}
+                      onCardHover={setHoveredCardKey}
+                      registerCardRef={registerCardRef}
+                    />
+                  )}
+                </div>
+              </div>
             </div>
             <aside className="border-l border-slate-200 bg-white dark:border-slate-700 dark:bg-gray-950">
               <div className="p-4 text-sm text-slate-400">analysis placeholder</div>
