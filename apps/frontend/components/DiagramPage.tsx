@@ -1660,6 +1660,7 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
             isReadOnly={isReadOnly}
             onOpenThreatModel={!!user ? () => setInspector((p) => p.kind === 'threat' ? { kind: 'none' } : { kind: 'threat' }) : undefined}
             onOpenThreatDashboard={() => router.push(`/projects/${projectId}/threats`)}
+            onOpenTrustMap={() => router.push(`/projects/${projectId}/trust-map`)}
             onOpenPostureScore={!!user ? () => setInspector((p) => p.kind === 'posture' ? { kind: 'none' } : { kind: 'posture' }) : undefined}
             postureScore={latestPostureScore}
             onOpenAttackMind={!!user ? () => setInspector((p) => p.kind === 'attack' ? { kind: 'none' } : { kind: 'attack' }) : undefined}
