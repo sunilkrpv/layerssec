@@ -69,6 +69,9 @@ export default function BoundaryAnalysisPanel({
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }, [hoveredFlowEdgeId]);
 
+  const allFlowsThreatFree =
+    view.flows.length > 0 && view.flows.every((f) => f.threats.length === 0);
+
   return (
     <aside className="flex h-full flex-col border-l border-slate-200 bg-white dark:border-slate-700 dark:bg-gray-950">
       <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-700">
@@ -90,6 +93,13 @@ export default function BoundaryAnalysisPanel({
       </div>
 
       <div ref={containerRef} className="flex-1 space-y-3 overflow-y-auto p-3">
+        {allFlowsThreatFree && (
+          <div className="rounded border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] text-amber-800 dark:border-amber-700/40 dark:bg-amber-900/20 dark:text-amber-200">
+            Cross-boundary flows detected but no threats saved yet.
+            {' '}
+            <a href={`/projects/${projectId}`} className="font-semibold underline">Open diagram</a> and run STRIDE analysis from the AI chat.
+          </div>
+        )}
         {groups.length === 0 ? (
           <div className="rounded border border-dashed border-slate-300 px-3 py-6 text-center text-xs text-slate-500 dark:border-slate-700 dark:text-slate-400">
             No cross-boundary flows detected.
