@@ -19,6 +19,7 @@ import type { LayerMap, ProjectFile } from '@/lib/layerStore';
 import { buildTrustMapView, type TrustMapCard, type TrustMapView } from '@/lib/trustMap';
 import KanbanColumn from './trust-map/KanbanColumn';
 import FlowOverlay from './trust-map/FlowOverlay';
+import BoundaryAnalysisPanel from './trust-map/BoundaryAnalysisPanel';
 
 interface Props {
   projectId: string;
@@ -230,9 +231,12 @@ export default function TrustMapPage({ projectId }: Props) {
                 </div>
               </div>
             </div>
-            <aside className="border-l border-slate-200 bg-white dark:border-slate-700 dark:bg-gray-950">
-              <div className="p-4 text-sm text-slate-400">analysis placeholder</div>
-            </aside>
+            <BoundaryAnalysisPanel
+              view={view!}
+              projectId={projectId}
+              hoveredFlowEdgeId={hoveredFlowEdgeId}
+              onThreatClick={(flow) => setHoveredFlowEdgeId(flow.edgeId)}
+            />
           </div>
         )}
       </div>
