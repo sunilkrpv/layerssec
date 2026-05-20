@@ -92,7 +92,17 @@ export default function TrustMapPage({ projectId }: Props) {
     router.push(`/projects/${projectId}?currLayer=${card.layerId}&selectNode=${card.nodeId}`);
   }, [router, projectId]);
 
-  const highlightedCardKeys = new Set<string>();
+  const highlightedCardKeys = (() => {
+    const set = new Set<string>();
+    if (hoveredFlowEdgeId) {
+      const f = view?.flows.find((x) => x.edgeId === hoveredFlowEdgeId);
+      if (f) {
+        set.add(f.sourceCardKey);
+        set.add(f.targetCardKey);
+      }
+    }
+    return set;
+  })();
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-white dark:bg-gray-950">
