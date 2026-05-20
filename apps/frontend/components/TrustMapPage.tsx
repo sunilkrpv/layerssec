@@ -18,6 +18,7 @@ import { useTheme } from '@/lib/themeContext';
 import type { LayerMap, ProjectFile } from '@/lib/layerStore';
 import { buildTrustMapView, type TrustMapCard, type TrustMapView } from '@/lib/trustMap';
 import KanbanColumn from './trust-map/KanbanColumn';
+import FlowOverlay from './trust-map/FlowOverlay';
 
 interface Props {
   projectId: string;
@@ -73,7 +74,13 @@ export default function TrustMapPage({ projectId }: Props) {
   const cardCount = view?.cardCount ?? 0;
 
   const [hoveredCardKey, setHoveredCardKey] = useState<string | null>(null);
+  const [hoveredFlowEdgeId, setHoveredFlowEdgeId] = useState<string | null>(null);
   const cardRefsRef = useRef<Map<string, HTMLDivElement>>(new Map());
+  const kanbanScrollRef = useRef<HTMLDivElement | null>(null);
+
+  const handleFlowClick = useCallback((flow: import('@/lib/trustMap').TrustMapFlow) => {
+    setHoveredFlowEdgeId(flow.edgeId);
+  }, []);
 
   const registerCardRef = useCallback((cardKey: string, el: HTMLDivElement | null) => {
     const map = cardRefsRef.current;
@@ -86,7 +93,6 @@ export default function TrustMapPage({ projectId }: Props) {
   }, [router, projectId]);
 
   const highlightedCardKeys = new Set<string>();
-  void hoveredCardKey;
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-white dark:bg-gray-950">
@@ -173,7 +179,16 @@ export default function TrustMapPage({ projectId }: Props) {
                 <span className="text-slate-400">·</span>
                 <span>{flowCount} flows</span>
               </div>
-              <div className="relative flex-1 overflow-x-auto overflow-y-hidden">
+              <div ref={kanbanScrollRef} className="relative flex-1 overflow-x-auto overflow-y-hidden">
+                <FlowOverlay
+                  flows={view!.flows}
+                  containerRef={kanbanScrollRef}
+                  cardRefs={cardRefsRef}
+                  hoveredFlowEdgeId={hoveredFlowEdgeId}
+                  hoveredCardKey={hoveredCardKey}
+                  onFlowHover={setHoveredFlowEdgeId}
+                  onFlowClick={handleFlowClick}
+                />
                 <div className="flex h-full min-w-max gap-3 p-4">
                   {view!.columns.map((col) => (
                     <KanbanColumn
