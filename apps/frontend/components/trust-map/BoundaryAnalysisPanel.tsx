@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useEffect, useRef } from 'react';
-import { ExternalLink, PanelRightClose, PanelRightOpen } from 'lucide-react';
+import { ExternalLink, PanelRightClose, PanelRightOpen, Layers, ChevronRight } from 'lucide-react';
 import type { TrustMapFlow, TrustMapView } from '@/lib/trustMap';
 import type { ProjectThreat, ThreatSeverity } from '@/lib/api';
 import { severityBadge } from './trustMapColors';
@@ -11,6 +11,7 @@ interface Props {
   projectId: string;
   hoveredFlowEdgeId: string | null;
   onThreatClick: (flow: TrustMapFlow, threat: ProjectThreat) => void;
+  onDrillNested: (layerId: string) => void;
   collapsed: boolean;
   onToggleCollapsed: () => void;
 }
@@ -28,7 +29,7 @@ const SEVERITY_RANK: Record<ThreatSeverity, number> = {
 };
 
 export default function BoundaryAnalysisPanel({
-  view, projectId, hoveredFlowEdgeId, onThreatClick, collapsed, onToggleCollapsed,
+  view, projectId, hoveredFlowEdgeId, onThreatClick, onDrillNested, collapsed, onToggleCollapsed,
 }: Props) {
   const groups: PairGroup[] = useMemo(() => {
     const byKey = new Map<string, PairGroup>();
@@ -102,7 +103,7 @@ export default function BoundaryAnalysisPanel({
             Boundary analysis
           </div>
           <div className="mt-1 text-xs text-slate-600 dark:text-slate-300">
-            STRIDE · {view.flows.length} flows · {view.cardCount} nodes
+            <span className="font-semibold">{view.layerName}</span> · {view.flows.length} flows · {view.cardCount} nodes
           </div>
           <div className="mt-2 flex flex-wrap gap-1">
             {(['CRITICAL', 'HIGH', 'MEDIUM', 'LOW', 'INFO'] as ThreatSeverity[]).map((s) => (
@@ -124,6 +125,40 @@ export default function BoundaryAnalysisPanel({
       </div>
 
       <div ref={containerRef} className="min-h-0 flex-1 space-y-3 overflow-y-auto p-3">
+        {view.nestedLayers.length > 0 && (
+          <div className="rounded border border-slate-200 dark:border-slate-700">
+            <div className="border-b border-slate-200 bg-slate-50 px-2.5 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
+              Nested layers ({view.nestedLayers.length})
+            </div>
+            <div className="divide-y divide-slate-100 dark:divide-slate-800">
+              {view.nestedLayers.map((nl) => (
+                <button
+                  key={nl.layerId}
+                  onClick={() => onDrillNested(nl.layerId)}
+                  className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-[11px] hover:bg-slate-50 dark:hover:bg-slate-800"
+                >
+                  <Layers size={11} className="flex-shrink-0 text-blue-600 dark:text-blue-400" />
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate font-semibold text-slate-700 dark:text-slate-200">
+                      {nl.layerName}
+                    </div>
+                    <div className="truncate text-[10px] text-slate-500 dark:text-slate-400">
+                      via {nl.parentNodeLabel}
+                    </div>
+                  </div>
+                  {nl.threatCount > 0 ? (
+                    <span className={`flex-shrink-0 rounded border px-1 py-0.5 text-[9px] font-bold ${nl.highestSeverity ? severityBadge(nl.highestSeverity) : ''}`}>
+                      {nl.threatCount}
+                    </span>
+                  ) : (
+                    <span className="flex-shrink-0 text-[10px] text-slate-400">—</span>
+                  )}
+                  <ChevronRight size={11} className="flex-shrink-0 text-slate-400" />
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
         {allFlowsThreatFree && (
           <div className="rounded border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] text-amber-800 dark:border-amber-700/40 dark:bg-amber-900/20 dark:text-amber-200">
             Cross-boundary flows detected but no threats saved yet.

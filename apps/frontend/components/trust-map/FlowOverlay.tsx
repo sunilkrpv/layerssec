@@ -12,6 +12,8 @@ interface Props {
   hoveredCardKey: string | null;
   onFlowHover: (edgeId: string | null) => void;
   onFlowClick: (flow: TrustMapFlow) => void;
+  /** Bump to force recompute when layout-affecting state (e.g. column order) changes without flows changing. */
+  layoutRevision?: unknown;
 }
 
 interface FlowPath {
@@ -27,6 +29,7 @@ export default function FlowOverlay({
   hoveredCardKey,
   onFlowHover,
   onFlowClick,
+  layoutRevision,
 }: Props) {
   const [paths, setPaths] = useState<FlowPath[]>([]);
   const [size, setSize] = useState<{ w: number; h: number }>({ w: 0, h: 0 });
@@ -70,8 +73,13 @@ export default function FlowOverlay({
 
   useLayoutEffect(() => {
     compute();
+    // Follow-up pass next frame: catches any post-commit DOM settling
+    // (CSS transitions, ref-callback churn from reorder, etc.) so arrows don't
+    // briefly clear after column repositioning.
+    const t = requestAnimationFrame(() => compute());
+    return () => cancelAnimationFrame(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [flows]);
+  }, [flows, layoutRevision]);
 
   useEffect(() => {
     const container = containerRef.current;

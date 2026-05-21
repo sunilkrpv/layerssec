@@ -16,6 +16,8 @@ export interface TrustMapCard {
   nodeType: string;
   subtitle?: string;
   containedBy: 'parent' | 'geometric';
+  /** Set if this node has a drill-down child layer */
+  childLayerId?: string;
 }
 
 export interface TrustMapColumn {
@@ -39,12 +41,26 @@ export interface TrustMapFlow {
   highestSeverity: ThreatSeverity | null;
 }
 
+export interface NestedLayerSummary {
+  layerId: string;
+  layerName: string;
+  parentNodeLabel: string;
+  threatCount: number;
+  highestSeverity: ThreatSeverity | null;
+  severityCounts: Record<ThreatSeverity, number>;
+}
+
 export interface TrustMapView {
+  /** Layer this view was built for */
+  layerId: string;
+  layerName: string;
   columns: TrustMapColumn[];
   flows: TrustMapFlow[];
-  unboundedCards: TrustMapCard[]; // shown as trailing "Unassigned" column when non-empty
+  unboundedCards: TrustMapCard[];
   /** Total card count across all columns + unbounded */
   cardCount: number;
+  /** Direct child layers reachable via drill-down nodes in this layer */
+  nestedLayers: NestedLayerSummary[];
 }
 
 const TRUST_LEVEL_RANK: Record<TrustLevel, number> = {
@@ -90,7 +106,6 @@ function rectContains(boundary: Node, child: Node): boolean {
   const cy1 = child.position.y;
   const cx2 = cx1 + cw;
   const cy2 = cy1 + ch;
-  // child fully inside boundary
   return cx1 >= bx1 && cy1 >= by1 && cx2 <= bx2 && cy2 <= by2;
 }
 
@@ -121,91 +136,133 @@ function buildCard(
     nodeType: node.type ?? 'unknown',
     subtitle: deriveSubtitle(data, node.type ?? 'unknown'),
     containedBy,
+    childLayerId: data?._childLayerId,
   };
 }
 
-export function buildTrustMapView(layers: LayerMap, threats: ProjectThreat[]): TrustMapView {
-  // 1. Collect every TrustBoundary across all layers.
-  const boundaries: { node: Node; layerId: string; layerName: string }[] = [];
-  for (const layer of Object.values(layers)) {
-    for (const n of layer.nodes) {
-      if (n.type === 'trustboundary') {
-        boundaries.push({ node: n, layerId: layer.id, layerName: layer.name });
-      }
+/**
+ * Collect threats reachable from a layer and all its descendant layers.
+ * Used to roll up nested-layer severity into the parent view.
+ */
+function collectSubtreeThreatStats(
+  layers: LayerMap,
+  threats: ProjectThreat[],
+  rootLayerId: string,
+): { count: number; highest: ThreatSeverity | null; counts: Record<ThreatSeverity, number> } {
+  const counts: Record<ThreatSeverity, number> = {
+    CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0, INFO: 0,
+  };
+  // Collect descendant layer ids (inclusive)
+  const layerIds = new Set<string>();
+  const stack = [rootLayerId];
+  while (stack.length) {
+    const id = stack.pop()!;
+    if (layerIds.has(id)) continue;
+    layerIds.add(id);
+    for (const l of Object.values(layers)) {
+      if (l.parentLayerId === id) stack.push(l.id);
     }
   }
+  // Collect node and edge ids belonging to these layers
+  const targetIds = new Set<string>();
+  for (const id of layerIds) {
+    const l = layers[id];
+    if (!l) continue;
+    for (const n of l.nodes) targetIds.add(n.id);
+    for (const e of l.edges) targetIds.add(e.id);
+  }
+  let count = 0;
+  let highest: ThreatSeverity | null = null;
+  for (const t of threats) {
+    if (!targetIds.has(t.targetId)) continue;
+    count++;
+    counts[t.severity]++;
+    if (!highest || SEVERITY_RANK[t.severity] > SEVERITY_RANK[highest]) highest = t.severity;
+  }
+  return { count, highest, counts };
+}
 
-  // 2. For each non-boundary node, decide which boundary owns it.
-  //    Parent rule wins; otherwise smallest-area geometric containment.
+export function buildTrustMapView(
+  layers: LayerMap,
+  threats: ProjectThreat[],
+  layerId: string,
+): TrustMapView {
+  const layer = layers[layerId];
+  if (!layer) {
+    return {
+      layerId,
+      layerName: '?',
+      columns: [],
+      flows: [],
+      unboundedCards: [],
+      cardCount: 0,
+      nestedLayers: [],
+    };
+  }
+
+  // 1. Boundaries within this layer
+  const boundaries = layer.nodes
+    .filter((n) => n.type === 'trustboundary')
+    .map((node) => ({ node, layerId, layerName: layer.name }));
+
+  // 2. For each non-boundary node in this layer, decide which boundary owns it.
   const cardByKey = new Map<string, TrustMapCard>();
   const boundaryKeyByCard = new Map<string, string>();
-  const columns: TrustMapColumn[] = boundaries.map(({ node, layerId, layerName }) => ({
+  const columns: TrustMapColumn[] = boundaries.map(({ node }) => ({
     boundaryId: node.id,
     boundaryKey: makeCardKey(layerId, node.id),
     layerId,
-    layerName,
+    layerName: layer.name,
     label: (node.data as NodeData | undefined)?.label ?? 'Trust Boundary',
     trustLevel: normalizeTrustLevel(node.data as NodeData | undefined),
     cards: [],
   }));
-
   const columnByBoundaryKey = new Map<string, TrustMapColumn>();
   for (const col of columns) columnByBoundaryKey.set(col.boundaryKey, col);
 
   const unbounded: TrustMapCard[] = [];
 
-  const boundariesByLayer = new Map<string, typeof boundaries>();
-  for (const b of boundaries) {
-    const list = boundariesByLayer.get(b.layerId) ?? [];
-    list.push(b);
-    boundariesByLayer.set(b.layerId, list);
-  }
+  for (const n of layer.nodes) {
+    if (n.type === 'trustboundary') continue;
 
-  for (const layer of Object.values(layers)) {
-    const layerBoundaries = boundariesByLayer.get(layer.id) ?? [];
-
-    for (const n of layer.nodes) {
-      if (n.type === 'trustboundary') continue;
-
-      // Parent rule
-      if (n.parentNode) {
-        const parentMatch = layerBoundaries.find((b) => b.node.id === n.parentNode);
-        if (parentMatch) {
-          const card = buildCard(n, layer.id, layer.name, 'parent');
-          cardByKey.set(card.key, card);
-          const bk = makeCardKey(parentMatch.layerId, parentMatch.node.id);
-          boundaryKeyByCard.set(card.key, bk);
-          const col = columnByBoundaryKey.get(bk);
-          if (!col) { unbounded.push(card); continue; }
-          col.cards.push(card);
-          continue;
-        }
-      }
-
-      // Geometric rule: smallest-area containing boundary wins
-      const containing = layerBoundaries
-        .filter((b) => rectContains(b.node, n))
-        .sort((a, b) => nodeArea(a.node) - nodeArea(b.node));
-      if (containing.length > 0) {
-        const winner = containing[0];
-        const card = buildCard(n, layer.id, layer.name, 'geometric');
+    // Parent rule
+    if (n.parentNode) {
+      const parentMatch = boundaries.find((b) => b.node.id === n.parentNode);
+      if (parentMatch) {
+        const card = buildCard(n, layerId, layer.name, 'parent');
         cardByKey.set(card.key, card);
-        const bk = makeCardKey(winner.layerId, winner.node.id);
+        const bk = makeCardKey(layerId, parentMatch.node.id);
         boundaryKeyByCard.set(card.key, bk);
         const col = columnByBoundaryKey.get(bk);
         if (!col) { unbounded.push(card); continue; }
         col.cards.push(card);
         continue;
       }
-
-      // Unassigned
-      const orphan = buildCard(n, layer.id, layer.name, 'geometric');
-      cardByKey.set(orphan.key, orphan);
-      unbounded.push(orphan);
     }
+
+    // Geometric rule
+    const containing = boundaries
+      .filter((b) => rectContains(b.node, n))
+      .sort((a, b) => nodeArea(a.node) - nodeArea(b.node));
+    if (containing.length > 0) {
+      const winner = containing[0];
+      const card = buildCard(n, layerId, layer.name, 'geometric');
+      cardByKey.set(card.key, card);
+      const bk = makeCardKey(layerId, winner.node.id);
+      boundaryKeyByCard.set(card.key, bk);
+      const col = columnByBoundaryKey.get(bk);
+      if (!col) { unbounded.push(card); continue; }
+      col.cards.push(card);
+      continue;
+    }
+
+    // Unassigned
+    const orphan = buildCard(n, layerId, layer.name, 'geometric');
+    cardByKey.set(orphan.key, orphan);
+    unbounded.push(orphan);
   }
 
-  // 3. Walk edges, emit flows for cross-boundary edges, attach threats.
+  // 3. Walk this layer's edges, emit cross-boundary flows + threats.
   const threatsByTarget = new Map<string, ProjectThreat[]>();
   for (const t of threats) {
     const list = threatsByTarget.get(t.targetId) ?? [];
@@ -214,43 +271,69 @@ export function buildTrustMapView(layers: LayerMap, threats: ProjectThreat[]): T
   }
 
   const flows: TrustMapFlow[] = [];
-  for (const layer of Object.values(layers)) {
-    for (const edge of layer.edges) {
-      const srcKey = makeCardKey(layer.id, edge.source);
-      const tgtKey = makeCardKey(layer.id, edge.target);
-      const srcBoundary = boundaryKeyByCard.get(srcKey);
-      const tgtBoundary = boundaryKeyByCard.get(tgtKey);
-      if (!srcBoundary || !tgtBoundary || srcBoundary === tgtBoundary) continue;
+  for (const edge of layer.edges) {
+    const srcKey = makeCardKey(layerId, edge.source);
+    const tgtKey = makeCardKey(layerId, edge.target);
+    const srcBoundary = boundaryKeyByCard.get(srcKey);
+    const tgtBoundary = boundaryKeyByCard.get(tgtKey);
+    if (!srcBoundary || !tgtBoundary || srcBoundary === tgtBoundary) continue;
 
-      const edgeThreats = threatsByTarget.get(edge.id) ?? [];
-      let highest: ThreatSeverity | null = null;
-      for (const t of edgeThreats) {
-        if (!highest || SEVERITY_RANK[t.severity] > SEVERITY_RANK[highest]) highest = t.severity;
-      }
-
-      flows.push({
-        edgeId: edge.id,
-        layerId: layer.id,
-        sourceCardKey: srcKey,
-        targetCardKey: tgtKey,
-        sourceBoundaryKey: srcBoundary,
-        targetBoundaryKey: tgtBoundary,
-        threats: edgeThreats,
-        highestSeverity: highest,
-      });
+    const edgeThreats = threatsByTarget.get(edge.id) ?? [];
+    let highest: ThreatSeverity | null = null;
+    for (const t of edgeThreats) {
+      if (!highest || SEVERITY_RANK[t.severity] > SEVERITY_RANK[highest]) highest = t.severity;
     }
+
+    flows.push({
+      edgeId: edge.id,
+      layerId,
+      sourceCardKey: srcKey,
+      targetCardKey: tgtKey,
+      sourceBoundaryKey: srcBoundary,
+      targetBoundaryKey: tgtBoundary,
+      threats: edgeThreats,
+      highestSeverity: highest,
+    });
   }
 
-  // 4. Sort columns by trust-level rank, then by label.
+  // 4. Sort columns by trust-level rank, then label.
   columns.sort((a, b) => {
     const r = TRUST_LEVEL_RANK[a.trustLevel] - TRUST_LEVEL_RANK[b.trustLevel];
     return r !== 0 ? r : a.label.localeCompare(b.label);
   });
 
+  // 5. Nested layer summaries: walk nodes that have _childLayerId.
+  const nodeById = new Map<string, Node>(layer.nodes.map((n) => [n.id, n]));
+  const nestedLayers: NestedLayerSummary[] = [];
+  for (const child of Object.values(layers)) {
+    if (child.parentLayerId !== layerId) continue;
+    const parentNode = child.parentNodeId ? nodeById.get(child.parentNodeId) : undefined;
+    const parentLabel =
+      (parentNode?.data as NodeData | undefined)?.label ?? child.name;
+    const stats = collectSubtreeThreatStats(layers, threats, child.id);
+    nestedLayers.push({
+      layerId: child.id,
+      layerName: child.name,
+      parentNodeLabel: parentLabel,
+      threatCount: stats.count,
+      highestSeverity: stats.highest,
+      severityCounts: stats.counts,
+    });
+  }
+  nestedLayers.sort((a, b) => {
+    const ra = a.highestSeverity ? SEVERITY_RANK[a.highestSeverity] : -1;
+    const rb = b.highestSeverity ? SEVERITY_RANK[b.highestSeverity] : -1;
+    if (rb !== ra) return rb - ra;
+    return a.layerName.localeCompare(b.layerName);
+  });
+
   return {
+    layerId,
+    layerName: layer.name,
     columns,
     flows,
     unboundedCards: unbounded,
     cardCount: cardByKey.size,
+    nestedLayers,
   };
 }

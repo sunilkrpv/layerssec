@@ -1,25 +1,35 @@
 'use client';
 
-import { Box } from 'lucide-react';
+import { useCallback } from 'react';
+import { Box, Layers } from 'lucide-react';
 import type { TrustMapCard } from '@/lib/trustMap';
 
 interface Props {
   card: TrustMapCard;
   highlighted?: boolean;
   onClick: () => void;
+  onDrill?: () => void;
   onMouseEnter: () => void;
   onMouseLeave: () => void;
-  cardRef?: (el: HTMLDivElement | null) => void;
+  registerRef?: (cardKey: string, el: HTMLDivElement | null) => void;
 }
 
 export default function NodeCard({
   card,
   highlighted,
   onClick,
+  onDrill,
   onMouseEnter,
   onMouseLeave,
-  cardRef,
+  registerRef,
 }: Props) {
+  const cardKey = card.key;
+  const cardRef = useCallback(
+    (el: HTMLDivElement | null) => {
+      registerRef?.(cardKey, el);
+    },
+    [cardKey, registerRef],
+  );
   return (
     <div
       ref={cardRef}
@@ -38,6 +48,15 @@ export default function NodeCard({
         <span className="truncate text-xs font-semibold text-slate-800 dark:text-slate-100">
           {card.label}
         </span>
+        {onDrill && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onDrill(); }}
+            title={`Drill into ${card.label}`}
+            className="ml-auto flex-shrink-0 rounded p-0.5 text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/30"
+          >
+            <Layers size={11} />
+          </button>
+        )}
       </div>
       {card.subtitle && (
         <div className="mt-0.5 truncate font-mono text-[10px] text-slate-500 dark:text-slate-400">
