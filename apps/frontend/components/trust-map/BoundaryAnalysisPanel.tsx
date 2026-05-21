@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useEffect, useRef } from 'react';
-import { ExternalLink } from 'lucide-react';
+import { ExternalLink, PanelRightClose, PanelRightOpen } from 'lucide-react';
 import type { TrustMapFlow, TrustMapView } from '@/lib/trustMap';
 import type { ProjectThreat, ThreatSeverity } from '@/lib/api';
 import { severityBadge } from './trustMapColors';
@@ -11,6 +11,8 @@ interface Props {
   projectId: string;
   hoveredFlowEdgeId: string | null;
   onThreatClick: (flow: TrustMapFlow, threat: ProjectThreat) => void;
+  collapsed: boolean;
+  onToggleCollapsed: () => void;
 }
 
 interface PairGroup {
@@ -26,7 +28,7 @@ const SEVERITY_RANK: Record<ThreatSeverity, number> = {
 };
 
 export default function BoundaryAnalysisPanel({
-  view, projectId, hoveredFlowEdgeId, onThreatClick,
+  view, projectId, hoveredFlowEdgeId, onThreatClick, collapsed, onToggleCollapsed,
 }: Props) {
   const groups: PairGroup[] = useMemo(() => {
     const byKey = new Map<string, PairGroup>();
@@ -72,27 +74,56 @@ export default function BoundaryAnalysisPanel({
   const allFlowsThreatFree =
     view.flows.length > 0 && view.flows.every((f) => f.threats.length === 0);
 
-  return (
-    <aside className="flex h-full flex-col border-l border-slate-200 bg-white dark:border-slate-700 dark:bg-gray-950">
-      <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-700">
-        <div className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+  if (collapsed) {
+    return (
+      <aside className="flex h-full w-9 flex-col items-center border-l border-slate-200 bg-white py-2 dark:border-slate-700 dark:bg-gray-950">
+        <button
+          onClick={onToggleCollapsed}
+          title="Open boundary analysis"
+          className="rounded p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+        >
+          <PanelRightOpen size={16} />
+        </button>
+        <div
+          className="mt-3 text-[10px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400"
+          style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}
+        >
           Boundary analysis
         </div>
-        <div className="mt-1 text-xs text-slate-600 dark:text-slate-300">
-          STRIDE · {view.flows.length} flows · {view.cardCount} nodes
+      </aside>
+    );
+  }
+
+  return (
+    <aside className="flex h-full min-h-0 flex-col border-l border-slate-200 bg-white dark:border-slate-700 dark:bg-gray-950">
+      <div className="flex items-start justify-between gap-2 border-b border-slate-200 px-4 py-3 dark:border-slate-700">
+        <div className="min-w-0 flex-1">
+          <div className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+            Boundary analysis
+          </div>
+          <div className="mt-1 text-xs text-slate-600 dark:text-slate-300">
+            STRIDE · {view.flows.length} flows · {view.cardCount} nodes
+          </div>
+          <div className="mt-2 flex flex-wrap gap-1">
+            {(['CRITICAL', 'HIGH', 'MEDIUM', 'LOW', 'INFO'] as ThreatSeverity[]).map((s) => (
+              totals[s] > 0 ? (
+                <span key={s} className={`rounded border px-1.5 py-0.5 text-[10px] font-bold uppercase ${severityBadge(s)}`}>
+                  {s.slice(0, 4)} {totals[s]}
+                </span>
+              ) : null
+            ))}
+          </div>
         </div>
-        <div className="mt-2 flex flex-wrap gap-1">
-          {(['CRITICAL', 'HIGH', 'MEDIUM', 'LOW', 'INFO'] as ThreatSeverity[]).map((s) => (
-            totals[s] > 0 ? (
-              <span key={s} className={`rounded border px-1.5 py-0.5 text-[10px] font-bold uppercase ${severityBadge(s)}`}>
-                {s.slice(0, 4)} {totals[s]}
-              </span>
-            ) : null
-          ))}
-        </div>
+        <button
+          onClick={onToggleCollapsed}
+          title="Hide boundary analysis"
+          className="flex-shrink-0 rounded p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+        >
+          <PanelRightClose size={14} />
+        </button>
       </div>
 
-      <div ref={containerRef} className="flex-1 space-y-3 overflow-y-auto p-3">
+      <div ref={containerRef} className="min-h-0 flex-1 space-y-3 overflow-y-auto p-3">
         {allFlowsThreatFree && (
           <div className="rounded border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] text-amber-800 dark:border-amber-700/40 dark:bg-amber-900/20 dark:text-amber-200">
             Cross-boundary flows detected but no threats saved yet.

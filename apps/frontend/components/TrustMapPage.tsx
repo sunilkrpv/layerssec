@@ -76,6 +76,7 @@ export default function TrustMapPage({ projectId }: Props) {
 
   const [hoveredCardKey, setHoveredCardKey] = useState<string | null>(null);
   const [hoveredFlowEdgeId, setHoveredFlowEdgeId] = useState<string | null>(null);
+  const [panelCollapsed, setPanelCollapsed] = useState(false);
   const cardRefsRef = useRef<Map<string, HTMLDivElement>>(new Map());
   const kanbanScrollRef = useRef<HTMLDivElement | null>(null);
 
@@ -178,7 +179,7 @@ export default function TrustMapPage({ projectId }: Props) {
             />
           </div>
         ) : (
-          <div className="grid h-full grid-cols-[1fr_340px]">
+          <div className={`grid h-full ${panelCollapsed ? 'grid-cols-[1fr_36px]' : 'grid-cols-[1fr_340px]'}`}>
             {/* Kanban region (filled in later tasks) */}
             <div className="relative flex flex-col overflow-hidden bg-slate-50 dark:bg-slate-900">
               <div className="flex items-center gap-3 border-b border-slate-200 px-4 py-2 text-xs text-slate-500 dark:border-slate-700 dark:text-slate-400">
@@ -236,6 +237,8 @@ export default function TrustMapPage({ projectId }: Props) {
               projectId={projectId}
               hoveredFlowEdgeId={hoveredFlowEdgeId}
               onThreatClick={(flow) => setHoveredFlowEdgeId(flow.edgeId)}
+              collapsed={panelCollapsed}
+              onToggleCollapsed={() => setPanelCollapsed((v) => !v)}
             />
           </div>
         )}
