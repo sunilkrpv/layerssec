@@ -4,7 +4,7 @@ import { useState } from 'react';
 import {
   Trash2, Clock,
   FolderOpen, Copy, ClipboardPaste,
-  ShieldAlert, LayoutDashboard, ChevronDown,
+  ShieldAlert, ShieldCheck, LayoutDashboard, ChevronDown,
   Sparkles, History, Lock, GitCompareArrows, Sword, Shield,
   Save, Loader2, ImageDown,
   Gauge, MoreHorizontal, PanelRight,
@@ -38,6 +38,8 @@ interface ToolbarProps {
   onOpenThreatModel?: () => void;
   /** Navigate to Threats Dashboard */
   onOpenThreatDashboard?: () => void;
+  /** Navigate to Trust Map page */
+  onOpenTrustMap?: () => void;
   /** Open Security Posture Score panel */
   onOpenPostureScore?: () => void;
   /** Latest computed posture score (0-100) to show as a badge */
@@ -136,6 +138,7 @@ export default function Toolbar({
   isReadOnly = false,
   onOpenThreatModel,
   onOpenThreatDashboard,
+  onOpenTrustMap,
   onOpenPostureScore,
   postureScore,
   onOpenAttackMind,
@@ -319,6 +322,7 @@ export default function Toolbar({
               ...(onOpenPostureScore ? [{ value: 'posture', label: 'Posture Score', icon: <Gauge size={13} className="text-blue-500" />, onSelect: () => onInspect('posture') }] : []),
               ...(onOpenAttackMind ? [{ value: 'attack', label: 'Attack Mind', icon: <Sword size={13} className="text-red-500" />, onSelect: () => onInspect('attack') }] : []),
               ...(onOpenThreatDashboard ? [{ value: 'threat-dashboard', label: 'Open Threats Dashboard →', icon: <LayoutDashboard size={13} className="text-slate-400" />, onSelect: onOpenThreatDashboard }] : []),
+              ...(onOpenTrustMap ? [{ value: 'trust-map', label: 'Open Trust Map →', icon: <ShieldCheck size={13} className="text-slate-400" />, onSelect: onOpenTrustMap }] : []),
               ...(onShowAIHistory ? [{ value: 'ai-history', label: 'AI History →', icon: <History size={13} className="text-slate-400" />, onSelect: onShowAIHistory }] : []),
               ...(onShowSecurityIntel ? [{ value: 'security-intel', label: 'Security Intel →', icon: <Shield size={13} className="text-slate-400" />, onSelect: onShowSecurityIntel }] : []),
             ]}
