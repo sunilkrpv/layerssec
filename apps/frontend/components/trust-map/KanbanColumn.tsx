@@ -21,11 +21,8 @@ export default function KanbanColumn({
 }: Props) {
   const style = TRUST_LEVEL_STYLES[column.trustLevel];
   return (
-    <div
-      className="flex w-60 flex-shrink-0 flex-col rounded-md border bg-white/40 dark:bg-slate-900/40"
-      style={{ borderColor: style.border, backgroundColor: style.fill }}
-    >
-      <div className="flex items-center justify-between gap-2 border-b px-2.5 py-1.5" style={{ borderColor: style.border }}>
+    <div className="flex w-60 flex-shrink-0 flex-col rounded-md border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
+      <div className="flex items-center justify-between gap-2 border-b border-slate-200 px-2.5 py-1.5 dark:border-slate-700">
         <div className="flex min-w-0 items-center gap-1.5">
           <span className="truncate text-xs font-semibold text-slate-700 dark:text-slate-100">
             {column.label}
