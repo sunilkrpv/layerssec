@@ -9,5 +9,5 @@ interface CanvasPaneProps {
 }
 
 export function CanvasPane({ projectId, diagramId }: CanvasPaneProps) {
-  return <DiagramPage projectId={projectId} viewDiagramId={diagramId} />;
+  return <DiagramPage key={diagramId} projectId={projectId} viewDiagramId={diagramId} />;
 }

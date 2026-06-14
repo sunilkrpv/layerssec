@@ -227,67 +227,23 @@ export default function HomeSidebar({
 
         <div className="my-3 border-t border-slate-200 dark:border-slate-800" />
 
-        {/* AI Dashboard section */}
-        {!collapsed && (
-          <p className="mb-1 px-4 text-[10px] font-semibold uppercase tracking-widest text-slate-400 dark:text-slate-600">
-            AI Dashboard
-          </p>
-        )}
-        <NavItem
-          icon={<Shield size={14} />}
-          label="Threats"
-          badge={totalThreats}
-          badgeColor={threatBadgeColor}
-          active={activeView === 'threats'}
-          collapsed={collapsed}
-          onClick={onShowThreats}
-        />
-        <NavItem
-          icon={<BarChart2 size={14} />}
-          label="Posture Score"
-          badge={avgPosture ?? '—'}
-          badgeColor={postureBadgeColor}
-          active={activeView === 'posture'}
-          collapsed={collapsed}
-          onClick={onShowPosture}
-        />
-        <NavItem
-          icon={<Sword size={14} />}
-          label="Attack Sims"
-          badge={attackSimTotal}
-          badgeColor="bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-400"
-          collapsed={collapsed}
-          onClick={() => router.push('/activity?types=ATTACK_SIMULATION')}
-        />
-        <NavItem
-          icon={<Zap size={14} />}
-          label="Active Jobs"
-          badge={activeJobCount > 0 ? activeJobCount : undefined}
-          badgeColor="bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400"
-          pulse={activeJobCount > 0}
-          collapsed={collapsed}
-          onClick={() => router.push('/activity?statuses=RUNNING,PENDING')}
-        />
-
-        <div className="my-3 border-t border-slate-200 dark:border-slate-800" />
-
-        {/* Projects section */}
+        {/* My Projects section */}
         {!collapsed ? (
           <>
             <button
               onClick={() => setProjectsOpen((v) => !v)}
               className="mb-1 flex w-full items-center justify-between px-4 text-[10px] font-semibold uppercase tracking-widest text-slate-400 hover:text-slate-600 dark:text-slate-600 dark:hover:text-slate-400"
             >
-              Projects
+              My Projects
               <ChevronDown size={10} className={cn('transition-transform', !projectsOpen && '-rotate-90')} />
             </button>
 
             {projectsOpen && (
               <>
-                {/* My Projects */}
+                {/* All Projects link */}
                 <NavItem
                   icon={<FolderKanban size={14} />}
-                  label="My Projects"
+                  label="All Projects"
                   badge={projects.length > 0 ? projects.length : undefined}
                   active={activeView === 'my-projects'}
                   collapsed={collapsed}
@@ -305,6 +261,18 @@ export default function HomeSidebar({
                       className="flex-1 bg-transparent text-[12px] text-slate-700 placeholder-slate-400 outline-none dark:text-slate-200"
                     />
                   </div>
+                </div>
+
+                {/* Add New */}
+                <div className="px-2 pb-1">
+                  <button
+                    data-onboarding="new-project-btn"
+                    onClick={onNewProject}
+                    className="flex w-full items-center gap-2 rounded-lg border border-dashed border-blue-300 px-3 py-2 text-[12px] font-medium text-blue-600 transition-colors hover:bg-blue-50 dark:border-blue-800 dark:text-blue-400 dark:hover:bg-blue-950/30"
+                  >
+                    <Plus size={13} />
+                    Add New
+                  </button>
                 </div>
 
                 {/* Project list */}
@@ -370,17 +338,6 @@ export default function HomeSidebar({
                   )}
                 </div>
 
-                {/* New project */}
-                <div className="px-2 pt-1">
-                  <button
-                    data-onboarding="new-project-btn"
-                    onClick={onNewProject}
-                    className="flex w-full items-center gap-2 rounded-lg border border-dashed border-blue-300 px-3 py-2 text-[12px] font-medium text-blue-600 transition-colors hover:bg-blue-50 dark:border-blue-800 dark:text-blue-400 dark:hover:bg-blue-950/30"
-                  >
-                    <Plus size={13} />
-                    New Project
-                  </button>
-                </div>
               </>
             )}
           </>
@@ -413,6 +370,50 @@ export default function HomeSidebar({
             </button>
           </div>
         )}
+
+        <div className="my-3 border-t border-slate-200 dark:border-slate-800" />
+
+        {/* Security Intel section */}
+        {!collapsed && (
+          <p className="mb-1 px-4 text-[10px] font-semibold uppercase tracking-widest text-slate-400 dark:text-slate-600">
+            Security Intel
+          </p>
+        )}
+        <NavItem
+          icon={<Shield size={14} />}
+          label="Threats"
+          badge={totalThreats}
+          badgeColor={threatBadgeColor}
+          active={activeView === 'threats'}
+          collapsed={collapsed}
+          onClick={onShowThreats}
+        />
+        <NavItem
+          icon={<BarChart2 size={14} />}
+          label="Posture Score"
+          badge={avgPosture ?? '—'}
+          badgeColor={postureBadgeColor}
+          active={activeView === 'posture'}
+          collapsed={collapsed}
+          onClick={onShowPosture}
+        />
+        <NavItem
+          icon={<Sword size={14} />}
+          label="Attack Sims"
+          badge={attackSimTotal}
+          badgeColor="bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-400"
+          collapsed={collapsed}
+          onClick={() => router.push('/activity?types=ATTACK_SIMULATION')}
+        />
+        <NavItem
+          icon={<Zap size={14} />}
+          label="Active Jobs"
+          badge={activeJobCount > 0 ? activeJobCount : undefined}
+          badgeColor="bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400"
+          pulse={activeJobCount > 0}
+          collapsed={collapsed}
+          onClick={() => router.push('/activity?statuses=RUNNING,PENDING')}
+        />
       </div>
 
       {/* Bottom bar */}

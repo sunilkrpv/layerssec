@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { Plus } from 'lucide-react';
 import { apiGetProject, apiUpdateProject, type ProjectWithDiagrams } from '@/lib/api';
 import { ProjectMetadataForm } from './ProjectMetadataForm';
 import { ThreatsRollupCard } from './widgets/ThreatsRollupCard';
@@ -10,9 +11,10 @@ import { IntelReportCard } from './widgets/IntelReportCard';
 interface Props {
   projectId: string;
   onOpenDiagram?: (id: string) => void;
+  onNewFlow?: () => void;
 }
 
-export function ProjectOverviewPane({ projectId, onOpenDiagram }: Props) {
+export function ProjectOverviewPane({ projectId, onOpenDiagram, onNewFlow }: Props) {
   const [project, setProject] = useState<ProjectWithDiagrams | null>(null);
 
   useEffect(() => {
@@ -25,10 +27,22 @@ export function ProjectOverviewPane({ projectId, onOpenDiagram }: Props) {
 
   return (
     <div className="p-6 space-y-6">
-      <header>
-        <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">{project.name}</h1>
-        {project.description && (
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{project.description}</p>
+      <header className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">{project.name}</h1>
+          {project.description && (
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{project.description}</p>
+          )}
+        </div>
+        {onNewFlow && (
+          <button
+            type="button"
+            onClick={onNewFlow}
+            className="flex shrink-0 items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-[13px] font-medium text-white hover:bg-blue-700"
+          >
+            <Plus size={14} />
+            New Flow
+          </button>
         )}
       </header>
 
