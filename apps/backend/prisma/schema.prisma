@@ -17,7 +17,8 @@ model User {
   projects       Project[]
   aiInteractions AiInteraction[]
   threatModels    ThreatModel[]
-  createdThreats  Threat[]        @relation("ThreatCreatedBy")
+  createdThreats       Threat[]             @relation("ThreatCreatedBy")
+  intelReportsGenerated ProjectIntelReport[] @relation("ProjectIntelReportGeneratedBy")
   aiSettings      UserAiSettings?
   aiJobs          AiJob[]
   onboarding      UserOnboarding?
@@ -72,9 +73,15 @@ model Project {
   threatModels      ThreatModel[]
   postureScores     PostureScore[]
   attackSimulations AttackSimulation[]
+  intelReports      ProjectIntelReport[]
   aiJobs            AiJob[]
   isPublic     Boolean       @default(false) @map("is_public")
   tags         String[]      @default([])
+  techStack    String[]      @default([]) @map("tech_stack")
+  environment  Environment?
+  compliance   String[]      @default([])
+  notes        String?       @db.Text
+  repoUrl      String?       @map("repo_url")
   createdAt    DateTime      @default(now()) @map("created_at")
   updatedAt    DateTime      @updatedAt @map("updated_at")
 
@@ -130,6 +137,7 @@ model ChatMessage {
   content     String   @db.Text
   layerId     String?  @map("layer_id")
   layerName   String?  @map("layer_name")
+  diagramId   String?  @map("diagram_id") @db.Uuid
   diagramData Json?    @map("diagram_data")
   provider     String?
   model        String?
@@ -138,6 +146,7 @@ model ChatMessage {
   createdAt   DateTime @default(now()) @map("created_at")
 
   @@index([projectId])
+  @@index([diagramId])
   @@map("chat_messages")
 }
 
@@ -152,6 +161,12 @@ enum DiagramType {
   CLOUD_INFRASTRUCTURE
   FLOWCHART
   SEQUENCE
+}
+
+enum Environment {
+  DEV
+  STAGING
+  PROD
 }
 
 enum IdentifiedBy {
@@ -244,6 +259,21 @@ model AttackSimulation {
   diagram          Diagram  @relation(fields: [diagramId], references: [id], onDelete: Cascade)
   @@index([projectId])
   @@map("attack_simulations")
+}
+
+model ProjectIntelReport {
+  id              String   @id @default(uuid()) @db.Uuid
+  projectId       String   @map("project_id") @db.Uuid
+  snapshotData    Json     @map("snapshot_data")
+  content         String   @db.Text
+  diagramRefs     Json     @map("diagram_refs")
+  generatedBy     String   @map("generated_by") @db.Uuid
+  generatedAt     DateTime @default(now()) @map("generated_at")
+  project         Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  generatedByUser User     @relation("ProjectIntelReportGeneratedBy", fields: [generatedBy], references: [id])
+
+  @@index([projectId])
+  @@map("project_intel_reports")
 }
 
 model Threat {

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import { GitBranch, Trash2, FolderOpen, ArrowUpToLine, ArrowDownToLine, Group, Ungroup, ArrowRightLeft, Link, Sword } from 'lucide-react';
+import { FEATURES } from '@/lib/features';
 
 interface NodeContextMenuProps {
   x: number;
@@ -104,7 +105,7 @@ export default function NodeContextMenu({
       {(selectedCount >= 2 || isGroup) && <div className="my-1 h-px bg-slate-100 dark:bg-slate-700" />}
 
       {/* Drill down */}
-      {!isLine && (
+      {FEATURES.DRILLDOWN_UI && !isLine && (
         <>
           <button
             onClick={onDrillDown}

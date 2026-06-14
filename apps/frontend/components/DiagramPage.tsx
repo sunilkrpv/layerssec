@@ -12,6 +12,7 @@ import EdgePropertiesPanel from '@/components/EdgePropertiesPanel';
 import MenuBar from '@/components/MenuBar';
 import Toolbar from '@/components/Toolbar';
 import LayerBar from '@/components/LayerBar';
+import { FEATURES } from '@/lib/features';
 import LayersPanel from '@/components/LayersPanel';
 import NodeContextMenu from '@/components/NodeContextMenu';
 import PaneContextMenu from '@/components/PaneContextMenu';
@@ -1676,14 +1677,16 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
           />
 
           {/* ── Layer breadcrumb bar ─────────────────────────────────────── */}
-          <LayerBar
-            layers={layers}
-            currentLayerId={currentLayerId}
-            canGoBack={navStack.length > 1}
-            onBack={handleBack}
-            onNavigate={navigateTo}
-            projectName={currentProjectName}
-          />
+          {FEATURES.DRILLDOWN_UI && (
+            <LayerBar
+              layers={layers}
+              currentLayerId={currentLayerId}
+              canGoBack={navStack.length > 1}
+              onBack={handleBack}
+              onNavigate={navigateTo}
+              projectName={currentProjectName}
+            />
+          )}
 
           {error && (
             <div className="flex items-center gap-2 border-b border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-900/20 dark:text-red-400">
@@ -1972,7 +1975,7 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
         )}
 
         {/* ── Drill-down naming modal ──────────────────────────────────────── */}
-        {drillTarget && (
+        {FEATURES.DRILLDOWN_UI && drillTarget && (
           <DrillDownModal
             defaultName={`${drillTarget.data.label} Layer`}
             onConfirm={handleDrillDownConfirm}

@@ -16,6 +16,7 @@ import {
 import { getStoredUser, signOut } from '@/lib/authStore';
 import { useTheme } from '@/lib/themeContext';
 import { type LayerMap, type ProjectFile, ROOT_LAYER_ID, getLayerPath } from '@/lib/layerStore';
+import { FEATURES } from '@/lib/features';
 import { buildTrustMapView, type TrustMapCard } from '@/lib/trustMap';
 import KanbanColumn from './trust-map/KanbanColumn';
 import FlowOverlay from './trust-map/FlowOverlay';
@@ -288,7 +289,7 @@ export default function TrustMapPage({ projectId }: Props) {
           </div>
         ) : !view || (view.columns.length === 0 && view.unboundedCards.length === 0) ? (
           <div className="flex h-full flex-col">
-            <LayerBreadcrumb breadcrumb={breadcrumb} onNavigate={navigateToLayer} />
+            {FEATURES.DRILLDOWN_UI && <LayerBreadcrumb breadcrumb={breadcrumb} onNavigate={navigateToLayer} />}
             <div className="flex flex-1 items-center justify-center">
               <EmptyState
                 icon={<ShieldCheck size={28} />}
@@ -310,7 +311,7 @@ export default function TrustMapPage({ projectId }: Props) {
           <div className={`grid h-full ${panelCollapsed ? 'grid-cols-[1fr_36px]' : 'grid-cols-[1fr_340px]'}`}>
             {/* Kanban region */}
             <div className="relative flex flex-col overflow-hidden bg-slate-50 dark:bg-slate-900">
-              <LayerBreadcrumb breadcrumb={breadcrumb} onNavigate={navigateToLayer} />
+              {FEATURES.DRILLDOWN_UI && <LayerBreadcrumb breadcrumb={breadcrumb} onNavigate={navigateToLayer} />}
               <div className="flex items-center gap-3 border-b border-slate-200 px-4 py-2 text-xs text-slate-500 dark:border-slate-700 dark:text-slate-400">
                 <span className="font-semibold text-slate-700 dark:text-slate-200">
                   {view.layerName} layer

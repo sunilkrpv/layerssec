@@ -8,6 +8,7 @@ import { UserSettingsService } from '../../user-settings/user-settings.service';
 import { OnboardingService } from '../../onboarding/onboarding.service';
 import { ATTACK_SIM_QUEUE } from '../queues';
 import { ATTACK_MIND_SYSTEM_PROMPT, buildAttackMindPrompt } from '../../ai/prompts/attack-mind-prompt';
+import { ProjectContextHint } from '../../ai/prompts/project-context-hint';
 import { SubmitAttackMindDto } from '../../ai/dto/attack-mind.dto';
 
 export interface AttackSimJobPayload {
@@ -46,9 +47,26 @@ export class AttackSimulationProcessor extends WorkerHost {
     });
 
     try {
+      // Best-effort project context enrichment
+      let projectContext: ProjectContextHint | undefined;
+      if (dto.diagramId) {
+        const diagram = await this.prisma.diagram.findUnique({
+          where: { id: dto.diagramId },
+          select: { project: { select: { techStack: true, environment: true, compliance: true } } },
+        });
+        if (diagram?.project) {
+          projectContext = {
+            techStack: diagram.project.techStack,
+            environment: diagram.project.environment,
+            compliance: diagram.project.compliance,
+          };
+        }
+      }
+
       const userMessage = buildAttackMindPrompt({
         layers: dto.layers as Parameters<typeof buildAttackMindPrompt>[0]['layers'],
         entryPointNodeId: dto.entryPointNodeId,
+        projectContext,
       });
 
       const settings = await this.userSettings.getAiSettings(userId);

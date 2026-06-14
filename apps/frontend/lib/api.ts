@@ -160,12 +160,19 @@ export function apiLogout(refreshToken: string): Promise<void> {
 
 // ─── Projects ─────────────────────────────────────────────────────────────────
 
+export type Environment = 'DEV' | 'STAGING' | 'PROD';
+
 export interface Project {
   id: string;
   name: string;
   description: string | null;
   isPublic: boolean;
   tags: string[];
+  techStack?: string[];
+  environment?: Environment | null;
+  compliance?: string[];
+  notes?: string;
+  repoUrl?: string;
   _count?: { diagrams: number };
   createdAt: string;
   updatedAt: string;
@@ -204,7 +211,17 @@ export function apiGetProject(id: string): Promise<ProjectWithDiagrams> {
 
 export function apiUpdateProject(
   id: string,
-  updates: { name?: string; description?: string },
+  updates: {
+    name?: string;
+    description?: string;
+    isPublic?: boolean;
+    tags?: string[];
+    techStack?: string[];
+    environment?: Environment | null;
+    compliance?: string[];
+    notes?: string;
+    repoUrl?: string;
+  },
 ): Promise<Project> {
   return apiFetch<Project>(`/api/projects/${id}`, {
     method: 'PATCH',
@@ -631,6 +648,7 @@ export function apiListProjectThreats(
     severity?: ThreatSeverity;
     status?: ThreatStatus;
     strideCategory?: StrideCategory;
+    diagramId?: string;
   },
 ): Promise<ThreatsDashboardResult> {
   const qs = new URLSearchParams();
@@ -640,6 +658,7 @@ export function apiListProjectThreats(
   if (params?.severity) qs.set('severity', params.severity);
   if (params?.status) qs.set('status', params.status);
   if (params?.strideCategory) qs.set('strideCategory', params.strideCategory);
+  if (params?.diagramId) qs.set('diagramId', params.diagramId);
   const query = qs.toString();
   return apiFetch<ThreatsDashboardResult>(`/api/projects/${projectId}/threats${query ? `?${query}` : ''}`);
 }
@@ -1445,4 +1464,69 @@ export async function apiExportIntelReport(params: {
   a.download = 'security-intel-report.pdf';
   a.click();
   URL.revokeObjectURL(url);
+}
+
+// ── Posture rollup ────────────────────────────────────────────────────────
+
+export interface PostureRollupDiagram {
+  diagramId: string;
+  name: string;
+  version: number;
+  score: number;
+}
+
+export interface PostureRollupResult {
+  projectScore: number | null;
+  diagrams: PostureRollupDiagram[];
+}
+
+export function apiGetPostureRollup(projectId: string): Promise<PostureRollupResult> {
+  return apiFetch<PostureRollupResult>(`/api/projects/${projectId}/posture-rollup`);
+}
+
+// ── Intel reports ─────────────────────────────────────────────────────────
+
+export interface IntelReportListItem {
+  id: string;
+  generatedAt: string;
+  generatedBy: string;
+}
+
+export interface IntelReport extends IntelReportListItem {
+  content: string;
+  snapshotData: unknown;
+  diagramRefs: unknown;
+  projectId: string;
+}
+
+export function apiCreateIntelReport(projectId: string): Promise<IntelReport> {
+  return apiFetch<IntelReport>(`/api/projects/${projectId}/intel-report`, { method: 'POST' });
+}
+
+export function apiListIntelReports(projectId: string): Promise<IntelReportListItem[]> {
+  return apiFetch<IntelReportListItem[]>(`/api/projects/${projectId}/intel-reports`);
+}
+
+export function apiGetIntelReport(id: string): Promise<IntelReport> {
+  return apiFetch<IntelReport>(`/api/intel-reports/${id}`);
+}
+
+// ── Suggest flow (AI) ─────────────────────────────────────────────────────
+
+export interface SuggestFlowResponse {
+  diagram: { nodes: unknown[]; edges: unknown[] };
+}
+
+export function apiSuggestFlow(payload: { projectId: string; flowName: string; description?: string }): Promise<SuggestFlowResponse> {
+  return apiFetch<SuggestFlowResponse>(`/api/ai/suggest-flow`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
+
+// ── Pipeline status (per diagram) ─────────────────────────────────────────
+
+export function apiGetDiagramPipelineStatus(diagramId: string): Promise<{ threatJob: unknown; postureJob: unknown }> {
+  return apiFetch<{ threatJob: unknown; postureJob: unknown }>(`/api/ai/diagrams/${diagramId}/pipeline-status`);
 }

@@ -18,6 +18,8 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { ThreatService } from './threat.service';
 import { ReportService } from './report.service';
+import { PostureRollupService } from './posture-rollup.service';
+import { IntelReportService } from './intel-report.service';
 import { SaveThreatModelDto } from './dto/save-threat-model.dto';
 import { UpdateThreatDto } from './dto/update-threat.dto';
 import { CreateThreatDto } from './dto/create-threat.dto';
@@ -29,6 +31,8 @@ export class ThreatController {
   constructor(
     private readonly threat: ThreatService,
     private readonly report: ReportService,
+    private readonly postureRollup: PostureRollupService,
+    private readonly intelReport: IntelReportService,
   ) {}
 
   // POST /api/projects/:projectId/threat-models
@@ -89,6 +93,7 @@ export class ThreatController {
     @Query('severity') severity?: string,
     @Query('status') status?: string,
     @Query('strideCategory') strideCategory?: string,
+    @Query('diagramId') diagramId?: string,
   ) {
     return this.threat.listProjectThreats(projectId, userId, {
       page: page ? parseInt(page, 10) : 0,
@@ -97,6 +102,7 @@ export class ThreatController {
       severity,
       status,
       strideCategory,
+      diagramId,
     });
   }
 
@@ -163,6 +169,15 @@ export class ThreatController {
     return this.threat.listPostureHistory(projectId, userId);
   }
 
+  // GET /api/projects/:projectId/posture-rollup
+  @Get('projects/:projectId/posture-rollup')
+  getPostureRollup(
+    @Param('projectId', ParseUUIDPipe) projectId: string,
+    @CurrentUser('id') userId: string,
+  ) {
+    return this.postureRollup.compute(projectId, userId);
+  }
+
   // GET /api/posture-scores/:id
   @Get('posture-scores/:id')
   getPostureScore(
@@ -213,26 +228,32 @@ export class ThreatController {
     return this.threat.deleteAttackSimulation(id, userId);
   }
 
+  // ── Intel Reports ────────────────────────────────────────────────────────
+
   // POST /api/projects/:projectId/intel-report
   @Post('projects/:projectId/intel-report')
-  async exportIntelReport(
+  createIntelReport(
     @Param('projectId', ParseUUIDPipe) projectId: string,
     @CurrentUser('id') userId: string,
-    @Body() dto: {
-      threatModelId: string;
-      postureScoreId: string;
-      attackSimulationId?: string;
-      executiveSummary?: string;
-      priorityActions?: Array<{ rank: number; severity: string; source: string; title: string; detail: string }>;
-    },
-    @Res() res: Response,
   ) {
-    const pdfBuffer = await this.report.generateIntelReport(projectId, userId, dto);
-    res.set({
-      'Content-Type': 'application/pdf',
-      'Content-Disposition': 'attachment; filename="security-intel-report.pdf"',
-      'Content-Length': pdfBuffer.length,
-    });
-    res.end(pdfBuffer);
+    return this.intelReport.generate(projectId, userId);
+  }
+
+  // GET /api/projects/:projectId/intel-reports
+  @Get('projects/:projectId/intel-reports')
+  listIntelReports(
+    @Param('projectId', ParseUUIDPipe) projectId: string,
+    @CurrentUser('id') userId: string,
+  ) {
+    return this.intelReport.list(projectId, userId);
+  }
+
+  // GET /api/intel-reports/:id
+  @Get('intel-reports/:id')
+  getIntelReport(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser('id') userId: string,
+  ) {
+    return this.intelReport.get(id, userId);
   }
 }

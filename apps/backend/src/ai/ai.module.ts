@@ -3,6 +3,7 @@ import { BullModule } from '@nestjs/bullmq';
 import { AiController } from './ai.controller';
 import { AiService } from './ai.service';
 import { LlmService } from './llm.service';
+import { SuggestFlowService } from './suggest-flow.service';
 import { ChatModule } from '../chat/chat.module';
 import { UserSettingsModule } from '../user-settings/user-settings.module';
 import { OnboardingModule } from '../onboarding/onboarding.module';
@@ -26,7 +27,7 @@ import {
     ),
   ],
   controllers: [AiController],
-  providers: [LlmService, AiService],
-  exports: [AiService, LlmService],
+  providers: [LlmService, AiService, SuggestFlowService],
+  exports: [AiService, LlmService, SuggestFlowService],
 })
 export class AiModule {}

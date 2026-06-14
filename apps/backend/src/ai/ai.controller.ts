@@ -1,8 +1,10 @@
-import { Controller, Post, Get, Param, Body, UseGuards, Res } from '@nestjs/common';
+import { Controller, Post, Get, Param, Body, UseGuards, Res, Header, ParseUUIDPipe } from '@nestjs/common';
 import { Response } from 'express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { AiService } from './ai.service';
+import { SuggestFlowService } from './suggest-flow.service';
+import { SuggestFlowDto } from './dto/suggest-flow.dto';
 import { GenerateDto } from './dto/generate.dto';
 import { SuggestDto } from './dto/suggest.dto';
 import { RefineDto } from './dto/refine.dto';
@@ -22,7 +24,7 @@ import { ThreatChatDto } from './dto/threat-chat.dto';
 @Controller('ai')
 @UseGuards(JwtAuthGuard)
 export class AiController {
-  constructor(private ai: AiService) {}
+  constructor(private ai: AiService, private suggestFlowService: SuggestFlowService) {}
 
   @Post('generate')
   generate(@CurrentUser('id') userId: string, @Body() dto: GenerateDto) {
@@ -132,11 +134,21 @@ export class AiController {
   }
 
   @Get('projects/:projectId/pipeline-status')
+  @Header('Deprecation', 'true')
+  @Header('Link', '</api/ai/diagrams/{diagramId}/pipeline-status>; rel="successor-version"')
   getPipelineStatus(
     @Param('projectId') projectId: string,
     @CurrentUser('id') userId: string,
   ) {
     return this.ai.getPipelineStatus(userId, projectId);
+  }
+
+  @Get('diagrams/:diagramId/pipeline-status')
+  getDiagramPipelineStatus(
+    @Param('diagramId', ParseUUIDPipe) diagramId: string,
+    @CurrentUser('id') userId: string,
+  ) {
+    return this.ai.getPipelineStatusForDiagram(userId, diagramId);
   }
 
   /** SSE: submit posture score job + stream progress until complete. */
@@ -166,5 +178,14 @@ export class AiController {
     @Body() dto: { projectId: string; threatModelId: string; postureScoreId: string; attackSimulationId?: string },
   ) {
     return this.ai.intelSynthesis(userId, dto);
+  }
+
+  /** Propose a Data Flow Diagram for a named flow within a project. */
+  @Post('suggest-flow')
+  suggestFlow(
+    @CurrentUser('id') userId: string,
+    @Body() dto: SuggestFlowDto,
+  ) {
+    return this.suggestFlowService.suggest(userId, dto);
   }
 }

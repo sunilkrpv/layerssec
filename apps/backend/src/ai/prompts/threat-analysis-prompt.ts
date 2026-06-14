@@ -1,3 +1,6 @@
+import { ProjectContextHint, formatProjectContextBlock } from './project-context-hint';
+export type { ProjectContextHint };
+
 /**
  * STRIDE threat analysis prompt — Engineering + Security platform.
  * CISSP domain mapping embedded in analysis rules and output schema.
@@ -137,10 +140,13 @@ interface ThreatAnalysisInput {
   nodes: SerializedNode[];
   edges: SerializedEdge[];
   trustBoundaries: SerializedTrustBoundary[];
+  projectContext?: ProjectContextHint;
 }
 
 export function buildThreatAnalysisPrompt(input: ThreatAnalysisInput): string {
+  const contextBlock = formatProjectContextBlock(input.projectContext);
   const lines: string[] = [
+    ...(contextBlock ? [contextBlock.trimEnd(), ''] : []),
     `## Diagram: ${input.layerName}`,
     '',
   ];
