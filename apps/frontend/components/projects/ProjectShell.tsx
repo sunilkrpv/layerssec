@@ -4,6 +4,7 @@ import { LeftRailDiagramList, RailSelection, LeftRailDiagram } from './LeftRailD
 import { ProjectOverviewPane } from './ProjectOverviewPane';
 import { CanvasPane } from './CanvasPane';
 import { NewFlowDialog } from './NewFlowDialog';
+import TopBar from '@/components/TopBar';
 
 export interface ProjectShellProps {
   projectId: string;
@@ -17,23 +18,27 @@ export function ProjectShell({ projectId, diagrams: diagramsProp, initialSelecti
   const [diagrams, setDiagrams] = useState<LeftRailDiagram[]>(diagramsProp);
 
   return (
-    <div className="flex h-full w-full">
-      <LeftRailDiagramList
-        diagrams={diagrams}
-        selectedId={sel.kind === 'diagram' ? sel.id : undefined}
-        onSelect={setSel}
-      />
-      <main className="flex-1 overflow-auto">
-        {sel.kind === 'project'
-          ? (
-              <ProjectOverviewPane
-                projectId={projectId}
-                onOpenDiagram={(id) => setSel({ kind: 'diagram', id })}
-                onNewFlow={() => setNewFlowOpen(true)}
-              />
-            )
-          : <CanvasPane projectId={projectId} diagramId={sel.id} />}
-      </main>
+    <div className="flex h-screen flex-col overflow-hidden bg-slate-50 dark:bg-slate-950">
+      <TopBar />
+      <div className="flex min-h-0 flex-1 overflow-hidden">
+        <LeftRailDiagramList
+          diagrams={diagrams}
+          selectedId={sel.kind === 'diagram' ? sel.id : undefined}
+          onSelect={setSel}
+        />
+        <main className="flex-1 overflow-auto">
+          {sel.kind === 'project'
+            ? (
+                <ProjectOverviewPane
+                  projectId={projectId}
+                  diagrams={diagrams}
+                  onOpenDiagram={(id) => setSel({ kind: 'diagram', id })}
+                  onNewFlow={() => setNewFlowOpen(true)}
+                />
+              )
+            : <CanvasPane projectId={projectId} diagramId={sel.id} />}
+        </main>
+      </div>
       <NewFlowDialog
         projectId={projectId}
         open={newFlowOpen}

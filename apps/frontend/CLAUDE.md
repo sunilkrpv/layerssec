@@ -35,7 +35,7 @@ security analysis (STRIDE, posture, attack simulation, intel) on them.
 | Overlays | `ThreatOverlay`, `AttackPathOverlay`, `DeclutterOverlay` |
 | Security panels | `ThreatModelPanel`, `PostureScorePanel`, `AttackMindPanel`, `ThreatsDashboardPage`, `SecurityIntelPage`, `TrustMapPage` |
 | AI | `AIChatPanel`, `AIHistoryPage`, `AIActivityPage` |
-| Shell / nav | `AppShell`, `HomeSidebar`, `MenuBar`, `Toolbar`, `NewProjectChat`, `ProjectCommandCenter`, `PipelineNudge` |
+| Shell / nav | `AppShell`, `HomeSidebar`, `TopBar` (shared brand + theme + user signout), `MenuBar`, `Toolbar`, `NewProjectChat`, `ProjectCommandCenter`, `PipelineNudge` |
 | UI primitives | `components/ui/*` (gallery at `app/dev/primitives`) |
 | Onboarding | `components/onboarding/*`, `lib/onboardingStore.ts` |
 | Key lib | `api.ts` (typed client), `layerStore.ts`, `canvasContext.ts`, `diffEngine.ts`, `pipelineState.ts`, `trustMap.ts`, `threatBadges.ts`, `projectBadges.ts`, `themeStore.ts`/`themeContext.ts` |

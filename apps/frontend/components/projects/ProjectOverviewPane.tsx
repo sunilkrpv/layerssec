@@ -7,14 +7,17 @@ import { ProjectMetadataForm } from './ProjectMetadataForm';
 import { ThreatsRollupCard } from './widgets/ThreatsRollupCard';
 import { PostureRollupCard } from './widgets/PostureRollupCard';
 import { IntelReportCard } from './widgets/IntelReportCard';
+import { ProjectStatsCards } from './widgets/ProjectStatsCards';
+import type { LeftRailDiagram } from './LeftRailDiagramList';
 
 interface Props {
   projectId: string;
+  diagrams: LeftRailDiagram[];
   onOpenDiagram?: (id: string) => void;
   onNewFlow?: () => void;
 }
 
-export function ProjectOverviewPane({ projectId, onOpenDiagram, onNewFlow }: Props) {
+export function ProjectOverviewPane({ projectId, diagrams, onOpenDiagram, onNewFlow }: Props) {
   const [project, setProject] = useState<ProjectWithDiagrams | null>(null);
 
   useEffect(() => {
@@ -26,12 +29,12 @@ export function ProjectOverviewPane({ projectId, onOpenDiagram, onNewFlow }: Pro
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6 p-6">
       <header className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">{project.name}</h1>
           {project.description && (
-            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{project.description}</p>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{project.description}</p>
           )}
         </div>
         {onNewFlow && (
@@ -46,8 +49,11 @@ export function ProjectOverviewPane({ projectId, onOpenDiagram, onNewFlow }: Pro
         )}
       </header>
 
+      {/* Stat strip — flows / threats / posture */}
+      <ProjectStatsCards projectId={projectId} flowCount={diagrams.length} />
+
       <section>
-        <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-3">Metadata</h2>
+        <h2 className="mb-3 text-lg font-semibold text-slate-900 dark:text-slate-100">Metadata</h2>
         <ProjectMetadataForm
           initial={{
             techStack: project.techStack ?? [],
@@ -58,18 +64,20 @@ export function ProjectOverviewPane({ projectId, onOpenDiagram, onNewFlow }: Pro
           }}
           onSave={async (patch) => {
             await apiUpdateProject(projectId, patch);
-            // Re-fetch to keep state fully hydrated
             const fresh = await apiGetProject(projectId);
             setProject(fresh);
           }}
         />
       </section>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <ThreatsRollupCard projectId={projectId} />
-        <PostureRollupCard projectId={projectId} onOpenDiagram={onOpenDiagram} />
-        <IntelReportCard projectId={projectId} />
-      </div>
+      <section>
+        <h2 className="mb-3 text-lg font-semibold text-slate-900 dark:text-slate-100">Security Rollups</h2>
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+          <ThreatsRollupCard projectId={projectId} />
+          <PostureRollupCard projectId={projectId} onOpenDiagram={onOpenDiagram} />
+          <IntelReportCard projectId={projectId} />
+        </div>
+      </section>
     </div>
   );
 }

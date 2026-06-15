@@ -9,3 +9,4 @@ dist/
 .next/
 coverage/
 temp/
+.claude/settings.json

@@ -5,14 +5,11 @@ import { useRouter } from 'next/navigation';
 import {
   Layers, Plus, LogOut, ChevronLeft, ChevronRight,
   Shield, Search, BarChart2, Sword, Zap, Home,
-  Settings, Activity, Sun, Moon, Monitor, ChevronDown,
+  Settings, Activity, ChevronDown,
   FolderKanban,
 } from 'lucide-react';
-import LayersLogo from '@/components/LayersLogo';
 import { type ProjectSummary } from '@/lib/api';
 import { getStoredUser, signOut } from '@/lib/authStore';
-import { useTheme } from '@/lib/themeContext';
-import type { Theme } from '@/lib/themeStore';
 import { cn } from '@/lib/utils';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -46,14 +43,6 @@ function postureTextColor(score: number | null): string {
   return 'text-red-600 dark:text-red-400';
 }
 
-const THEME_CYCLE: Theme[] = ['light', 'dark', 'system'];
-const THEME_ICONS: Record<Theme, React.ReactNode> = {
-  light: <Sun size={13} />,
-  dark: <Moon size={13} />,
-  system: <Monitor size={13} />,
-};
-const THEME_LABELS: Record<Theme, string> = { light: 'Light', dark: 'Dark', system: 'System' };
-
 // ── Props ─────────────────────────────────────────────────────────────────────
 
 export interface HomeSidebarProps {
@@ -75,10 +64,12 @@ export interface HomeSidebarProps {
   activeView: string;
 }
 
+const PAGE_SIZE = 10;
+
 // ── NavItem ───────────────────────────────────────────────────────────────────
 
 function NavItem({
-  icon, label, badge, badgeColor, active, collapsed, onClick, pulse,
+  icon, label, badge, badgeColor, active, collapsed, onClick, pulse, indent,
 }: {
   icon: React.ReactNode;
   label: string;
@@ -88,6 +79,7 @@ function NavItem({
   collapsed?: boolean;
   onClick: () => void;
   pulse?: boolean;
+  indent?: boolean;
 }) {
   return (
     <button
@@ -96,6 +88,7 @@ function NavItem({
       className={cn(
         'flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm transition-colors',
         collapsed && 'justify-center px-2',
+        indent && !collapsed && 'pl-6',
         active
           ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
           : 'text-slate-600 hover:bg-slate-200/60 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800/60 dark:hover:text-slate-200',
@@ -115,6 +108,26 @@ function NavItem({
   );
 }
 
+// ── SectionHeader (collapsible) ───────────────────────────────────────────────
+
+function SectionHeader({
+  label, open, onToggle,
+}: {
+  label: string;
+  open: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      onClick={onToggle}
+      className="mb-1 mt-2 flex w-full items-center justify-between px-4 text-[10px] font-semibold uppercase tracking-widest text-slate-400 hover:text-slate-600 dark:text-slate-600 dark:hover:text-slate-400"
+    >
+      {label}
+      <ChevronDown size={10} className={cn('transition-transform', !open && '-rotate-90')} />
+    </button>
+  );
+}
+
 // ── HomeSidebar ───────────────────────────────────────────────────────────────
 
 export default function HomeSidebar({
@@ -125,7 +138,6 @@ export default function HomeSidebar({
   activeView,
 }: HomeSidebarProps) {
   const router = useRouter();
-  const { theme, setTheme } = useTheme();
   const user = getStoredUser();
 
   const [collapsed, setCollapsed] = useState(() => {
@@ -133,7 +145,9 @@ export default function HomeSidebar({
     return localStorage.getItem('layers_sidebar_collapsed') === 'true';
   });
   const [projectsOpen, setProjectsOpen] = useState(true);
+  const [intelOpen, setIntelOpen] = useState(true);
   const [search, setSearch] = useState('');
+  const [pageLimit, setPageLimit] = useState(PAGE_SIZE);
 
   // ⌘\ to toggle collapse
   useEffect(() => {
@@ -157,10 +171,6 @@ export default function HomeSidebar({
     localStorage.setItem('layers_sidebar_collapsed', String(next));
   };
 
-  const cycleTheme = () => {
-    setTheme(THEME_CYCLE[(THEME_CYCLE.indexOf(theme) + 1) % THEME_CYCLE.length]);
-  };
-
   const handleSignOut = () => {
     signOut();
     router.push('/login');
@@ -169,8 +179,9 @@ export default function HomeSidebar({
   const filtered = search
     ? projects.filter((p) => p.name.toLowerCase().includes(search.toLowerCase()))
     : projects;
+  const visible = filtered.slice(0, pageLimit);
+  const hasMore = filtered.length > visible.length;
 
-  // Badge colours for AI Dashboard items
   const threatBadgeColor = criticalThreats > 0
     ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400'
     : 'bg-slate-200 text-slate-600 dark:bg-slate-800 dark:text-slate-400';
@@ -186,30 +197,14 @@ export default function HomeSidebar({
   return (
     <aside
       className={cn(
-        'relative flex h-screen flex-col border-r border-slate-200 bg-slate-100 transition-all duration-200 dark:border-slate-800 dark:bg-slate-950',
+        'relative flex h-full flex-col border-r border-slate-200 bg-slate-100 transition-all duration-200 dark:border-slate-800 dark:bg-slate-950',
         collapsed ? 'w-16' : 'w-[260px]',
       )}
     >
-      {/* Header */}
-      <div className={cn(
-        'flex h-14 shrink-0 items-center border-b border-slate-200 dark:border-slate-800',
-        collapsed ? 'justify-center px-2' : 'gap-2 px-4',
-      )}>
-        <LayersLogo size={18} className="shrink-0 text-blue-600 dark:text-blue-500" />
-        {!collapsed && (
-          <>
-            <span className="text-[15px] font-bold text-slate-900 dark:text-white">Layers</span>
-            <span className="ml-1 rounded bg-slate-200 px-1.5 py-0.5 text-[10px] text-slate-500 dark:bg-slate-800 dark:text-slate-400">
-              Security Platform
-            </span>
-          </>
-        )}
-      </div>
-
       {/* Collapse toggle */}
       <button
         onClick={toggleCollapse}
-        className="absolute -right-3 top-16 z-10 flex h-6 w-6 items-center justify-center rounded-full border border-slate-200 bg-white shadow-sm hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700"
+        className="absolute -right-3 top-4 z-10 flex h-6 w-6 items-center justify-center rounded-full border border-slate-200 bg-white shadow-sm hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700"
         title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
       >
         {collapsed ? <ChevronRight size={12} /> : <ChevronLeft size={12} />}
@@ -217,38 +212,33 @@ export default function HomeSidebar({
 
       <div className="flex-1 overflow-y-auto py-3">
 
-        <NavItem
-          icon={<Home size={14} />}
-          label="Home"
-          active={activeView === 'all-projects'}
-          collapsed={collapsed}
-          onClick={onShowDashboard}
-        />
-
-        <div className="my-3 border-t border-slate-200 dark:border-slate-800" />
+        <div className="px-2">
+          <NavItem
+            icon={<Home size={14} />}
+            label="Home"
+            active={activeView === 'all-projects'}
+            collapsed={collapsed}
+            onClick={onShowDashboard}
+          />
+        </div>
 
         {/* My Projects section */}
         {!collapsed ? (
           <>
-            <button
-              onClick={() => setProjectsOpen((v) => !v)}
-              className="mb-1 flex w-full items-center justify-between px-4 text-[10px] font-semibold uppercase tracking-widest text-slate-400 hover:text-slate-600 dark:text-slate-600 dark:hover:text-slate-400"
-            >
-              My Projects
-              <ChevronDown size={10} className={cn('transition-transform', !projectsOpen && '-rotate-90')} />
-            </button>
+            <SectionHeader label="My Projects" open={projectsOpen} onToggle={() => setProjectsOpen((v) => !v)} />
 
             {projectsOpen && (
               <>
-                {/* All Projects link */}
-                <NavItem
-                  icon={<FolderKanban size={14} />}
-                  label="All Projects"
-                  badge={projects.length > 0 ? projects.length : undefined}
-                  active={activeView === 'my-projects'}
-                  collapsed={collapsed}
-                  onClick={onShowMyProjects}
-                />
+                <div className="px-2">
+                  <NavItem
+                    icon={<FolderKanban size={14} />}
+                    label="All Projects"
+                    badge={projects.length > 0 ? projects.length : undefined}
+                    active={activeView === 'my-projects'}
+                    collapsed={collapsed}
+                    onClick={onShowMyProjects}
+                  />
+                </div>
 
                 {/* Search */}
                 <div className="mb-1 mt-1 px-2">
@@ -256,7 +246,7 @@ export default function HomeSidebar({
                     <Search size={12} className="shrink-0 text-slate-400" />
                     <input
                       value={search}
-                      onChange={(e) => setSearch(e.target.value)}
+                      onChange={(e) => { setSearch(e.target.value); setPageLimit(PAGE_SIZE); }}
                       placeholder="Search projects…"
                       className="flex-1 bg-transparent text-[12px] text-slate-700 placeholder-slate-400 outline-none dark:text-slate-200"
                     />
@@ -275,7 +265,7 @@ export default function HomeSidebar({
                   </button>
                 </div>
 
-                {/* Project list */}
+                {/* Project list (paginated) */}
                 <div className="px-2">
                   {loadingProjects ? (
                     <div className="flex flex-col gap-1.5 p-1">
@@ -283,67 +273,76 @@ export default function HomeSidebar({
                         <div key={i} className="h-10 animate-pulse rounded-lg bg-slate-200 dark:bg-slate-800" />
                       ))}
                     </div>
-                  ) : filtered.length === 0 ? (
+                  ) : visible.length === 0 ? (
                     <p className="px-3 py-3 text-[12px] text-slate-400">
                       {search ? 'No results' : 'No projects yet'}
                     </p>
                   ) : (
-                    filtered.map((p) => {
-                      const selected = selectedProjectId === p.id;
-                      const color = avatarColor(p.id);
-                      return (
-                        <button
-                          key={p.id}
-                          onClick={() => onSelectProject(p.id)}
-                          className={cn(
-                            'flex w-full items-center gap-2.5 rounded-lg border-l-2 px-2 py-2 text-left transition-colors',
-                            selected
-                              ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                              : 'border-transparent hover:bg-slate-200/60 dark:hover:bg-slate-800/60',
-                          )}
-                        >
-                          <div className={cn('flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[11px] font-bold text-white', color)}>
-                            {initials(p.name) || <Layers size={12} />}
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-1.5">
-                              <span className={cn(
-                                'truncate text-[13px] font-medium',
-                                selected ? 'text-blue-700 dark:text-blue-300' : 'text-slate-800 dark:text-slate-100',
-                              )}>
-                                {p.name}
-                              </span>
-                              {p.criticalThreatCount > 0 && (
-                                <span className="shrink-0 rounded bg-red-100 px-1 py-0.5 text-[9px] font-bold text-red-700 dark:bg-red-900/40 dark:text-red-400">
-                                  {p.criticalThreatCount} CRIT
+                    <>
+                      {visible.map((p) => {
+                        const selected = selectedProjectId === p.id;
+                        const color = avatarColor(p.id);
+                        return (
+                          <button
+                            key={p.id}
+                            onClick={() => onSelectProject(p.id)}
+                            className={cn(
+                              'flex w-full items-center gap-2.5 rounded-lg border-l-2 px-2 py-2 text-left transition-colors',
+                              selected
+                                ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                                : 'border-transparent hover:bg-slate-200/60 dark:hover:bg-slate-800/60',
+                            )}
+                          >
+                            <div className={cn('flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[11px] font-bold text-white', color)}>
+                              {initials(p.name) || <Layers size={12} />}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-1.5">
+                                <span className={cn(
+                                  'truncate text-[13px] font-medium',
+                                  selected ? 'text-blue-700 dark:text-blue-300' : 'text-slate-800 dark:text-slate-100',
+                                )}>
+                                  {p.name}
                                 </span>
-                              )}
-                            </div>
-                            {/* Posture bar */}
-                            <div className="mt-1 flex items-center gap-1.5">
-                              <div className="h-1 w-10 rounded-full bg-slate-200 dark:bg-slate-700">
-                                <div
-                                  className={cn('h-1 rounded-full', postureBarColor(p.latestPostureScore))}
-                                  style={{ width: `${p.latestPostureScore ?? 0}%` }}
-                                />
+                                {p.criticalThreatCount > 0 && (
+                                  <span className="shrink-0 rounded bg-red-100 px-1 py-0.5 text-[9px] font-bold text-red-700 dark:bg-red-900/40 dark:text-red-400">
+                                    {p.criticalThreatCount} CRIT
+                                  </span>
+                                )}
                               </div>
-                              <span className={cn('text-[10px] font-semibold tabular-nums', postureTextColor(p.latestPostureScore))}>
-                                {p.latestPostureScore ?? '—'}
-                              </span>
+                              {/* Posture bar */}
+                              <div className="mt-1 flex items-center gap-1.5">
+                                <div className="h-1 w-10 rounded-full bg-slate-200 dark:bg-slate-700">
+                                  <div
+                                    className={cn('h-1 rounded-full', postureBarColor(p.latestPostureScore))}
+                                    style={{ width: `${p.latestPostureScore ?? 0}%` }}
+                                  />
+                                </div>
+                                <span className={cn('text-[10px] font-semibold tabular-nums', postureTextColor(p.latestPostureScore))}>
+                                  {p.latestPostureScore ?? '—'}
+                                </span>
+                              </div>
                             </div>
-                          </div>
+                          </button>
+                        );
+                      })}
+                      {hasMore && (
+                        <button
+                          onClick={() => setPageLimit((n) => n + PAGE_SIZE)}
+                          className="mt-1 w-full rounded-md px-3 py-1.5 text-[11px] font-medium text-slate-500 hover:bg-slate-200/60 dark:text-slate-400 dark:hover:bg-slate-800/60"
+                        >
+                          Load more ({filtered.length - visible.length})
                         </button>
-                      );
-                    })
+                      )}
+                    </>
                   )}
                 </div>
-
               </>
             )}
           </>
         ) : (
           /* Collapsed: show project avatars only */
-          <div className="flex flex-col items-center gap-1 px-1">
+          <div className="mt-3 flex flex-col items-center gap-1 px-1">
             {projects.slice(0, 6).map((p) => {
               const color = avatarColor(p.id);
               return (
@@ -371,83 +370,101 @@ export default function HomeSidebar({
           </div>
         )}
 
-        <div className="my-3 border-t border-slate-200 dark:border-slate-800" />
-
         {/* Security Intel section */}
-        {!collapsed && (
-          <p className="mb-1 px-4 text-[10px] font-semibold uppercase tracking-widest text-slate-400 dark:text-slate-600">
-            Security Intel
-          </p>
+        {!collapsed ? (
+          <>
+            <SectionHeader label="Security Intel" open={intelOpen} onToggle={() => setIntelOpen((v) => !v)} />
+            {intelOpen && (
+              <div className="px-2">
+                <NavItem
+                  icon={<Shield size={14} />}
+                  label="Threats"
+                  badge={totalThreats}
+                  badgeColor={threatBadgeColor}
+                  active={activeView === 'threats'}
+                  collapsed={collapsed}
+                  onClick={onShowThreats}
+                />
+                <NavItem
+                  icon={<BarChart2 size={14} />}
+                  label="Posture Score"
+                  badge={avgPosture ?? '—'}
+                  badgeColor={postureBadgeColor}
+                  active={activeView === 'posture'}
+                  collapsed={collapsed}
+                  onClick={onShowPosture}
+                />
+                <NavItem
+                  icon={<Sword size={14} />}
+                  label="Attack Sims"
+                  badge={attackSimTotal}
+                  badgeColor="bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-400"
+                  collapsed={collapsed}
+                  onClick={() => router.push('/activity?types=ATTACK_SIMULATION')}
+                />
+                <NavItem
+                  icon={<Zap size={14} />}
+                  label="Active Jobs"
+                  badge={activeJobCount > 0 ? activeJobCount : undefined}
+                  badgeColor="bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400"
+                  pulse={activeJobCount > 0}
+                  collapsed={collapsed}
+                  onClick={() => router.push('/activity?statuses=RUNNING,PENDING')}
+                />
+              </div>
+            )}
+          </>
+        ) : (
+          <div className="mt-3 flex flex-col items-center gap-1 px-1">
+            <NavItem
+              icon={<Shield size={14} />}
+              label="Threats"
+              collapsed={collapsed}
+              onClick={onShowThreats}
+            />
+            <NavItem
+              icon={<BarChart2 size={14} />}
+              label="Posture"
+              collapsed={collapsed}
+              onClick={onShowPosture}
+            />
+            <NavItem
+              icon={<Sword size={14} />}
+              label="Attacks"
+              collapsed={collapsed}
+              onClick={() => router.push('/activity?types=ATTACK_SIMULATION')}
+            />
+            <NavItem
+              icon={<Zap size={14} />}
+              label="Jobs"
+              collapsed={collapsed}
+              onClick={() => router.push('/activity?statuses=RUNNING,PENDING')}
+            />
+          </div>
         )}
-        <NavItem
-          icon={<Shield size={14} />}
-          label="Threats"
-          badge={totalThreats}
-          badgeColor={threatBadgeColor}
-          active={activeView === 'threats'}
-          collapsed={collapsed}
-          onClick={onShowThreats}
-        />
-        <NavItem
-          icon={<BarChart2 size={14} />}
-          label="Posture Score"
-          badge={avgPosture ?? '—'}
-          badgeColor={postureBadgeColor}
-          active={activeView === 'posture'}
-          collapsed={collapsed}
-          onClick={onShowPosture}
-        />
-        <NavItem
-          icon={<Sword size={14} />}
-          label="Attack Sims"
-          badge={attackSimTotal}
-          badgeColor="bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-400"
-          collapsed={collapsed}
-          onClick={() => router.push('/activity?types=ATTACK_SIMULATION')}
-        />
-        <NavItem
-          icon={<Zap size={14} />}
-          label="Active Jobs"
-          badge={activeJobCount > 0 ? activeJobCount : undefined}
-          badgeColor="bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400"
-          pulse={activeJobCount > 0}
-          collapsed={collapsed}
-          onClick={() => router.push('/activity?statuses=RUNNING,PENDING')}
-        />
-      </div>
 
-      {/* Bottom bar */}
-      <div className="shrink-0 border-t border-slate-200 dark:border-slate-800">
-        <div className={cn('flex flex-col gap-0.5 px-2 py-2')}>
+        {/* Activity (top-level) */}
+        <div className="mt-3 px-2">
           <NavItem
             icon={<Activity size={14} />}
             label="Activity"
             collapsed={collapsed}
             onClick={() => router.push('/activity')}
           />
+        </div>
+      </div>
+
+      {/* Bottom: Settings + user */}
+      <div className="shrink-0 border-t border-slate-200 dark:border-slate-800">
+        <div className="px-2 py-2">
           <div data-onboarding="ai-settings-nav">
             <NavItem
               icon={<Settings size={14} />}
-              label="AI Settings"
+              label="Settings"
               collapsed={collapsed}
               onClick={onOpenSettings}
             />
           </div>
-        </div>
-
-        {/* Theme + user */}
-        <div className={cn(
-          'flex items-center border-t border-slate-200 px-3 py-2 dark:border-slate-800',
-          collapsed ? 'justify-center' : 'justify-between',
-        )}>
-          <button
-            onClick={cycleTheme}
-            title={`Theme: ${THEME_LABELS[theme]} — click to cycle`}
-            className="flex items-center gap-1.5 rounded px-2 py-1 text-[12px] text-slate-500 hover:bg-slate-200 hover:text-slate-700 dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-slate-300"
-          >
-            {THEME_ICONS[theme]}
-            {!collapsed && <span>{THEME_LABELS[theme]}</span>}
-          </button>
         </div>
 
         {user && (
