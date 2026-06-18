@@ -51,8 +51,9 @@ export class ThreatController {
   list(
     @Param('projectId', ParseUUIDPipe) projectId: string,
     @CurrentUser('id') userId: string,
+    @Query('diagramId') diagramId?: string,
   ) {
-    return this.threat.listThreatModels(projectId, userId);
+    return this.threat.listThreatModels(projectId, userId, diagramId);
   }
 
   // GET /api/projects/:projectId/threats/report  — PDF export
@@ -165,8 +166,9 @@ export class ThreatController {
   listPostureHistory(
     @Param('projectId', ParseUUIDPipe) projectId: string,
     @CurrentUser('id') userId: string,
+    @Query('diagramId') diagramId?: string,
   ) {
-    return this.threat.listPostureHistory(projectId, userId);
+    return this.threat.listPostureHistory(projectId, userId, diagramId);
   }
 
   // GET /api/projects/:projectId/posture-rollup
@@ -205,8 +207,9 @@ export class ThreatController {
   listAttackSimulations(
     @Param('projectId', ParseUUIDPipe) projectId: string,
     @CurrentUser('id') userId: string,
+    @Query('diagramId') diagramId?: string,
   ) {
-    return this.threat.listAttackSimulations(projectId, userId);
+    return this.threat.listAttackSimulations(projectId, userId, diagramId);
   }
 
   // GET /api/attack-simulations/:id

@@ -14,6 +14,8 @@ import {
 
 interface ThreatHistoryPanelProps {
   projectId: string;
+  /** Scope history to a single diagram. When omitted, lists across all project diagrams. */
+  diagramId?: string;
   isDark: boolean;
   onBack: () => void;
   /** Called when user loads a saved model — parent receives full model object. */
@@ -50,6 +52,7 @@ function SeverityDots({ summary }: { summary: Record<string, number> }) {
 
 export default function ThreatHistoryPanel({
   projectId,
+  diagramId,
   isDark,
   onBack,
   onLoadModel,
@@ -65,7 +68,7 @@ export default function ThreatHistoryPanel({
   const load = useCallback(async () => {
     setIsLoading(true);
     try {
-      const list = await apiListThreatModels(projectId);
+      const list = await apiListThreatModels(projectId, diagramId);
       const sortedByDate = [...list].sort(
         (a, b) => new Date(b.savedAt).getTime() - new Date(a.savedAt).getTime(),
       );
@@ -75,7 +78,7 @@ export default function ThreatHistoryPanel({
     } finally {
       setIsLoading(false);
     }
-  }, [projectId]);
+  }, [projectId, diagramId]);
 
   useEffect(() => { load(); }, [load]);
 

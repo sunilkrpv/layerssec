@@ -388,6 +388,11 @@ export function apiSaveChatMessages(
   });
 }
 
+export interface OversizeWarning {
+  reason: string;
+  suggestedSplits: string[];
+}
+
 /** Chat-specific generate endpoint — uses Layers system prompt and saves to chat history. */
 export function apiChatGenerate(payload: {
   prompt: string;
@@ -395,8 +400,8 @@ export function apiChatGenerate(payload: {
   diagramId?: string;
   layerId?: string;
   layerName?: string;
-}): Promise<{ nodes: unknown[]; edges: unknown[] }> {
-  return apiFetch<{ nodes: unknown[]; edges: unknown[] }>('/api/ai/chat/generate', {
+}): Promise<{ nodes: unknown[]; edges: unknown[]; oversizeWarning?: OversizeWarning }> {
+  return apiFetch<{ nodes: unknown[]; edges: unknown[]; oversizeWarning?: OversizeWarning }>('/api/ai/chat/generate', {
     method: 'POST',
     body: JSON.stringify(payload),
   });
@@ -578,9 +583,10 @@ export function apiSaveThreatModel(
   });
 }
 
-/** List all saved threat models for a project (summary only). */
-export function apiListThreatModels(projectId: string): Promise<ThreatModelSummary[]> {
-  return apiFetch<ThreatModelSummary[]>(`/api/projects/${projectId}/threat-models`);
+/** List all saved threat models for a project (summary only). Optionally filter by diagram. */
+export function apiListThreatModels(projectId: string, diagramId?: string): Promise<ThreatModelSummary[]> {
+  const qs = diagramId ? `?diagramId=${encodeURIComponent(diagramId)}` : '';
+  return apiFetch<ThreatModelSummary[]>(`/api/projects/${projectId}/threat-models${qs}`);
 }
 
 /** Get a single saved threat model with all threats. */
@@ -762,9 +768,10 @@ export function apiComputePostureScore(payload: {
   });
 }
 
-/** List historical posture score snapshots for a project. */
-export function apiGetPostureScoreHistory(projectId: string): Promise<PostureScoreHistoryItem[]> {
-  return apiFetch<PostureScoreHistoryItem[]>(`/api/projects/${projectId}/posture-score/history`);
+/** List historical posture score snapshots for a project. Optionally filter by diagram. */
+export function apiGetPostureScoreHistory(projectId: string, diagramId?: string): Promise<PostureScoreHistoryItem[]> {
+  const qs = diagramId ? `?diagramId=${encodeURIComponent(diagramId)}` : '';
+  return apiFetch<PostureScoreHistoryItem[]>(`/api/projects/${projectId}/posture-score/history${qs}`);
 }
 
 // ── Attack Mind ───────────────────────────────────────────────────────────
@@ -855,9 +862,10 @@ export function apiSaveAttackSimulation(payload: {
   });
 }
 
-/** List saved attack simulations for a project. */
-export function apiListAttackSimulations(projectId: string): Promise<AttackSimulation[]> {
-  return apiFetch<AttackSimulation[]>(`/api/projects/${projectId}/attack-simulations`);
+/** List saved attack simulations for a project. Optionally filter by diagram. */
+export function apiListAttackSimulations(projectId: string, diagramId?: string): Promise<AttackSimulation[]> {
+  const qs = diagramId ? `?diagramId=${encodeURIComponent(diagramId)}` : '';
+  return apiFetch<AttackSimulation[]>(`/api/projects/${projectId}/attack-simulations${qs}`);
 }
 
 /** Delete a saved attack simulation. */

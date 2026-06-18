@@ -69,11 +69,11 @@ export class ThreatService {
 
   // ── List all saved threat models for a project (summary only) ────────────
 
-  async listThreatModels(projectId: string, userId: string) {
+  async listThreatModels(projectId: string, userId: string, diagramId?: string) {
     await this.verifyProjectOwnership(projectId, userId);
 
     const models = await this.prisma.threatModel.findMany({
-      where: { projectId },
+      where: { projectId, ...(diagramId && { diagramId }) },
       orderBy: { savedAt: 'desc' },
       include: {
         threats: {
@@ -277,11 +277,11 @@ export class ThreatService {
 
   // ── Posture Score History ─────────────────────────────────────────────────
 
-  async listPostureHistory(projectId: string, userId: string) {
+  async listPostureHistory(projectId: string, userId: string, diagramId?: string) {
     await this.verifyProjectOwnership(projectId, userId);
 
     return this.prisma.postureScore.findMany({
-      where: { projectId },
+      where: { projectId, ...(diagramId && { diagramId }) },
       orderBy: { analyzedAt: 'desc' },
       select: {
         id: true,
@@ -334,11 +334,11 @@ export class ThreatService {
     });
   }
 
-  async listAttackSimulations(projectId: string, userId: string) {
+  async listAttackSimulations(projectId: string, userId: string, diagramId?: string) {
     await this.verifyProjectOwnership(projectId, userId);
 
     return this.prisma.attackSimulation.findMany({
-      where: { projectId },
+      where: { projectId, ...(diagramId && { diagramId }) },
       orderBy: { createdAt: 'desc' },
       select: {
         id: true,

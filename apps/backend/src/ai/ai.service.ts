@@ -137,17 +137,34 @@ export class AiService {
       .replace(/^```\s*/i, '')
       .replace(/```\s*$/i, '')
       .trim();
-    const diagram = JSON.parse(raw) as { nodes: unknown[]; edges: unknown[] };
+    const diagram = JSON.parse(raw) as {
+      nodes: unknown[];
+      edges: unknown[];
+      oversizeWarning?: { reason: string; suggestedSplits: string[] };
+    };
     if (!Array.isArray(diagram.nodes) || !Array.isArray(diagram.edges)) {
       throw new InternalServerErrorException('AI returned invalid diagram structure');
     }
+
+    // Validate oversizeWarning shape — drop if malformed
+    const oversizeWarning =
+      diagram.oversizeWarning &&
+      typeof diagram.oversizeWarning.reason === 'string' &&
+      Array.isArray(diagram.oversizeWarning.suggestedSplits) &&
+      diagram.oversizeWarning.suggestedSplits.every((s) => typeof s === 'string')
+        ? diagram.oversizeWarning
+        : undefined;
 
     await this.prisma.aiInteraction.create({
       data: {
         userId,
         diagramId: dto.diagramId ?? null,
         prompt: `[chat-generate] ${dto.prompt}`,
-        response: { nodeCount: (diagram.nodes as unknown[]).length, edgeCount: (diagram.edges as unknown[]).length },
+        response: {
+          nodeCount: (diagram.nodes as unknown[]).length,
+          edgeCount: (diagram.edges as unknown[]).length,
+          oversize: !!oversizeWarning,
+        },
         tokensUsed: llmResult.tokensUsed,
         inputTokens: llmResult.inputTokens,
         outputTokens: llmResult.outputTokens,
@@ -159,11 +176,15 @@ export class AiService {
     if (dto.projectId) {
       const nodeCount = diagram.nodes.length;
       const edgeCount = diagram.edges.length;
+      const baseContent = `Generated DFD with ${nodeCount} node${nodeCount !== 1 ? 's' : ''} and ${edgeCount} edge${edgeCount !== 1 ? 's' : ''}.`;
+      const warningContent = oversizeWarning
+        ? `\n\n⚠️ This DFD is large for a single STRIDE pass. ${oversizeWarning.reason} Consider splitting into: ${oversizeWarning.suggestedSplits.join(', ')}.`
+        : '';
       await this.chat.saveMessages(dto.projectId, userId, [
         { role: 'user', content: dto.prompt, layerId: dto.layerId, layerName: dto.layerName },
         {
           role: 'assistant',
-          content: `Generated diagram with ${nodeCount} node${nodeCount !== 1 ? 's' : ''} and ${edgeCount} edge${edgeCount !== 1 ? 's' : ''}.`,
+          content: `${baseContent}${warningContent}`,
           layerId: dto.layerId,
           layerName: dto.layerName,
           provider: llmResult.provider,
@@ -173,7 +194,7 @@ export class AiService {
         },
       ]);
     }
-    return diagram;
+    return { nodes: diagram.nodes, edges: diagram.edges, oversizeWarning };
   }
 
   async chatEvaluate(userId: string, dto: ChatEvaluateDto, res: Response) {

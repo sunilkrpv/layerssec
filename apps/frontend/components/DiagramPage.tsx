@@ -9,7 +9,6 @@ import DiagramCanvas, { type ExtendedRFInstance } from '@/components/DiagramCanv
 import NodePalette from '@/components/NodePalette';
 import PropertiesPanel from '@/components/PropertiesPanel';
 import EdgePropertiesPanel from '@/components/EdgePropertiesPanel';
-import MenuBar from '@/components/MenuBar';
 import Toolbar from '@/components/Toolbar';
 import LayerBar from '@/components/LayerBar';
 import { FEATURES } from '@/lib/features';
@@ -46,7 +45,7 @@ import {
   type AiJobStatusResponse, type ThreatChatPayload,
 } from '@/lib/api';
 import { useJobPoller } from '@/hooks/useJobPoller';
-import { getStoredUser, clearTokens, isLoggedIn, signOut } from '@/lib/authStore';
+import { getStoredUser, clearTokens, isLoggedIn } from '@/lib/authStore';
 import {
   makeInitialLayers,
   createChildLayer,
@@ -683,17 +682,6 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
     setShowProjectsModal(true);
     // Keep startup modal open behind the projects modal so user can dismiss it after
   }, []);
-
-  const handleSignOut = useCallback(() => {
-    saveEnabledRef.current = false;
-    signOut();
-    setLayers(makeInitialLayers());
-    setNavStack([ROOT_LAYER_ID]);
-    setUser(null);
-    setBackendDiagramId(null);
-    setCurrentProjectName(null);
-    router.push('/login');
-  }, [router]);
 
   /** Called when user opens a project from ProjectsModal. */
   const handleOpenCloudProject = useCallback(
@@ -1634,14 +1622,6 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
     <CanvasContext.Provider value={canvasContextValue}>
       <ReactFlowProvider>
         <div className="flex h-screen flex-col overflow-hidden">
-          {/* ── Menu bar ────────────────────────────────────────────────── */}
-          <MenuBar
-            userEmail={user?.email ?? null}
-            onSignIn={() => setShowAuthModal(true)}
-            onSignOut={handleSignOut}
-            isCloudProject={!!backendDiagramId}
-          />
-
           {/* ── Toolbar ─────────────────────────────────────────────────── */}
           <Toolbar
             onClear={handleClear}
@@ -1861,6 +1841,7 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
                 threats={threatPanelThreats}
                 modelInfo={threatModelInfo}
                 projectId={projectId}
+                diagramId={backendDiagramId ?? undefined}
                 onHighlightTarget={handleHighlightThreatTarget}
                 externalTargetId={canvasBadgeTargetId}
                 onExternalTargetConsumed={() => setCanvasBadgeTargetId(null)}

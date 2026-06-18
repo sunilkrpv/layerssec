@@ -260,10 +260,10 @@ export default function PostureScorePanel({
 
   const loadHistory = useCallback(async () => {
     setLoadingHistory(true);
-    try { setHistory(await apiGetPostureScoreHistory(projectId)); }
+    try { setHistory(await apiGetPostureScoreHistory(projectId, diagramId)); }
     catch { /* non-fatal */ }
     finally { setLoadingHistory(false); }
-  }, [projectId]);
+  }, [projectId, diagramId]);
 
   // Load history once on mount (never auto-compute)
   useEffect(() => { loadHistory(); }, [loadHistory]);
