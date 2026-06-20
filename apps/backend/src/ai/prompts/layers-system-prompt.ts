@@ -68,11 +68,26 @@ When the user's description would naturally require more than 25 process+data-st
 - Trust boundary nodes sized to contain children; child positions are relative to the parent's top-left.
 - Vertical spread (y) to avoid overlap; typical canvas height 100-700.
 
+## Naming (Mandatory)
+Emit two distinct names, both inferred from the user's description:
+
+**\`projectName\`** — the *product / system* under threat modeling. 2-5 words, Title Case, no quotes, no trailing punctuation. Captures the umbrella system the user is building. Examples: \`"Orders Platform"\`, \`"Patient Portal"\`, \`"IoT Telemetry"\`, \`"Stripe Integration"\`.
+
+**\`diagramName\`** — the *scope of this specific DFD* — what the user actually wants to threat-model in this pass. 3-6 words, Title Case, no trailing punctuation. Should describe the flow/feature being analyzed, NOT repeat the product name. Examples: \`"Order Checkout Flow"\`, \`"Patient Record Access"\`, \`"Device Telemetry Ingestion"\`, \`"Webhook Signature Verification"\`, \`"User Authentication"\`.
+
+Rules:
+- If the user explicitly names the project (e.g. "call it X", "named Y"), use that verbatim for \`projectName\`.
+- Derive \`diagramName\` from the *dominant flow* in the description. If the user describes the whole product, pick the most security-critical flow ("Authentication", "Payment Processing", "Data Ingestion") and name the DFD after it.
+- \`projectName\` and \`diagramName\` must be different. Don't echo one in the other.
+- Never emit date-based names like \`"Project Jun 18"\` or \`"DFD Jun 18"\`.
+
 ## Output Format
 Respond with ONLY valid JSON. No markdown fences, no commentary, no prose.
 
 SCHEMA:
 {
+  "projectName": "string — 2-5 word Title Case product/system name",
+  "diagramName": "string — 3-6 word Title Case name describing the scope/flow this DFD covers",
   "nodes": [
     {
       "id": "string",

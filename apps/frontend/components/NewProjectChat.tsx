@@ -251,16 +251,17 @@ export default function NewProjectChat({ onDismiss, onCreated }: NewProjectChatP
 
     try {
       if (phase === 'greeting') {
-        const projectName = extractProjectName(text);
-
-        setThinkingLabel(`Creating "${projectName}"…`);
-        const project = await apiCreateProject(projectName, text);
-        setCreatedProjectId(project.id);
         setPhase('building');
-
-        setThinkingLabel('Generating your architecture…');
+        setThinkingLabel('Designing your DFD…');
         try {
-          const result = await apiChatGenerate({ prompt: text, projectId: project.id });
+          const result = await apiChatGenerate({ prompt: text });
+
+          const projectName = result.projectName?.trim() || extractProjectName(text);
+          const diagramName = result.diagramName?.trim() || projectName;
+
+          setThinkingLabel(`Creating "${projectName}"…`);
+          const project = await apiCreateProject(projectName, text);
+          setCreatedProjectId(project.id);
 
           setThinkingLabel('Saving diagram…');
           const rootLayerId = 'root';
@@ -268,8 +269,8 @@ export default function NewProjectChat({ onDismiss, onCreated }: NewProjectChatP
             layers: {
               [rootLayerId]: {
                 id: rootLayerId,
-                name: 'Root Layer',
-                description: projectName,
+                name: diagramName,
+                description: diagramName,
                 parentLayerId: null,
                 parentNodeId: null,
                 nodes: result.nodes,
@@ -280,7 +281,7 @@ export default function NewProjectChat({ onDismiss, onCreated }: NewProjectChatP
             navStack: [rootLayerId],
           };
 
-          await apiCreateDiagram(project.id, projectName, canvasData);
+          await apiCreateDiagram(project.id, diagramName, canvasData);
 
           setDiagramNodes(result.nodes as unknown[]);
           setDiagramEdges(result.edges as unknown[]);
@@ -298,13 +299,24 @@ export default function NewProjectChat({ onDismiss, onCreated }: NewProjectChatP
             onCreated?.(project.id);
           }
         } catch {
-          setThinking(false);
-          setThinkingLabel('');
-          addMessage('ai', "I had trouble generating the diagram, but your project is created. You can open it and build manually.");
-          setPhase('complete');
-          if (embedded) {
-            setShowNavPrompt(true);
-            onCreated?.(project.id);
+          // AI failed — still create a project from heuristic name so user can proceed manually.
+          const fallbackName = extractProjectName(text);
+          setThinkingLabel(`Creating "${fallbackName}"…`);
+          try {
+            const project = await apiCreateProject(fallbackName, text);
+            setCreatedProjectId(project.id);
+            setThinking(false);
+            setThinkingLabel('');
+            addMessage('ai', "I had trouble generating the diagram, but your project is created. You can open it and build manually.");
+            setPhase('complete');
+            if (embedded) {
+              setShowNavPrompt(true);
+              onCreated?.(project.id);
+            }
+          } catch {
+            setThinking(false);
+            setThinkingLabel('');
+            addMessage('ai', 'Something went wrong creating your project. Please try again.');
           }
         }
       }

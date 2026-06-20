@@ -400,8 +400,8 @@ export function apiChatGenerate(payload: {
   diagramId?: string;
   layerId?: string;
   layerName?: string;
-}): Promise<{ nodes: unknown[]; edges: unknown[]; oversizeWarning?: OversizeWarning }> {
-  return apiFetch<{ nodes: unknown[]; edges: unknown[]; oversizeWarning?: OversizeWarning }>('/api/ai/chat/generate', {
+}): Promise<{ projectName?: string; diagramName?: string; nodes: unknown[]; edges: unknown[]; oversizeWarning?: OversizeWarning }> {
+  return apiFetch<{ projectName?: string; diagramName?: string; nodes: unknown[]; edges: unknown[]; oversizeWarning?: OversizeWarning }>('/api/ai/chat/generate', {
     method: 'POST',
     body: JSON.stringify(payload),
   });

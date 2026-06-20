@@ -138,6 +138,8 @@ export class AiService {
       .replace(/```\s*$/i, '')
       .trim();
     const diagram = JSON.parse(raw) as {
+      projectName?: unknown;
+      diagramName?: unknown;
       nodes: unknown[];
       edges: unknown[];
       oversizeWarning?: { reason: string; suggestedSplits: string[] };
@@ -145,6 +147,17 @@ export class AiService {
     if (!Array.isArray(diagram.nodes) || !Array.isArray(diagram.edges)) {
       throw new InternalServerErrorException('AI returned invalid diagram structure');
     }
+
+    // Sanitize node positions — React Flow crashes if `position.x` is undefined
+    const sanitizedNodes = (diagram.nodes as Array<Record<string, unknown>>).map((n, idx) => {
+      const pos = n.position as { x?: unknown; y?: unknown } | undefined;
+      const hasValid = pos && typeof pos.x === 'number' && typeof pos.y === 'number';
+      if (!hasValid) {
+        this.logger.warn(`[ChatGenerate] node ${String(n.id ?? idx)} missing valid position — defaulting`);
+        return { ...n, position: { x: 100 + (idx % 5) * 220, y: 100 + Math.floor(idx / 5) * 160 } };
+      }
+      return n;
+    });
 
     // Validate oversizeWarning shape — drop if malformed
     const oversizeWarning =
@@ -155,15 +168,27 @@ export class AiService {
         ? diagram.oversizeWarning
         : undefined;
 
+    // Validate projectName / diagramName — fall back to undefined; frontend handles default
+    const projectName =
+      typeof diagram.projectName === 'string' && diagram.projectName.trim().length > 0
+        ? diagram.projectName.trim().slice(0, 60)
+        : undefined;
+    const diagramName =
+      typeof diagram.diagramName === 'string' && diagram.diagramName.trim().length > 0
+        ? diagram.diagramName.trim().slice(0, 80)
+        : undefined;
+
     await this.prisma.aiInteraction.create({
       data: {
         userId,
         diagramId: dto.diagramId ?? null,
         prompt: `[chat-generate] ${dto.prompt}`,
         response: {
-          nodeCount: (diagram.nodes as unknown[]).length,
+          nodeCount: sanitizedNodes.length,
           edgeCount: (diagram.edges as unknown[]).length,
           oversize: !!oversizeWarning,
+          projectName,
+          diagramName,
         },
         tokensUsed: llmResult.tokensUsed,
         inputTokens: llmResult.inputTokens,
@@ -174,7 +199,7 @@ export class AiService {
     }).catch((err: unknown) => this.logger.error(`[ChatGenerate] failed to persist aiInteraction: ${String(err)}`));
 
     if (dto.projectId) {
-      const nodeCount = diagram.nodes.length;
+      const nodeCount = sanitizedNodes.length;
       const edgeCount = diagram.edges.length;
       const baseContent = `Generated DFD with ${nodeCount} node${nodeCount !== 1 ? 's' : ''} and ${edgeCount} edge${edgeCount !== 1 ? 's' : ''}.`;
       const warningContent = oversizeWarning
@@ -194,7 +219,7 @@ export class AiService {
         },
       ]);
     }
-    return { nodes: diagram.nodes, edges: diagram.edges, oversizeWarning };
+    return { projectName, diagramName, nodes: sanitizedNodes, edges: diagram.edges, oversizeWarning };
   }
 
   async chatEvaluate(userId: string, dto: ChatEvaluateDto, res: Response) {
