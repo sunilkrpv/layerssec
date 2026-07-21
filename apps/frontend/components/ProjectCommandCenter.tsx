@@ -367,7 +367,7 @@ export default function ProjectCommandCenter({ projectId }: { projectId: string 
           onClick={() => openDiagram()}
           className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-[13px] font-medium text-white hover:bg-blue-700"
         >
-          Open Diagram <ExternalLink size={12} />
+          Open Project <ExternalLink size={12} />
         </button>
       </header>
 
@@ -418,12 +418,12 @@ export default function ProjectCommandCenter({ projectId }: { projectId: string 
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <Layers size={40} className="mb-4 text-slate-300 dark:text-slate-600" />
             <p className="text-[16px] font-medium text-slate-600 dark:text-slate-300">No diagram yet</p>
-            <p className="mt-1 text-[14px] text-slate-400">Open the diagram to start building your architecture</p>
+            <p className="mt-1 text-[14px] text-slate-400">Open the project to start building your architecture</p>
             <button
               onClick={() => openDiagram()}
               className="mt-4 rounded-lg bg-blue-600 px-4 py-2 text-[14px] font-medium text-white hover:bg-blue-700"
             >
-              Open Diagram →
+              Open Project →
             </button>
           </div>
         )}

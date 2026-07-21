@@ -9,6 +9,7 @@ import {
   type ProjectSummary, type AiJobListItem,
 } from '@/lib/api';
 import HomeSidebar from './HomeSidebar';
+import TopBar from './TopBar';
 import AllProjectsDashboard from './AllProjectsDashboard';
 import ProjectCommandCenter from './ProjectCommandCenter';
 import NewProjectChat from './NewProjectChat';
@@ -155,6 +156,7 @@ export default function AppShell() {
   return (
     <OnboardingProvider>
     <div className="flex h-screen flex-col overflow-hidden bg-slate-50 dark:bg-slate-950">
+      <TopBar />
       <AiNotConfiguredBanner onOpenSettings={handleOpenSettings} />
       <div className="flex min-h-0 flex-1 overflow-hidden">
       <HomeSidebar

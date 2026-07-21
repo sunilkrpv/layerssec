@@ -9,9 +9,9 @@ import DiagramCanvas, { type ExtendedRFInstance } from '@/components/DiagramCanv
 import NodePalette from '@/components/NodePalette';
 import PropertiesPanel from '@/components/PropertiesPanel';
 import EdgePropertiesPanel from '@/components/EdgePropertiesPanel';
-import MenuBar from '@/components/MenuBar';
 import Toolbar from '@/components/Toolbar';
 import LayerBar from '@/components/LayerBar';
+import { FEATURES } from '@/lib/features';
 import LayersPanel from '@/components/LayersPanel';
 import NodeContextMenu from '@/components/NodeContextMenu';
 import PaneContextMenu from '@/components/PaneContextMenu';
@@ -45,7 +45,7 @@ import {
   type AiJobStatusResponse, type ThreatChatPayload,
 } from '@/lib/api';
 import { useJobPoller } from '@/hooks/useJobPoller';
-import { getStoredUser, clearTokens, isLoggedIn, signOut } from '@/lib/authStore';
+import { getStoredUser, clearTokens, isLoggedIn } from '@/lib/authStore';
 import {
   makeInitialLayers,
   createChildLayer,
@@ -682,17 +682,6 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
     setShowProjectsModal(true);
     // Keep startup modal open behind the projects modal so user can dismiss it after
   }, []);
-
-  const handleSignOut = useCallback(() => {
-    saveEnabledRef.current = false;
-    signOut();
-    setLayers(makeInitialLayers());
-    setNavStack([ROOT_LAYER_ID]);
-    setUser(null);
-    setBackendDiagramId(null);
-    setCurrentProjectName(null);
-    router.push('/login');
-  }, [router]);
 
   /** Called when user opens a project from ProjectsModal. */
   const handleOpenCloudProject = useCallback(
@@ -1633,14 +1622,6 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
     <CanvasContext.Provider value={canvasContextValue}>
       <ReactFlowProvider>
         <div className="flex h-screen flex-col overflow-hidden">
-          {/* ── Menu bar ────────────────────────────────────────────────── */}
-          <MenuBar
-            userEmail={user?.email ?? null}
-            onSignIn={() => setShowAuthModal(true)}
-            onSignOut={handleSignOut}
-            isCloudProject={!!backendDiagramId}
-          />
-
           {/* ── Toolbar ─────────────────────────────────────────────────── */}
           <Toolbar
             onClear={handleClear}
@@ -1676,14 +1657,16 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
           />
 
           {/* ── Layer breadcrumb bar ─────────────────────────────────────── */}
-          <LayerBar
-            layers={layers}
-            currentLayerId={currentLayerId}
-            canGoBack={navStack.length > 1}
-            onBack={handleBack}
-            onNavigate={navigateTo}
-            projectName={currentProjectName}
-          />
+          {FEATURES.DRILLDOWN_UI && (
+            <LayerBar
+              layers={layers}
+              currentLayerId={currentLayerId}
+              canGoBack={navStack.length > 1}
+              onBack={handleBack}
+              onNavigate={navigateTo}
+              projectName={currentProjectName}
+            />
+          )}
 
           {error && (
             <div className="flex items-center gap-2 border-b border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-900/20 dark:text-red-400">
@@ -1858,6 +1841,7 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
                 threats={threatPanelThreats}
                 modelInfo={threatModelInfo}
                 projectId={projectId}
+                diagramId={backendDiagramId ?? undefined}
                 onHighlightTarget={handleHighlightThreatTarget}
                 externalTargetId={canvasBadgeTargetId}
                 onExternalTargetConsumed={() => setCanvasBadgeTargetId(null)}
@@ -1972,7 +1956,7 @@ export default function DiagramPage({ projectId, viewDiagramId }: DiagramPagePro
         )}
 
         {/* ── Drill-down naming modal ──────────────────────────────────────── */}
-        {drillTarget && (
+        {FEATURES.DRILLDOWN_UI && drillTarget && (
           <DrillDownModal
             defaultName={`${drillTarget.data.label} Layer`}
             onConfirm={handleDrillDownConfirm}

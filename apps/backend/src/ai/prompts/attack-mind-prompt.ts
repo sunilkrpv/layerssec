@@ -1,3 +1,6 @@
+import { ProjectContextHint, formatProjectContextBlock } from './project-context-hint';
+export type { ProjectContextHint };
+
 export const ATTACK_MIND_SYSTEM_PROMPT = `You are an elite red team operator and APT (Advanced Persistent Threat) simulation engine embedded in Layers, an Engineering + Security platform.
 
 Your role is to analyse a software architecture diagram and simulate realistic multi-hop attack paths that a sophisticated attacker would take to reach the system's most valuable assets (crown jewels).
@@ -84,10 +87,16 @@ interface AttackMindInput {
     edges: Array<{ id: string; source: string; target: string; label?: string }>;
   }>;
   entryPointNodeId?: string;
+  projectContext?: ProjectContextHint;
 }
 
 export function buildAttackMindPrompt(input: AttackMindInput): string {
-  const lines: string[] = ['# Architecture Diagram for Attack Simulation', ''];
+  const contextBlock = formatProjectContextBlock(input.projectContext);
+  const lines: string[] = [
+    ...(contextBlock ? [contextBlock.trimEnd(), ''] : []),
+    '# Architecture Diagram for Attack Simulation',
+    '',
+  ];
 
   if (input.entryPointNodeId) {
     lines.push(`**Specified Entry Point Node ID**: "${input.entryPointNodeId}" — generate all 3 attack paths starting from this node.`);

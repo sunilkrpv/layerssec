@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//Users/sunil/.claude/plugins/cache/claude-plugins-official/superpowers/5.1.0/skills/subagent-driven-development/**)",
+      "Bash(npx prisma *)",
+      "Bash(DATABASE_URL=\"postgresql://postgres:postgres@localhost:5432/drafter?schema=public\" DIRECT_URL=\"postgresql://postgres:postgres@localhost:5432/drafter?schema=public\" npx prisma migrate dev --name add_project_metadata --create-only)",
+      "Bash(DATABASE_URL=\"postgresql://postgres:postgres@localhost:5432/drafter?schema=public\" DIRECT_URL=\"postgresql://postgres:postgres@localhost:5432/drafter?schema=public\" npx prisma migrate dev)",
+      "Bash(git add *)",
+      "Bash(DATABASE_URL=\"postgresql://postgres:postgres@localhost:5432/drafter?schema=public\" DIRECT_URL=\"postgresql://postgres:postgres@localhost:5432/drafter?schema=public\" npx prisma migrate dev --name link_intel_report_user_fk --create-only)",
+      "Bash(DATABASE_URL=\"postgresql://postgres:postgres@localhost:5432/drafter?schema=public\" DIRECT_URL=\"postgresql://postgres:postgres@localhost:5432/drafter?schema=public\" npx prisma migrate dev --name chat_diagram_id_and_backfill --create-only)",
+      "Bash(DATABASE_URL=\"postgresql://postgres:postgres@localhost:5432/drafter?schema=public\" DIRECT_URL=\"postgresql://postgres:postgres@localhost:5432/drafter?schema=public\" npx prisma generate)",
+      "Bash(node -e \"const p = require\\('@prisma/client'\\); console.log\\(Object.keys\\(p\\).filter\\(k => k.includes\\('Env'\\) || k.includes\\('env'\\)\\)\\)\")",
+      "Bash(node -e 'const p = require\\('\\\\''@prisma/client'\\\\''\\); console.log\\(JSON.stringify\\(p.Environment || p.$Enums?.Environment || '\\\\''NOT_FOUND'\\\\''\\)\\)')",
+      "Bash(npx tsc *)",
+      "Bash(sed -n '81,105p' /Users/sunil/Development/github/layerssec/apps/backend/src/threat/threat.controller.ts)",
+      "Bash(sed -n '146,200p' /Users/sunil/Development/github/layerssec/apps/backend/src/threat/threat.service.ts)",
+      "Bash(sed -n '133,145p' /Users/sunil/Development/github/layerssec/apps/backend/src/ai/ai.controller.ts)",
+      "Bash(sed -n '756,820p' /Users/sunil/Development/github/layerssec/apps/backend/src/ai/ai.service.ts)",
+      "Bash(git -C /Users/sunil/Development/github/layerssec add apps/frontend/components/projects/CanvasPane.tsx apps/frontend/components/projects/NewFlowDialog.tsx apps/frontend/components/projects/ProjectShell.tsx)",
+      "Bash(git -C /Users/sunil/Development/github/layerssec status)"
+    ]
+  }
+}

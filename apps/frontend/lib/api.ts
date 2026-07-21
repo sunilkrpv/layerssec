@@ -160,12 +160,19 @@ export function apiLogout(refreshToken: string): Promise<void> {
 
 // ─── Projects ─────────────────────────────────────────────────────────────────
 
+export type Environment = 'DEV' | 'STAGING' | 'PROD';
+
 export interface Project {
   id: string;
   name: string;
   description: string | null;
   isPublic: boolean;
   tags: string[];
+  techStack?: string[];
+  environment?: Environment | null;
+  compliance?: string[];
+  notes?: string;
+  repoUrl?: string;
   _count?: { diagrams: number };
   createdAt: string;
   updatedAt: string;
@@ -204,7 +211,17 @@ export function apiGetProject(id: string): Promise<ProjectWithDiagrams> {
 
 export function apiUpdateProject(
   id: string,
-  updates: { name?: string; description?: string },
+  updates: {
+    name?: string;
+    description?: string;
+    isPublic?: boolean;
+    tags?: string[];
+    techStack?: string[];
+    environment?: Environment | null;
+    compliance?: string[];
+    notes?: string;
+    repoUrl?: string;
+  },
 ): Promise<Project> {
   return apiFetch<Project>(`/api/projects/${id}`, {
     method: 'PATCH',
@@ -371,6 +388,11 @@ export function apiSaveChatMessages(
   });
 }
 
+export interface OversizeWarning {
+  reason: string;
+  suggestedSplits: string[];
+}
+
 /** Chat-specific generate endpoint — uses Layers system prompt and saves to chat history. */
 export function apiChatGenerate(payload: {
   prompt: string;
@@ -378,8 +400,8 @@ export function apiChatGenerate(payload: {
   diagramId?: string;
   layerId?: string;
   layerName?: string;
-}): Promise<{ nodes: unknown[]; edges: unknown[] }> {
-  return apiFetch<{ nodes: unknown[]; edges: unknown[] }>('/api/ai/chat/generate', {
+}): Promise<{ projectName?: string; diagramName?: string; nodes: unknown[]; edges: unknown[]; oversizeWarning?: OversizeWarning }> {
+  return apiFetch<{ projectName?: string; diagramName?: string; nodes: unknown[]; edges: unknown[]; oversizeWarning?: OversizeWarning }>('/api/ai/chat/generate', {
     method: 'POST',
     body: JSON.stringify(payload),
   });
@@ -561,9 +583,10 @@ export function apiSaveThreatModel(
   });
 }
 
-/** List all saved threat models for a project (summary only). */
-export function apiListThreatModels(projectId: string): Promise<ThreatModelSummary[]> {
-  return apiFetch<ThreatModelSummary[]>(`/api/projects/${projectId}/threat-models`);
+/** List all saved threat models for a project (summary only). Optionally filter by diagram. */
+export function apiListThreatModels(projectId: string, diagramId?: string): Promise<ThreatModelSummary[]> {
+  const qs = diagramId ? `?diagramId=${encodeURIComponent(diagramId)}` : '';
+  return apiFetch<ThreatModelSummary[]>(`/api/projects/${projectId}/threat-models${qs}`);
 }
 
 /** Get a single saved threat model with all threats. */
@@ -631,6 +654,7 @@ export function apiListProjectThreats(
     severity?: ThreatSeverity;
     status?: ThreatStatus;
     strideCategory?: StrideCategory;
+    diagramId?: string;
   },
 ): Promise<ThreatsDashboardResult> {
   const qs = new URLSearchParams();
@@ -640,6 +664,7 @@ export function apiListProjectThreats(
   if (params?.severity) qs.set('severity', params.severity);
   if (params?.status) qs.set('status', params.status);
   if (params?.strideCategory) qs.set('strideCategory', params.strideCategory);
+  if (params?.diagramId) qs.set('diagramId', params.diagramId);
   const query = qs.toString();
   return apiFetch<ThreatsDashboardResult>(`/api/projects/${projectId}/threats${query ? `?${query}` : ''}`);
 }
@@ -743,9 +768,10 @@ export function apiComputePostureScore(payload: {
   });
 }
 
-/** List historical posture score snapshots for a project. */
-export function apiGetPostureScoreHistory(projectId: string): Promise<PostureScoreHistoryItem[]> {
-  return apiFetch<PostureScoreHistoryItem[]>(`/api/projects/${projectId}/posture-score/history`);
+/** List historical posture score snapshots for a project. Optionally filter by diagram. */
+export function apiGetPostureScoreHistory(projectId: string, diagramId?: string): Promise<PostureScoreHistoryItem[]> {
+  const qs = diagramId ? `?diagramId=${encodeURIComponent(diagramId)}` : '';
+  return apiFetch<PostureScoreHistoryItem[]>(`/api/projects/${projectId}/posture-score/history${qs}`);
 }
 
 // ── Attack Mind ───────────────────────────────────────────────────────────
@@ -836,9 +862,10 @@ export function apiSaveAttackSimulation(payload: {
   });
 }
 
-/** List saved attack simulations for a project. */
-export function apiListAttackSimulations(projectId: string): Promise<AttackSimulation[]> {
-  return apiFetch<AttackSimulation[]>(`/api/projects/${projectId}/attack-simulations`);
+/** List saved attack simulations for a project. Optionally filter by diagram. */
+export function apiListAttackSimulations(projectId: string, diagramId?: string): Promise<AttackSimulation[]> {
+  const qs = diagramId ? `?diagramId=${encodeURIComponent(diagramId)}` : '';
+  return apiFetch<AttackSimulation[]>(`/api/projects/${projectId}/attack-simulations${qs}`);
 }
 
 /** Delete a saved attack simulation. */
@@ -1445,4 +1472,69 @@ export async function apiExportIntelReport(params: {
   a.download = 'security-intel-report.pdf';
   a.click();
   URL.revokeObjectURL(url);
+}
+
+// ── Posture rollup ────────────────────────────────────────────────────────
+
+export interface PostureRollupDiagram {
+  diagramId: string;
+  name: string;
+  version: number;
+  score: number;
+}
+
+export interface PostureRollupResult {
+  projectScore: number | null;
+  diagrams: PostureRollupDiagram[];
+}
+
+export function apiGetPostureRollup(projectId: string): Promise<PostureRollupResult> {
+  return apiFetch<PostureRollupResult>(`/api/projects/${projectId}/posture-rollup`);
+}
+
+// ── Intel reports ─────────────────────────────────────────────────────────
+
+export interface IntelReportListItem {
+  id: string;
+  generatedAt: string;
+  generatedBy: string;
+}
+
+export interface IntelReport extends IntelReportListItem {
+  content: string;
+  snapshotData: unknown;
+  diagramRefs: unknown;
+  projectId: string;
+}
+
+export function apiCreateIntelReport(projectId: string): Promise<IntelReport> {
+  return apiFetch<IntelReport>(`/api/projects/${projectId}/intel-report`, { method: 'POST' });
+}
+
+export function apiListIntelReports(projectId: string): Promise<IntelReportListItem[]> {
+  return apiFetch<IntelReportListItem[]>(`/api/projects/${projectId}/intel-reports`);
+}
+
+export function apiGetIntelReport(id: string): Promise<IntelReport> {
+  return apiFetch<IntelReport>(`/api/intel-reports/${id}`);
+}
+
+// ── Suggest flow (AI) ─────────────────────────────────────────────────────
+
+export interface SuggestFlowResponse {
+  diagram: { nodes: unknown[]; edges: unknown[] };
+}
+
+export function apiSuggestFlow(payload: { projectId: string; flowName: string; description?: string }): Promise<SuggestFlowResponse> {
+  return apiFetch<SuggestFlowResponse>(`/api/ai/suggest-flow`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
+
+// ── Pipeline status (per diagram) ─────────────────────────────────────────
+
+export function apiGetDiagramPipelineStatus(diagramId: string): Promise<{ threatJob: unknown; postureJob: unknown }> {
+  return apiFetch<{ threatJob: unknown; postureJob: unknown }>(`/api/ai/diagrams/${diagramId}/pipeline-status`);
 }

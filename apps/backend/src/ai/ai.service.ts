@@ -1,4 +1,25 @@
 import { Injectable, InternalServerErrorException, Logger, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { intelSynthesisPrompt } from './prompts/intel-synthesis.prompt';
+
+// ── Exported interfaces ────────────────────────────────────────────────────
+
+export interface IntelSnapshot {
+  project: {
+    name: string;
+    description?: string | null;
+    techStack?: string[];
+    environment?: string | null;
+    compliance?: string[];
+    notes?: string | null;
+  };
+  diagrams: Array<{
+    diagramId: string;
+    name: string;
+    version: number;
+    severityCounts: Record<string, number>;
+    topThreats: Array<{ title: string; severity: string; stride: string }>;
+  }>;
+}
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { Response } from 'express';
@@ -19,6 +40,7 @@ import { EVAL_SYSTEM_PROMPT, QA_SYSTEM_PROMPT } from './prompts/eval-system-prom
 import { CHAT_SYSTEM_PROMPT, buildLayerContextSystemPrompt } from './prompts/chat-system-prompt';
 import { buildContextualSystemPrompt } from './prompts/contextual-system-prompt';
 import { THREAT_ANALYSIS_SYSTEM_PROMPT, buildThreatAnalysisPrompt, THREAT_AGENT_SYSTEM_PROMPT, buildThreatAgentPrompt } from './prompts/threat-analysis-prompt';
+import { ProjectContextHint } from './prompts/project-context-hint';
 import { ThreatChatDto } from './dto/threat-chat.dto';
 import { ThreatAnalysisJobPayload, ThreatAnalysisJobResult } from '../jobs/processors/threat-analysis.processor';
 import { AttackSimJobPayload, AttackSimJobResult } from '../jobs/processors/attack-simulation.processor';
@@ -115,17 +137,59 @@ export class AiService {
       .replace(/^```\s*/i, '')
       .replace(/```\s*$/i, '')
       .trim();
-    const diagram = JSON.parse(raw) as { nodes: unknown[]; edges: unknown[] };
+    const diagram = JSON.parse(raw) as {
+      projectName?: unknown;
+      diagramName?: unknown;
+      nodes: unknown[];
+      edges: unknown[];
+      oversizeWarning?: { reason: string; suggestedSplits: string[] };
+    };
     if (!Array.isArray(diagram.nodes) || !Array.isArray(diagram.edges)) {
       throw new InternalServerErrorException('AI returned invalid diagram structure');
     }
+
+    // Sanitize node positions — React Flow crashes if `position.x` is undefined
+    const sanitizedNodes = (diagram.nodes as Array<Record<string, unknown>>).map((n, idx) => {
+      const pos = n.position as { x?: unknown; y?: unknown } | undefined;
+      const hasValid = pos && typeof pos.x === 'number' && typeof pos.y === 'number';
+      if (!hasValid) {
+        this.logger.warn(`[ChatGenerate] node ${String(n.id ?? idx)} missing valid position — defaulting`);
+        return { ...n, position: { x: 100 + (idx % 5) * 220, y: 100 + Math.floor(idx / 5) * 160 } };
+      }
+      return n;
+    });
+
+    // Validate oversizeWarning shape — drop if malformed
+    const oversizeWarning =
+      diagram.oversizeWarning &&
+      typeof diagram.oversizeWarning.reason === 'string' &&
+      Array.isArray(diagram.oversizeWarning.suggestedSplits) &&
+      diagram.oversizeWarning.suggestedSplits.every((s) => typeof s === 'string')
+        ? diagram.oversizeWarning
+        : undefined;
+
+    // Validate projectName / diagramName — fall back to undefined; frontend handles default
+    const projectName =
+      typeof diagram.projectName === 'string' && diagram.projectName.trim().length > 0
+        ? diagram.projectName.trim().slice(0, 60)
+        : undefined;
+    const diagramName =
+      typeof diagram.diagramName === 'string' && diagram.diagramName.trim().length > 0
+        ? diagram.diagramName.trim().slice(0, 80)
+        : undefined;
 
     await this.prisma.aiInteraction.create({
       data: {
         userId,
         diagramId: dto.diagramId ?? null,
         prompt: `[chat-generate] ${dto.prompt}`,
-        response: { nodeCount: (diagram.nodes as unknown[]).length, edgeCount: (diagram.edges as unknown[]).length },
+        response: {
+          nodeCount: sanitizedNodes.length,
+          edgeCount: (diagram.edges as unknown[]).length,
+          oversize: !!oversizeWarning,
+          projectName,
+          diagramName,
+        },
         tokensUsed: llmResult.tokensUsed,
         inputTokens: llmResult.inputTokens,
         outputTokens: llmResult.outputTokens,
@@ -135,13 +199,17 @@ export class AiService {
     }).catch((err: unknown) => this.logger.error(`[ChatGenerate] failed to persist aiInteraction: ${String(err)}`));
 
     if (dto.projectId) {
-      const nodeCount = diagram.nodes.length;
+      const nodeCount = sanitizedNodes.length;
       const edgeCount = diagram.edges.length;
+      const baseContent = `Generated DFD with ${nodeCount} node${nodeCount !== 1 ? 's' : ''} and ${edgeCount} edge${edgeCount !== 1 ? 's' : ''}.`;
+      const warningContent = oversizeWarning
+        ? `\n\n⚠️ This DFD is large for a single STRIDE pass. ${oversizeWarning.reason} Consider splitting into: ${oversizeWarning.suggestedSplits.join(', ')}.`
+        : '';
       await this.chat.saveMessages(dto.projectId, userId, [
         { role: 'user', content: dto.prompt, layerId: dto.layerId, layerName: dto.layerName },
         {
           role: 'assistant',
-          content: `Generated diagram with ${nodeCount} node${nodeCount !== 1 ? 's' : ''} and ${edgeCount} edge${edgeCount !== 1 ? 's' : ''}.`,
+          content: `${baseContent}${warningContent}`,
           layerId: dto.layerId,
           layerName: dto.layerName,
           provider: llmResult.provider,
@@ -151,7 +219,7 @@ export class AiService {
         },
       ]);
     }
-    return diagram;
+    return { projectName, diagramName, nodes: sanitizedNodes, edges: diagram.edges, oversizeWarning };
   }
 
   async chatEvaluate(userId: string, dto: ChatEvaluateDto, res: Response) {
@@ -428,12 +496,14 @@ export class AiService {
       crossesTrustBoundary: false, // simple heuristic — can be enhanced later
     }));
 
+    const projectContext = await this.fetchProjectContextForDiagram(dto.diagramId);
     const userMessage = buildThreatAnalysisPrompt({
       layerId: dto.layerId,
       layerName: dto.layerName ?? 'Diagram',
       nodes: serializedNodes,
       edges: serializedEdges,
       trustBoundaries,
+      projectContext,
     });
 
     this.logger.log(`[ThreatAnalysis] diagramId=${dto.diagramId} layerId=${dto.layerId} nodes=${dto.nodes.length}`);
@@ -634,9 +704,11 @@ export class AiService {
   // ── Attack Mind Simulator ────────────────────────────────────────────────
 
   async attackMind(userId: string, dto: AttackMindDto, res: import('express').Response) {
+    const projectContext = await this.fetchProjectContextForDiagram(dto.diagramId);
     const userMessage = buildAttackMindPrompt({
       layers: dto.layers as Parameters<typeof buildAttackMindPrompt>[0]['layers'],
       entryPointNodeId: dto.entryPointNodeId,
+      projectContext,
     });
 
     this.logger.log(`[AttackMind] projectId=${dto.projectId} diagramId=${dto.diagramId} entryPoint=${dto.entryPointNodeId ?? 'auto'} extended=${dto.useExtendedThinking ?? false}`);
@@ -689,6 +761,22 @@ export class AiService {
       }).catch((err: unknown) => this.logger.error(`[AttackMind] failed to save aiInteraction: ${String(err)}`));
       res.end();
     }
+  }
+
+  // ── Project context helper ───────────────────────────────────────────────
+
+  private async fetchProjectContextForDiagram(diagramId?: string): Promise<ProjectContextHint | undefined> {
+    if (!diagramId) return undefined;
+    const diagram = await this.prisma.diagram.findUnique({
+      where: { id: diagramId },
+      select: { project: { select: { techStack: true, environment: true, compliance: true } } },
+    });
+    if (!diagram?.project) return undefined;
+    return {
+      techStack: diagram.project.techStack,
+      environment: diagram.project.environment,
+      compliance: diagram.project.compliance,
+    };
   }
 
   // ── Async job submission ─────────────────────────────────────────────────
@@ -751,6 +839,36 @@ export class AiService {
       }),
       this.prisma.aiJob.findFirst({
         where: { projectId, type: AiJobType.POSTURE_SCORE },
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true, status: true, resultRef: true,
+          errorMessage: true, createdAt: true, completedAt: true,
+        },
+      }),
+    ]);
+
+    return { threatJob, postureJob };
+  }
+
+  async getPipelineStatusForDiagram(userId: string, diagramId: string) {
+    const diagram = await this.prisma.diagram.findUnique({
+      where: { id: diagramId },
+      include: { project: { select: { ownerId: true } } },
+    });
+    if (!diagram) throw new NotFoundException('Diagram not found');
+    if (diagram.project.ownerId !== userId) throw new ForbiddenException();
+
+    const [threatJob, postureJob] = await Promise.all([
+      this.prisma.aiJob.findFirst({
+        where: { diagramId, type: AiJobType.THREAT_ANALYSIS },
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true, status: true, resultRef: true,
+          errorMessage: true, createdAt: true, completedAt: true,
+        },
+      }),
+      this.prisma.aiJob.findFirst({
+        where: { diagramId, type: AiJobType.POSTURE_SCORE },
         orderBy: { createdAt: 'desc' },
         select: {
           id: true, status: true, resultRef: true,
@@ -1166,6 +1284,38 @@ Return 5-7 priorityActions max, ranked by risk impact. severity must be one of: 
     }).catch((err: unknown) => this.logger.error(`[IntelSynthesis] aiInteraction persist failed: ${String(err)}`));
 
     return result;
+  }
+
+  // ── Project-scope Intel Report ───────────────────────────────────────────
+
+  /**
+   * Generate a project-scoped threat-intel markdown report from a pre-assembled
+   * snapshot (project metadata + per-diagram threat summaries).
+   *
+   * Unlike `intelSynthesis` (which is diagram-scoped and uses specific DB IDs),
+   * this method operates on caller-provided data and is intended for the persisted
+   * multi-flow intel report feature (Task 3.3 + Task 7.1).
+   */
+  async generateIntelReport(snapshot: IntelSnapshot): Promise<string> {
+    const diagramSummaries = snapshot.diagrams.map(d => {
+      const counts = Object.entries(d.severityCounts).map(([k, v]) => `${k}:${v}`).join(', ');
+      const top = d.topThreats.map(t => `- [${t.severity}/${t.stride}] ${t.title}`).join('\n');
+      return `### ${d.name} (v${d.version})\nThreat counts: ${counts || 'none'}\n${top || '_no threats yet_'}`;
+    }).join('\n\n');
+
+    const formattedPrompt = await intelSynthesisPrompt.format({
+      projectName: snapshot.project.name,
+      projectDescription: snapshot.project.description ?? '',
+      techStack: (snapshot.project.techStack ?? []).join(', '),
+      environment: snapshot.project.environment ?? '',
+      compliance: (snapshot.project.compliance ?? []).join(', '),
+      notes: snapshot.project.notes ?? '',
+      diagramSummaries,
+    });
+
+    const systemPrompt = 'You are a senior threat-intelligence analyst. Produce a structured markdown intel report.';
+    const { content } = await this.llm.invoke(systemPrompt, formattedPrompt, { promptName: 'intel-synthesis' });
+    return content;
   }
 
   private async callAi(

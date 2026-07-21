@@ -4,10 +4,10 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Send, ArrowRight, Shield, Zap, BarChart3, X, Loader2,
-  Sparkles, ExternalLink,
+  Sparkles, ExternalLink, AlertTriangle,
 } from 'lucide-react';
 import LayersLogo from '@/components/LayersLogo';
-import { apiCreateProject, apiCreateDiagram, apiChatGenerate } from '@/lib/api';
+import { apiCreateProject, apiCreateDiagram, apiChatGenerate, type OversizeWarning } from '@/lib/api';
 import { generateId } from '@/lib/diagramUtils';
 import { cn } from '@/lib/utils';
 import MiniDiagramPreview from './MiniDiagramPreview';
@@ -110,6 +110,36 @@ function NavPrompt({
   );
 }
 
+// ── OversizeCallout ───────────────────────────────────────────────────────────
+
+function OversizeCallout({ warning }: { warning: OversizeWarning }) {
+  return (
+    <div className="ml-9 flex gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-900/60 dark:bg-amber-950/30">
+      <AlertTriangle size={18} className="mt-0.5 flex-shrink-0 text-amber-600 dark:text-amber-400" />
+      <div className="flex flex-col gap-2">
+        <p className="text-[13px] font-semibold text-amber-900 dark:text-amber-200">
+          This DFD is large for a single STRIDE pass
+        </p>
+        <p className="text-[13px] leading-relaxed text-amber-800 dark:text-amber-300">
+          {warning.reason}
+        </p>
+        {warning.suggestedSplits.length > 0 && (
+          <div className="mt-1">
+            <p className="text-[12px] font-medium text-amber-900 dark:text-amber-200">
+              Consider splitting into separate DFDs:
+            </p>
+            <ul className="mt-1 list-disc pl-5 text-[13px] text-amber-800 dark:text-amber-300">
+              {warning.suggestedSplits.map((s) => (
+                <li key={s}>{s}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── ActionButtons ─────────────────────────────────────────────────────────────
 
 const ACTIONS = [
@@ -150,8 +180,8 @@ function EmptyHero() {
       <h2 className="text-[18px] font-semibold text-slate-800 dark:text-slate-100">
         Start a new project
       </h2>
-      <p className="mt-1 max-w-[380px] text-[14px] text-slate-500 dark:text-slate-400">
-        Describe what you&apos;re building and I&apos;ll generate an architecture diagram, then help you run threat analysis.
+      <p className="mt-1 max-w-[420px] text-[14px] text-slate-500 dark:text-slate-400">
+        Describe the data flow you want to threat-model — who the actors are, what processes handle the data, and where it&apos;s stored. I&apos;ll generate a DFD with trust boundaries ready for STRIDE.
       </p>
     </div>
   );
@@ -173,6 +203,7 @@ export default function NewProjectChat({ onDismiss, onCreated }: NewProjectChatP
   const [diagramEdges, setDiagramEdges] = useState<unknown[]>([]);
   const [showNavPrompt, setShowNavPrompt] = useState(false);
   const [navPromptDismissed, setNavPromptDismissed] = useState(false);
+  const [oversizeWarning, setOversizeWarning] = useState<OversizeWarning | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -180,7 +211,7 @@ export default function NewProjectChat({ onDismiss, onCreated }: NewProjectChatP
   useEffect(() => {
     const t = setTimeout(() => {
       setThinking(false);
-      addMessage('ai', "Hi! I'm going to help you set up your new project. What are you building, and what should we call it?");
+      addMessage('ai', "Hi! Let's set up your first Data Flow Diagram for threat modeling. Describe the system: actors, processes, data stores, and what data flows between them. What should we call this project?");
       inputRef.current?.focus();
     }, 700);
     return () => clearTimeout(t);
@@ -220,16 +251,17 @@ export default function NewProjectChat({ onDismiss, onCreated }: NewProjectChatP
 
     try {
       if (phase === 'greeting') {
-        const projectName = extractProjectName(text);
-
-        setThinkingLabel(`Creating "${projectName}"…`);
-        const project = await apiCreateProject(projectName, text);
-        setCreatedProjectId(project.id);
         setPhase('building');
-
-        setThinkingLabel('Generating your architecture…');
+        setThinkingLabel('Designing your DFD…');
         try {
-          const result = await apiChatGenerate({ prompt: text, projectId: project.id });
+          const result = await apiChatGenerate({ prompt: text });
+
+          const projectName = result.projectName?.trim() || extractProjectName(text);
+          const diagramName = result.diagramName?.trim() || projectName;
+
+          setThinkingLabel(`Creating "${projectName}"…`);
+          const project = await apiCreateProject(projectName, text);
+          setCreatedProjectId(project.id);
 
           setThinkingLabel('Saving diagram…');
           const rootLayerId = 'root';
@@ -237,8 +269,8 @@ export default function NewProjectChat({ onDismiss, onCreated }: NewProjectChatP
             layers: {
               [rootLayerId]: {
                 id: rootLayerId,
-                name: 'Root Layer',
-                description: projectName,
+                name: diagramName,
+                description: diagramName,
                 parentLayerId: null,
                 parentNodeId: null,
                 nodes: result.nodes,
@@ -249,16 +281,17 @@ export default function NewProjectChat({ onDismiss, onCreated }: NewProjectChatP
             navStack: [rootLayerId],
           };
 
-          await apiCreateDiagram(project.id, projectName, canvasData);
+          await apiCreateDiagram(project.id, diagramName, canvasData);
 
           setDiagramNodes(result.nodes as unknown[]);
           setDiagramEdges(result.edges as unknown[]);
+          if (result.oversizeWarning) setOversizeWarning(result.oversizeWarning);
           setThinking(false);
           setThinkingLabel('');
 
           addMessage(
             'ai',
-            `Your architecture is ready — ${(result.nodes as unknown[]).length} components generated. Here's a preview:`,
+            `Your DFD is ready — ${(result.nodes as unknown[]).length} elements with trust boundaries inferred from your description. Here's a preview:`,
           );
           setPhase('complete');
           if (embedded) {
@@ -266,13 +299,24 @@ export default function NewProjectChat({ onDismiss, onCreated }: NewProjectChatP
             onCreated?.(project.id);
           }
         } catch {
-          setThinking(false);
-          setThinkingLabel('');
-          addMessage('ai', "I had trouble generating the diagram, but your project is created. You can open it and build manually.");
-          setPhase('complete');
-          if (embedded) {
-            setShowNavPrompt(true);
-            onCreated?.(project.id);
+          // AI failed — still create a project from heuristic name so user can proceed manually.
+          const fallbackName = extractProjectName(text);
+          setThinkingLabel(`Creating "${fallbackName}"…`);
+          try {
+            const project = await apiCreateProject(fallbackName, text);
+            setCreatedProjectId(project.id);
+            setThinking(false);
+            setThinkingLabel('');
+            addMessage('ai', "I had trouble generating the diagram, but your project is created. You can open it and build manually.");
+            setPhase('complete');
+            if (embedded) {
+              setShowNavPrompt(true);
+              onCreated?.(project.id);
+            }
+          } catch {
+            setThinking(false);
+            setThinkingLabel('');
+            addMessage('ai', 'Something went wrong creating your project. Please try again.');
           }
         }
       }
@@ -344,6 +388,11 @@ export default function NewProjectChat({ onDismiss, onCreated }: NewProjectChatP
           </div>
         )}
 
+        {/* Oversize warning */}
+        {phase === 'complete' && oversizeWarning && (
+          <OversizeCallout warning={oversizeWarning} />
+        )}
+
         {/* Mini diagram preview */}
         {phase === 'complete' && diagramNodes.length > 0 && (
           <div className="flex justify-start pl-9">
@@ -388,7 +437,7 @@ export default function NewProjectChat({ onDismiss, onCreated }: NewProjectChatP
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
           disabled={thinking || phase === 'complete'}
-          placeholder="e.g. A REST API with Postgres, Redis cache, and a React frontend — call it API Gateway"
+          placeholder="e.g. End users place orders via a React web app. The API Gateway authenticates, then Orders Service writes to Postgres and publishes events to Kafka. Stripe handles payments. Call it Orders Platform."
           rows={4}
           className="flex-1 resize-none rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-[15px] leading-relaxed text-slate-800 placeholder-slate-400 outline-none focus:border-blue-500 focus:bg-white disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-500 dark:focus:border-blue-500 dark:focus:bg-slate-800"
           style={{ minHeight: '96px', maxHeight: '200px' }}

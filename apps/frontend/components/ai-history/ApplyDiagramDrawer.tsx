@@ -4,6 +4,7 @@ import dynamic from 'next/dynamic';
 import { useEffect, useMemo, useState } from 'react';
 import { AlertCircle, Loader2, X } from 'lucide-react';
 import type { Layer, LayerMap } from '@/lib/layerStore';
+import { FEATURES } from '@/lib/features';
 import type { DiagramPayload } from '@/lib/aiHistoryHelpers';
 import { LINE_NODE_TYPES } from '@/lib/nodeConfig';
 
@@ -170,7 +171,7 @@ export function ApplyDiagramDrawer({
           </label>
         </section>
 
-        {mode === 'new' && linkableShapes.length > 0 && (
+        {FEATURES.DRILLDOWN_UI && mode === 'new' && linkableShapes.length > 0 && (
           <section className="border-b border-slate-100 px-5 py-4 dark:border-slate-800">
             <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
               Link to node (optional)
@@ -193,12 +194,6 @@ export function ApplyDiagramDrawer({
             </p>
           </section>
         )}
-
-        <section className="px-5 py-4">
-          <p className="text-[11px] text-slate-500 dark:text-slate-400">
-            Override replaces the layer&apos;s nodes/edges. Linking attaches the new layer as a child of the picked node (drill-down).
-          </p>
-        </section>
 
         {error && (
           <section className="px-5 pb-3">

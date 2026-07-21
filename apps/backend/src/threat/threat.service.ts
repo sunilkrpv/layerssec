@@ -69,11 +69,11 @@ export class ThreatService {
 
   // ── List all saved threat models for a project (summary only) ────────────
 
-  async listThreatModels(projectId: string, userId: string) {
+  async listThreatModels(projectId: string, userId: string, diagramId?: string) {
     await this.verifyProjectOwnership(projectId, userId);
 
     const models = await this.prisma.threatModel.findMany({
-      where: { projectId },
+      where: { projectId, ...(diagramId && { diagramId }) },
       orderBy: { savedAt: 'desc' },
       include: {
         threats: {
@@ -153,11 +153,16 @@ export class ThreatService {
       severity?: string;
       status?: string;
       strideCategory?: string;
+      diagramId?: string;
     },
   ) {
     await this.verifyProjectOwnership(projectId, userId);
 
-    const where: Record<string, unknown> = { threatModel: { projectId } };
+    const threatModelFilter = {
+      projectId,
+      ...(params.diagramId && { diagramId: params.diagramId }),
+    };
+    const where: Record<string, unknown> = { threatModel: threatModelFilter };
     if (params.severity) where['severity'] = params.severity as ThreatSeverity;
     if (params.status) where['status'] = params.status as ThreatStatus;
     if (params.strideCategory) where['strideCategory'] = params.strideCategory;
@@ -182,9 +187,9 @@ export class ThreatService {
         },
       }),
       this.prisma.threat.count({ where }),
-      // Summary always counts across all threats, ignoring current filters
+      // Summary counts respect diagramId scope so per-diagram dashboard numbers are accurate
       this.prisma.threat.findMany({
-        where: { threatModel: { projectId } },
+        where: { threatModel: threatModelFilter },
         select: { severity: true, status: true },
       }),
     ]);
@@ -272,11 +277,11 @@ export class ThreatService {
 
   // ── Posture Score History ─────────────────────────────────────────────────
 
-  async listPostureHistory(projectId: string, userId: string) {
+  async listPostureHistory(projectId: string, userId: string, diagramId?: string) {
     await this.verifyProjectOwnership(projectId, userId);
 
     return this.prisma.postureScore.findMany({
-      where: { projectId },
+      where: { projectId, ...(diagramId && { diagramId }) },
       orderBy: { analyzedAt: 'desc' },
       select: {
         id: true,
@@ -329,11 +334,11 @@ export class ThreatService {
     });
   }
 
-  async listAttackSimulations(projectId: string, userId: string) {
+  async listAttackSimulations(projectId: string, userId: string, diagramId?: string) {
     await this.verifyProjectOwnership(projectId, userId);
 
     return this.prisma.attackSimulation.findMany({
-      where: { projectId },
+      where: { projectId, ...(diagramId && { diagramId }) },
       orderBy: { createdAt: 'desc' },
       select: {
         id: true,

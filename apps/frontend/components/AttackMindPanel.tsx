@@ -383,14 +383,14 @@ export default function AttackMindPanel({
   const loadHistory = useCallback(async () => {
     setLoadingHistory(true);
     try {
-      const sims = await apiListAttackSimulations(projectId);
+      const sims = await apiListAttackSimulations(projectId, diagramId);
       setSimulations(sims);
     } catch {
       // ignore
     } finally {
       setLoadingHistory(false);
     }
-  }, [projectId]);
+  }, [projectId, diagramId]);
 
   // Load history on mount
   useEffect(() => { loadHistory(); }, [loadHistory]);

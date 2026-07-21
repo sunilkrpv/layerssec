@@ -35,6 +35,8 @@ interface ThreatModelPanelProps {
   threats: ThreatItem[];
   modelInfo: ThreatModelInfo | null;
   projectId?: string;
+  /** Scope all saved-model fetches to this diagram (per-diagram panel). */
+  diagramId?: string;
   /** Called when user clicks a threat card — highlights node/edge on canvas */
   onHighlightTarget: (targetId: string) => void;
   /** When the canvas badge is clicked, DiagramPage sets this to scroll the panel to that node's threats */
@@ -89,6 +91,7 @@ export default function ThreatModelPanel({
   threats,
   modelInfo,
   projectId,
+  diagramId,
   onHighlightTarget,
   externalTargetId,
   onExternalTargetConsumed,
@@ -213,7 +216,7 @@ export default function ThreatModelPanel({
     }
     let cancelled = false;
     setIsLoadingSaved(true);
-    apiListThreatModels(projectId)
+    apiListThreatModels(projectId, diagramId)
       .then((list) => {
         if (cancelled) return;
         const sortedByDate = [...list].sort(
@@ -228,7 +231,7 @@ export default function ThreatModelPanel({
         if (!cancelled) setIsLoadingSaved(false);
       });
     return () => { cancelled = true; };
-  }, [projectId, threats.length]);
+  }, [projectId, diagramId, threats.length]);
 
   const handleLoadSummary = useCallback(async (summaryId: string) => {
     setLoadingSummaryId(summaryId);
@@ -356,6 +359,7 @@ export default function ThreatModelPanel({
       {showHistory && projectId && (
         <ThreatHistoryPanel
           projectId={projectId}
+          diagramId={diagramId}
           isDark={isDark}
           onBack={() => setShowHistory(false)}
           onLoadModel={handleLoadFromHistory}
