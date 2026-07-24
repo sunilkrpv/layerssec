@@ -6,14 +6,16 @@ import { validateSafeHttpsUrl } from '@/lib/urlSafety';
 import {
   Settings, Cpu, Zap, BarChart3, Check, AlertCircle, Loader2,
   ChevronDown, Eye, EyeOff, Key, ShieldCheck, Trash2, Terminal,
-  ExternalLink, Brain, Gauge, ChevronRight,
+  ExternalLink, Brain, Gauge,
 } from 'lucide-react';
 import {
-  apiGetAiSettings, apiUpdateAiSettings, apiGetAiMetrics,
+  apiGetAiSettings, apiUpdateAiSettings, apiGetAiMetrics, apiGetAiModels,
   type UserAiSettings, type UpdateAiSettingsPayload, type AiProvider, type AiTokenMetrics,
 } from '@/lib/api';
 
 // ── Model catalog ─────────────────────────────────────────────────────────────
+
+const CUSTOM_MODEL_VALUE = '__custom__';
 
 type ReasoningLevel = 'fast' | 'balanced' | 'powerful' | 'reasoning';
 
@@ -221,12 +223,17 @@ function ModelPicker({
   provider,
   value,
   onChange,
+  catalog,
+  loading,
+  live,
 }: {
   provider: AiProvider;
   value: string;
   onChange: (v: string) => void;
+  catalog: ModelOption[];
+  loading: boolean;
+  live: boolean;
 }) {
-  const catalog = MODEL_CATALOG[provider] ?? [];
   const isCustom = value !== '' && !catalog.some((m) => m.id === value);
   const [showCustom, setShowCustom] = useState(isCustom);
 
@@ -240,60 +247,51 @@ function ModelPicker({
 
   return (
     <div className="space-y-2">
-      {/* Curated model list */}
-      <div className="space-y-1.5">
-        {catalog.map((m) => {
-          const rm = REASONING_META[m.reasoning];
-          const isSelected = value === m.id && !showCustom;
-          return (
-            <button
-              key={m.id}
-              onClick={() => handleSelect(m.id)}
-              className={`relative flex w-full items-start gap-3 rounded-xl border px-4 py-3 text-left transition-all ${
-                isSelected
-                  ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-500 dark:border-blue-500 dark:bg-blue-950/30'
-                  : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-slate-600'
-              }`}
-            >
-              <div className="mt-0.5 flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full border-2 border-current transition-colors" style={{ borderColor: isSelected ? '#3b82f6' : '#94a3b8' }}>
-                {isSelected && <div className="h-2 w-2 rounded-full bg-blue-500" />}
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-1.5">
-                  <span className={`text-[13px] font-semibold ${isSelected ? 'text-blue-700 dark:text-blue-300' : 'text-slate-800 dark:text-slate-100'}`}>
-                    {m.label}
-                  </span>
-                  <span className={`flex items-center gap-0.5 rounded-full border px-1.5 py-0.5 text-[10px] font-medium ${rm.color}`}>
-                    {rm.icon}
-                    {rm.label}
-                  </span>
-                  {m.badge && (
-                    <span className="rounded-full border border-indigo-200 bg-indigo-50 px-1.5 py-0.5 text-[10px] font-medium text-indigo-600 dark:border-indigo-800 dark:bg-indigo-950/30 dark:text-indigo-400">
-                      {m.badge}
-                    </span>
-                  )}
-                  <span className="ml-auto text-[10px] text-slate-400 dark:text-slate-500">{m.contextWindow} ctx</span>
-                </div>
-                <p className="mt-0.5 text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">{m.description}</p>
-              </div>
-            </button>
-          );
-        })}
+      {/* Live vs. fallback status */}
+      <div className="flex items-center gap-1.5 text-[11px] text-slate-400 dark:text-slate-500">
+        {loading ? (
+          <>
+            <Loader2 size={11} className="animate-spin" />
+            <span>Loading models from provider…</span>
+          </>
+        ) : live ? (
+          <>
+            <Check size={11} className="text-emerald-500" />
+            <span>Live list from your provider key</span>
+          </>
+        ) : (
+          <span>Suggested models — add an API key to load the live list</span>
+        )}
+      </div>
+
+      {/* Model dropdown */}
+      <div className="relative">
+        <select
+          value={showCustom ? CUSTOM_MODEL_VALUE : value}
+          onChange={(e) => {
+            if (e.target.value === CUSTOM_MODEL_VALUE) {
+              setShowCustom(true);
+              onChange('');
+            } else {
+              handleSelect(e.target.value);
+            }
+          }}
+          disabled={loading}
+          className="w-full appearance-none rounded-xl border border-slate-300 bg-white px-4 py-2.5 pr-10 text-[13px] font-medium text-slate-800 outline-none transition-colors focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 disabled:opacity-60 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+        >
+          {catalog.map((m) => (
+            <option key={m.id} value={m.id}>
+              {m.label} — {REASONING_META[m.reasoning].label}
+              {m.contextWindow && m.contextWindow !== '—' ? ` · ${m.contextWindow} ctx` : ''}
+              {m.badge ? ` · ${m.badge}` : ''}
+            </option>
+          ))}
+          <option value={CUSTOM_MODEL_VALUE}>Enter model name manually…</option>
+        </select>
+        <ChevronDown size={14} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" />
       </div>
 
       {/* Custom model entry */}
-      <button
-        onClick={() => { setShowCustom(true); if (!showCustom) onChange(''); }}
-        className={`flex w-full items-center gap-2 rounded-xl border px-4 py-2.5 text-left transition-all ${
-          showCustom
-            ? 'border-slate-400 bg-slate-50 dark:border-slate-500 dark:bg-slate-800'
-            : 'border-dashed border-slate-300 bg-white hover:border-slate-400 dark:border-slate-600 dark:bg-slate-800 dark:hover:border-slate-500'
-        }`}
-      >
-        <ChevronRight size={12} className={`flex-shrink-0 text-slate-400 transition-transform ${showCustom ? 'rotate-90' : ''}`} />
-        <span className="text-[12px] font-medium text-slate-600 dark:text-slate-300">Enter model name manually</span>
-        <span className="text-[11px] text-slate-400 dark:text-slate-500">(for latest or custom models)</span>
-      </button>
       {showCustom && (
         <input
           type="text"
@@ -522,6 +520,31 @@ export default function AiSettingsPage() {
   const [clearAnthropicKey, setClearAnthropicKey] = useState(false);
   const [clearOpenAiKey, setClearOpenAiKey] = useState(false);
 
+  // Dynamically-loaded model lists, keyed by provider. null = not yet fetched.
+  const [liveModels, setLiveModels] = useState<Partial<Record<AiProvider, ModelOption[]>>>({});
+  const [modelsLoading, setModelsLoading] = useState(false);
+
+  // Live list if the provider returned one; otherwise the static fallback catalog.
+  const effectiveCatalog = liveModels[provider] ?? MODEL_CATALOG[provider] ?? [];
+  const isLive = !!liveModels[provider];
+
+  const loadModels = useCallback(async (p: AiProvider) => {
+    setModelsLoading(true);
+    try {
+      const res = await apiGetAiModels(p);
+      // Only replace the static catalog when the provider actually returned a live list.
+      if (res.source === 'live' && res.models.length > 0) {
+        setLiveModels((prev) => ({ ...prev, [p]: res.models }));
+      } else {
+        setLiveModels((prev) => ({ ...prev, [p]: undefined }));
+      }
+    } catch {
+      setLiveModels((prev) => ({ ...prev, [p]: undefined }));
+    } finally {
+      setModelsLoading(false);
+    }
+  }, []);
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -546,10 +569,14 @@ export default function AiSettingsPage() {
 
   useEffect(() => { load(); }, [load]);
 
+  // Fetch the live model list whenever the selected provider changes.
+  useEffect(() => { void loadModels(provider); }, [provider, loadModels]);
+
   const handleProviderChange = (p: AiProvider) => {
     setProvider(p);
-    // Auto-select first recommended model for the new provider
-    const first = MODEL_CATALOG[p]?.[0];
+    // Auto-select first recommended model for the new provider (from whatever
+    // list we already have — live if cached, else static fallback).
+    const first = (liveModels[p] ?? MODEL_CATALOG[p])?.[0];
     if (first) setModel(first.id);
   };
 
@@ -590,6 +617,7 @@ export default function AiSettingsPage() {
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
       apiGetAiMetrics().then(setMetrics).catch(() => {});
+      void loadModels(provider); // a newly-added key may unlock the live list
       void refreshOnboarding();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to save settings');
@@ -651,7 +679,14 @@ export default function AiSettingsPage() {
             <Brain size={14} className="text-slate-500 dark:text-slate-400" />
             <h2 className="text-[13px] font-semibold text-slate-700 dark:text-slate-200">Model</h2>
           </div>
-          <ModelPicker provider={provider} value={model} onChange={setModel} />
+          <ModelPicker
+            provider={provider}
+            value={model}
+            onChange={setModel}
+            catalog={effectiveCatalog}
+            loading={modelsLoading}
+            live={isLive}
+          />
         </section>
 
         {/* API key — Anthropic */}
