@@ -19,5 +19,27 @@
       "Bash(git -C /Users/sunil/Development/github/layerssec add apps/frontend/components/projects/CanvasPane.tsx apps/frontend/components/projects/NewFlowDialog.tsx apps/frontend/components/projects/ProjectShell.tsx)",
       "Bash(git -C /Users/sunil/Development/github/layerssec status)"
     ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|Grep",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/opt/anaconda3/bin/graphify hook-guard search"
+          }
+        ]
+      },
+      {
+        "matcher": "Read|Glob",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/opt/anaconda3/bin/graphify hook-guard read"
+          }
+        ]
+      }
+    ]
   }
 }
