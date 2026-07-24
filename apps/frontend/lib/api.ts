@@ -1019,6 +1019,27 @@ export function apiGetAiMetrics(): Promise<AiTokenMetrics> {
   return apiFetch<AiTokenMetrics>('/api/user/ai-metrics');
 }
 
+export type AiReasoningLevel = 'fast' | 'balanced' | 'powerful' | 'reasoning';
+
+export interface AiModelInfo {
+  id: string;
+  label: string;
+  contextWindow: string;
+  reasoning: AiReasoningLevel;
+  description: string;
+  badge?: string;
+}
+
+export interface AiModelsResponse {
+  /** 'live' = fetched from the provider using the stored key; 'none' = fall back to the static catalog. */
+  source: 'live' | 'none';
+  models: AiModelInfo[];
+}
+
+export function apiGetAiModels(provider: AiProvider): Promise<AiModelsResponse> {
+  return apiFetch<AiModelsResponse>(`/api/user/ai-models?provider=${encodeURIComponent(provider)}`);
+}
+
 // ─── Onboarding ───────────────────────────────────────────────────────────────
 
 export interface OnboardingState {
