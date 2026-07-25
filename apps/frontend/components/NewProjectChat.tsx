@@ -7,14 +7,18 @@ import {
   Sparkles, ExternalLink, AlertTriangle,
 } from 'lucide-react';
 import LayersLogo from '@/components/LayersLogo';
-import { apiCreateProject, apiCreateDiagram, apiChatGenerate, type OversizeWarning } from '@/lib/api';
+import {
+  apiCreateProject, apiCreateDiagram, apiConverse,
+  type OversizeWarning, type ConverseMessage,
+} from '@/lib/api';
+import DiagramPreviewModal from './DiagramPreviewModal';
 import { generateId } from '@/lib/diagramUtils';
 import { cn } from '@/lib/utils';
 import MiniDiagramPreview from './MiniDiagramPreview';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type Phase = 'greeting' | 'building' | 'complete';
+type Phase = 'form' | 'chat' | 'complete';
 
 interface Message {
   id: string;
@@ -169,54 +173,31 @@ function ActionButtons({ onAction }: { onAction: (id: string) => void }) {
   );
 }
 
-// ── EmptyHero ─────────────────────────────────────────────────────────────────
-
-function EmptyHero() {
-  return (
-    <div className="flex flex-col items-center justify-center py-10 text-center">
-      <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 dark:bg-blue-950/40">
-        <Sparkles size={22} className="text-blue-600 dark:text-blue-400" />
-      </div>
-      <h2 className="text-[18px] font-semibold text-slate-800 dark:text-slate-100">
-        Start a new project
-      </h2>
-      <p className="mt-1 max-w-[420px] text-[14px] text-slate-500 dark:text-slate-400">
-        Describe the data flow you want to threat-model — who the actors are, what processes handle the data, and where it&apos;s stored. I&apos;ll generate a DFD with trust boundaries ready for STRIDE.
-      </p>
-    </div>
-  );
-}
-
 // ── NewProjectChat ────────────────────────────────────────────────────────────
 
 export default function NewProjectChat({ onDismiss, onCreated }: NewProjectChatProps = {}) {
   const router = useRouter();
   const embedded = !!onDismiss;
 
+  const [phase, setPhase] = useState<Phase>('form');
+  const [projectName, setProjectName] = useState('');
+  const [projectDescription, setProjectDescription] = useState('');
+  const [creatingProject, setCreatingProject] = useState(false);
+
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
-  const [phase, setPhase] = useState<Phase>('greeting');
-  const [thinking, setThinking] = useState(true);
+  const [thinking, setThinking] = useState(false);
   const [thinkingLabel, setThinkingLabel] = useState('');
   const [createdProjectId, setCreatedProjectId] = useState<string | null>(null);
   const [diagramNodes, setDiagramNodes] = useState<unknown[]>([]);
   const [diagramEdges, setDiagramEdges] = useState<unknown[]>([]);
+  const [diagramName, setDiagramName] = useState<string>('');
+  const [showModal, setShowModal] = useState(false);
   const [showNavPrompt, setShowNavPrompt] = useState(false);
   const [navPromptDismissed, setNavPromptDismissed] = useState(false);
   const [oversizeWarning, setOversizeWarning] = useState<OversizeWarning | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
-
-  // Show AI greeting on mount with a brief thinking animation
-  useEffect(() => {
-    const t = setTimeout(() => {
-      setThinking(false);
-      addMessage('ai', "Hi! Let's set up your first Data Flow Diagram for threat modeling. Describe the system: actors, processes, data stores, and what data flows between them. What should we call this project?");
-      inputRef.current?.focus();
-    }, 700);
-    return () => clearTimeout(t);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -226,106 +207,87 @@ export default function NewProjectChat({ onDismiss, onCreated }: NewProjectChatP
     setMessages((prev) => [...prev, { id: generateId(), role, text }]);
   };
 
-  const extractProjectName = (text: string): string => {
-    const patterns = [
-      /(?:call(?:ed)?|name(?:d)?|it[''']s|called)\s+["']?([A-Za-z0-9 _\-]+)["']?/i,
-      /["']([^"']{2,40})["']/,
-    ];
-    for (const re of patterns) {
-      const m = text.match(re);
-      if (m) return m[1].trim();
+  const handleCreateProject = useCallback(async () => {
+    const name = projectName.trim();
+    if (!name || creatingProject) return;
+    setCreatingProject(true);
+    try {
+      const project = await apiCreateProject(name, projectDescription.trim() || undefined);
+      setCreatedProjectId(project.id);
+      setPhase('chat');
+      setMessages([{
+        id: generateId(), role: 'ai',
+        text: "Great — now let's model your first flow. Describe one feature or flow to threat-model (e.g. \"user login with email + password\"). I'll ask a couple of questions, then draw a lightweight DFD. I won't assume your tech stack.",
+      }]);
+      setTimeout(() => inputRef.current?.focus(), 50);
+    } catch {
+      // surface error inline; stay on the form
+      setMessages([]);
+      alert('Could not create the project. Please try again.');
+    } finally {
+      setCreatingProject(false);
     }
-    const first = text.split(/[.\n]/)[0].trim();
-    if (first.length <= 40 && first.split(' ').length <= 5) return first;
-    return `Project ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
-  };
+  }, [projectName, projectDescription, creatingProject]);
 
   const handleSend = useCallback(async () => {
     const text = input.trim();
-    if (!text || thinking || phase === 'complete') return;
+    if (!text || thinking || phase !== 'chat' || !createdProjectId) return;
 
     setInput('');
     addMessage('user', text);
     setThinking(true);
-    setThinkingLabel('');
+    setThinkingLabel('Thinking…');
+
+    // Build transcript from prior messages + this new user turn.
+    const transcript: ConverseMessage[] = [
+      ...messages.map((m) => ({ role: m.role, text: m.text })),
+      { role: 'user' as const, text },
+    ];
 
     try {
-      if (phase === 'greeting') {
-        setPhase('building');
-        setThinkingLabel('Designing your DFD…');
-        try {
-          const result = await apiChatGenerate({ prompt: text });
+      const res = await apiConverse({ projectId: createdProjectId, messages: transcript });
 
-          const projectName = result.projectName?.trim() || extractProjectName(text);
-          const diagramName = result.diagramName?.trim() || projectName;
-
-          setThinkingLabel(`Creating "${projectName}"…`);
-          const project = await apiCreateProject(projectName, text);
-          setCreatedProjectId(project.id);
-
-          setThinkingLabel('Saving diagram…');
-          const rootLayerId = 'root';
-          const canvasData = {
-            layers: {
-              [rootLayerId]: {
-                id: rootLayerId,
-                name: diagramName,
-                description: diagramName,
-                parentLayerId: null,
-                parentNodeId: null,
-                nodes: result.nodes,
-                edges: result.edges,
-                createdAt: new Date().toISOString(),
-              },
-            },
-            navStack: [rootLayerId],
-          };
-
-          await apiCreateDiagram(project.id, diagramName, canvasData);
-
-          setDiagramNodes(result.nodes as unknown[]);
-          setDiagramEdges(result.edges as unknown[]);
-          if (result.oversizeWarning) setOversizeWarning(result.oversizeWarning);
-          setThinking(false);
-          setThinkingLabel('');
-
-          addMessage(
-            'ai',
-            `Your DFD is ready — ${(result.nodes as unknown[]).length} elements with trust boundaries inferred from your description. Here's a preview:`,
-          );
-          setPhase('complete');
-          if (embedded) {
-            setShowNavPrompt(true);
-            onCreated?.(project.id);
-          }
-        } catch {
-          // AI failed — still create a project from heuristic name so user can proceed manually.
-          const fallbackName = extractProjectName(text);
-          setThinkingLabel(`Creating "${fallbackName}"…`);
-          try {
-            const project = await apiCreateProject(fallbackName, text);
-            setCreatedProjectId(project.id);
-            setThinking(false);
-            setThinkingLabel('');
-            addMessage('ai', "I had trouble generating the diagram, but your project is created. You can open it and build manually.");
-            setPhase('complete');
-            if (embedded) {
-              setShowNavPrompt(true);
-              onCreated?.(project.id);
-            }
-          } catch {
-            setThinking(false);
-            setThinkingLabel('');
-            addMessage('ai', 'Something went wrong creating your project. Please try again.');
-          }
-        }
+      if (res.mode === 'refuse' || res.mode === 'ask') {
+        setThinking(false);
+        setThinkingLabel('');
+        addMessage('ai', res.message);
+        return;
       }
-    } catch {
-      addMessage('ai', 'Something went wrong creating your project. Please try again.');
+
+      // mode === 'generate'
+      setThinkingLabel('Saving diagram…');
+      const dName = res.diagramName?.trim() || 'Untitled Flow';
+      const canvasData = {
+        layers: {
+          root: {
+            id: 'root', name: dName, description: dName,
+            parentLayerId: null, parentNodeId: null,
+            nodes: res.nodes, edges: res.edges,
+            createdAt: new Date().toISOString(),
+          },
+        },
+        navStack: ['root'],
+      };
+      await apiCreateDiagram(createdProjectId, dName, canvasData);
+
+      setDiagramNodes(res.nodes);
+      setDiagramEdges(res.edges);
+      setDiagramName(dName);
+      if (res.oversizeWarning) setOversizeWarning(res.oversizeWarning);
       setThinking(false);
       setThinkingLabel('');
+      addMessage('ai', res.message || `Your DFD is ready — ${res.nodes.length} elements. Here's a preview:`);
+      setPhase('complete');
+      if (embedded) {
+        setShowNavPrompt(true);
+        onCreated?.(createdProjectId);
+      }
+    } catch {
+      setThinking(false);
+      setThinkingLabel('');
+      addMessage('ai', 'I had trouble with that. Your project is created — you can open it and build manually, or try describing the flow again.');
     }
-  }, [input, thinking, phase, embedded, onCreated]);
+  }, [input, thinking, phase, createdProjectId, messages, embedded, onCreated]);
 
   const handleAction = (action: string) => {
     if (!createdProjectId) return;
@@ -366,13 +328,55 @@ export default function NewProjectChat({ onDismiss, onCreated }: NewProjectChatP
     }
   };
 
+  // ── Project setup form ────────────────────────────────────────────────────
+  const formView = (
+    <div className="flex-1 overflow-y-auto px-4 py-10">
+      <div className="mx-auto flex w-full max-w-[520px] flex-col gap-5">
+        <div className="text-center">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 dark:bg-blue-950/40">
+            <Sparkles size={22} className="text-blue-600 dark:text-blue-400" />
+          </div>
+          <h2 className="text-[18px] font-semibold text-slate-800 dark:text-slate-100">Start a new project</h2>
+          <p className="mx-auto mt-1 max-w-[420px] text-[14px] text-slate-500 dark:text-slate-400">
+            A project is a new application — frontend, backend, or both. Diagrams cover individual features or flows within it.
+          </p>
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <label className="text-[13px] font-medium text-slate-700 dark:text-slate-200">Project name</label>
+          <input
+            value={projectName}
+            onChange={(e) => setProjectName(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') handleCreateProject(); }}
+            placeholder="e.g. Acme Banking App"
+            className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-[15px] text-slate-800 outline-none focus:border-blue-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+          />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <label className="text-[13px] font-medium text-slate-700 dark:text-slate-200">Description <span className="text-slate-400">(optional)</span></label>
+          <textarea
+            value={projectDescription}
+            onChange={(e) => setProjectDescription(e.target.value)}
+            rows={3}
+            placeholder="What does this application do? Who uses it?"
+            className="resize-none rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-[15px] leading-relaxed text-slate-800 outline-none focus:border-blue-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+          />
+        </div>
+        <button
+          onClick={handleCreateProject}
+          disabled={!projectName.trim() || creatingProject}
+          className="flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-[14px] font-medium text-white hover:bg-blue-700 disabled:opacity-40"
+        >
+          {creatingProject ? <Loader2 size={16} className="animate-spin" /> : <ArrowRight size={16} />}
+          Continue to diagram
+        </button>
+      </div>
+    </div>
+  );
+
   // ── Shared chat thread content ───────────────────────────────────────────
   const chatThread = (
     <div className="flex-1 overflow-y-auto px-4 py-4">
       <div className="mx-auto flex w-full max-w-[680px] flex-col gap-4">
-        {/* Empty hero shown before any message is sent (and greeting hasn't appeared yet) */}
-        {messages.length === 0 && !thinking && <EmptyHero />}
-
         {messages.map((m) => (
           <ChatBubble key={m.id} message={m} />
         ))}
@@ -402,6 +406,12 @@ export default function NewProjectChat({ onDismiss, onCreated }: NewProjectChatP
                 <span className="text-[12px] font-medium text-slate-600 dark:text-slate-300">
                   {diagramNodes.length} components · {diagramEdges.length} connections
                 </span>
+                <button
+                  onClick={() => setShowModal(true)}
+                  className="ml-auto flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-950/40"
+                >
+                  <ExternalLink size={12} /> Expand
+                </button>
               </div>
               <div className="h-[240px]">
                 <MiniDiagramPreview nodes={diagramNodes} edges={diagramEdges} className="h-full rounded-none border-0" />
@@ -424,6 +434,15 @@ export default function NewProjectChat({ onDismiss, onCreated }: NewProjectChatP
 
         <div ref={bottomRef} />
       </div>
+
+      {showModal && (
+        <DiagramPreviewModal
+          nodes={diagramNodes}
+          edges={diagramEdges}
+          title={diagramName || 'Diagram preview'}
+          onClose={() => setShowModal(false)}
+        />
+      )}
     </div>
   );
 
@@ -437,7 +456,7 @@ export default function NewProjectChat({ onDismiss, onCreated }: NewProjectChatP
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
           disabled={thinking || phase === 'complete'}
-          placeholder="e.g. End users place orders via a React web app. The API Gateway authenticates, then Orders Service writes to Postgres and publishes events to Kafka. Stripe handles payments. Call it Orders Platform."
+          placeholder="Describe one feature or flow to threat-model — e.g. a user signs in with email and password, the app verifies it and issues a session. No need to name your tech stack."
           rows={4}
           className="flex-1 resize-none rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-[15px] leading-relaxed text-slate-800 placeholder-slate-400 outline-none focus:border-blue-500 focus:bg-white disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-500 dark:focus:border-blue-500 dark:focus:bg-slate-800"
           style={{ minHeight: '96px', maxHeight: '200px' }}
@@ -490,8 +509,8 @@ export default function NewProjectChat({ onDismiss, onCreated }: NewProjectChatP
           </div>
         </div>
 
-        {chatThread}
-        {inputBar}
+        {phase === 'form' ? formView : chatThread}
+        {phase !== 'form' && inputBar}
       </div>
     );
   }
@@ -511,8 +530,8 @@ export default function NewProjectChat({ onDismiss, onCreated }: NewProjectChatP
           Skip setup →
         </button>
       </header>
-      {chatThread}
-      {inputBar}
+      {phase === 'form' ? formView : chatThread}
+      {phase !== 'form' && inputBar}
     </div>
   );
 }

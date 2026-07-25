@@ -17,7 +17,10 @@ describe('AiService', () => {
   let prisma: {
     diagram: { findUnique: jest.Mock };
     aiJob: { findFirst: jest.Mock };
+    aiInteraction: { create: jest.Mock };
   };
+  let chat: { saveMessages: jest.Mock };
+  let userSettingsService: { getAiSettings: jest.Mock; getDecryptedApiKey: jest.Mock };
 
   beforeEach(async () => {
     const llmMock: Partial<jest.Mocked<LlmService>> = {
@@ -30,6 +33,25 @@ describe('AiService', () => {
     prisma = {
       diagram: { findUnique: jest.fn() },
       aiJob: { findFirst: jest.fn() },
+      aiInteraction: { create: jest.fn().mockResolvedValue({ id: 'interaction-1' }) },
+    };
+
+    chat = { saveMessages: jest.fn().mockResolvedValue(undefined) };
+
+    userSettingsService = {
+      getAiSettings: jest.fn().mockResolvedValue({
+        provider: 'ANTHROPIC',
+        model: 'claude-sonnet-4-6',
+        maxInputTokens: null,
+        maxOutputTokens: null,
+        ollamaBaseUrl: null,
+        openAiBaseUrl: null,
+        anthropicKeySet: false,
+        anthropicKeyMasked: null,
+        openAiKeySet: false,
+        openAiKeyMasked: null,
+      }),
+      getDecryptedApiKey: jest.fn().mockResolvedValue(null),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -37,10 +59,10 @@ describe('AiService', () => {
         AiService,
         { provide: LlmService, useValue: llmMock },
         { provide: PrismaService, useValue: prisma },
-        { provide: ChatService, useValue: {} },
+        { provide: ChatService, useValue: chat },
         { provide: RagContextService, useValue: {} },
         { provide: RagIndexingService, useValue: {} },
-        { provide: UserSettingsService, useValue: {} },
+        { provide: UserSettingsService, useValue: userSettingsService },
         { provide: OnboardingService, useValue: {} },
         { provide: getQueueToken(THREAT_ANALYSIS_QUEUE), useValue: {} },
         { provide: getQueueToken(POSTURE_SCORE_QUEUE), useValue: {} },
@@ -127,6 +149,61 @@ describe('AiService', () => {
       expect(config?.promptName).toBe('intel-synthesis');
       expect(userMessage).toContain('Acme');
       expect(userMessage).toContain('Login');
+    });
+  });
+
+  describe('converse', () => {
+    it('returns refuse without persisting a diagram-shaped response', async () => {
+      llm.invoke.mockResolvedValue({
+        content: '{"mode":"refuse","message":"I only model software applications."}',
+        tokensUsed: 5, inputTokens: 3, outputTokens: 2, provider: 'anthropic', model: 'x',
+      });
+
+      const res = await service.converse('user-1', {
+        projectId: '00000000-0000-0000-0000-000000000000',
+        messages: [{ role: 'user', text: 'how do I bake bread' }],
+      });
+
+      expect(res.mode).toBe('refuse');
+      expect(prisma.aiInteraction.create).toHaveBeenCalled();
+      expect(chat.saveMessages).toHaveBeenCalled();
+    });
+
+    it('returns a generate result with sanitized nodes and no technology', async () => {
+      llm.invoke.mockResolvedValue({
+        content: JSON.stringify({
+          mode: 'generate', message: 'Drew it', diagramName: 'Login Flow',
+          nodes: [{ id: 'db', type: 'database', position: { x: 1, y: 1 }, data: { label: 'DB', technology: 'PostgreSQL', trustLevel: 'internal' } }],
+          edges: [],
+        }),
+        tokensUsed: 9, inputTokens: 5, outputTokens: 4, provider: 'anthropic', model: 'x',
+      });
+
+      const res = await service.converse('user-1', {
+        projectId: '00000000-0000-0000-0000-000000000000',
+        messages: [{ role: 'user', text: 'model a login flow with a db' }],
+      });
+
+      expect(res.mode).toBe('generate');
+      if (res.mode === 'generate') {
+        expect((res.nodes[0] as { data: Record<string, unknown> }).data.technology).toBeUndefined();
+      }
+    });
+
+    it('degrades to an ask result when the LLM output fails to parse', async () => {
+      llm.invoke.mockResolvedValue({
+        content: 'not valid json at all',
+        tokensUsed: 4, inputTokens: 2, outputTokens: 2, provider: 'anthropic', model: 'x',
+      });
+
+      const res = await service.converse('user-1', {
+        projectId: '00000000-0000-0000-0000-000000000000',
+        messages: [{ role: 'user', text: 'model a login flow' }],
+      });
+
+      expect(res.mode).toBe('ask');
+      expect(prisma.aiInteraction.create).toHaveBeenCalled();
+      expect(chat.saveMessages).toHaveBeenCalled();
     });
   });
 });

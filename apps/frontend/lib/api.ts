@@ -407,6 +407,31 @@ export function apiChatGenerate(payload: {
   });
 }
 
+export type ConverseMessage = { role: 'user' | 'ai'; text: string };
+
+export type ConverseResponse =
+  | { mode: 'refuse'; message: string }
+  | { mode: 'ask'; message: string }
+  | {
+      mode: 'generate';
+      message: string;
+      diagramName?: string;
+      nodes: unknown[];
+      edges: unknown[];
+      oversizeWarning?: OversizeWarning;
+    };
+
+/** New-project conversational DFD builder — one turn per call, full transcript sent each time. */
+export function apiConverse(payload: {
+  projectId: string;
+  messages: ConverseMessage[];
+}): Promise<ConverseResponse> {
+  return apiFetch<ConverseResponse>('/api/ai/new-project/converse', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
 /** Streaming contextual chat — gathers live diagram info, nodes, versions + semantic memories
  *  from ChromaDB before generating a response. Used by the AI History page. */
 export async function apiContextualChatAsk(

@@ -1,4 +1,4 @@
-import { sanitizeNodePositions, validateOversizeWarning, coerceName } from '../diagram-postprocess';
+import { sanitizeNodePositions, validateOversizeWarning, coerceName, extractJsonObject } from '../diagram-postprocess';
 
 export type ConverseResult =
   | { mode: 'refuse'; message: string }
@@ -26,12 +26,7 @@ function stripTechnology(nodes: Array<Record<string, unknown>>): Array<Record<st
 
 /** Parse one LLM turn into a typed ConverseResult. Throws on unparseable/invalid generate output. */
 export function parseConverse(raw: string, onDefaultPos?: (id: string) => void): ConverseResult {
-  const cleaned = raw
-    .replace(/^```json\s*/i, '')
-    .replace(/^```\s*/i, '')
-    .replace(/```\s*$/i, '')
-    .trim();
-  const obj = JSON.parse(cleaned) as { mode?: unknown; message?: unknown } & Record<string, unknown>;
+  const obj = JSON.parse(extractJsonObject(raw)) as { mode?: unknown; message?: unknown } & Record<string, unknown>;
   const message = typeof obj.message === 'string' ? obj.message : '';
 
   if (obj.mode === 'refuse') return { mode: 'refuse', message };

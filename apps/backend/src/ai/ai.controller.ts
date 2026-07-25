@@ -9,6 +9,7 @@ import { GenerateDto } from './dto/generate.dto';
 import { SuggestDto } from './dto/suggest.dto';
 import { RefineDto } from './dto/refine.dto';
 import { ChatGenerateDto } from './dto/chat-generate.dto';
+import { ConverseDto } from './dto/converse.dto';
 import { ChatEvaluateDto } from './dto/chat-evaluate.dto';
 import { ChatAskDto } from './dto/chat-ask.dto';
 import { ContextualAskDto } from './dto/contextual-ask.dto';
@@ -44,6 +45,11 @@ export class AiController {
   @Post('chat/generate')
   chatGenerate(@CurrentUser('id') userId: string, @Body() dto: ChatGenerateDto) {
     return this.ai.chatGenerate(userId, dto);
+  }
+
+  @Post('new-project/converse')
+  converse(@CurrentUser('id') userId: string, @Body() dto: ConverseDto) {
+    return this.ai.converse(userId, dto);
   }
 
   @Post('chat/evaluate')

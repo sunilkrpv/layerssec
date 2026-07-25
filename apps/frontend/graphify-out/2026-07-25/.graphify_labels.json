@@ -34,6 +34,7 @@
   "32": "Module 32",
   "33": "Module 33",
   "34": "Module 34",
+  "35": "Module 35",
   "36": "Module 36",
   "37": "Module 37",
   "38": "Module 38",
@@ -52,6 +53,7 @@
   "51": "Module 51",
   "52": "Module 52",
   "53": "Module 53",
+  "54": "Module 54",
   "55": "Module 55",
   "56": "Module 56",
   "57": "Module 57",
@@ -67,5 +69,6 @@
   "67": "Module 67",
   "68": "Module 68",
   "69": "Layers — Frontend (orientation)",
+  "70": "apiListProjectVersions",
   "71": "Layers — Documentation"
 }

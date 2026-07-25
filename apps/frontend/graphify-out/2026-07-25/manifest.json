@@ -220,9 +220,9 @@
     "semantic_hash": "26666a29f73da444e1bd57b60dd4535b"
   },
   "components/NewProjectChat.tsx": {
-    "mtime": 1784992616.1104612,
-    "ast_hash": "a511b90feec76698f566f4bdd93dcf71",
-    "semantic_hash": ""
+    "mtime": 1781766408.2404575,
+    "ast_hash": "111013bfb8a168206891d66023767c63",
+    "semantic_hash": "111013bfb8a168206891d66023767c63"
   },
   "components/NodeContextMenu.tsx": {
     "mtime": 1781427814.35254,
@@ -780,9 +780,9 @@
     "semantic_hash": "b0cd02137fa8f1724b282438e3eefc9a"
   },
   "lib/api.ts": {
-    "mtime": 1784992378.640408,
-    "ast_hash": "2eefc1c34c61d025c053f9903ca7d7ff",
-    "semantic_hash": ""
+    "mtime": 1784864431.4119933,
+    "ast_hash": "7f5ce7b114e38a7a82149fe2deaaf05b",
+    "semantic_hash": "7f5ce7b114e38a7a82149fe2deaaf05b"
   },
   "lib/authStore.ts": {
     "mtime": 1778066612.401467,
@@ -880,9 +880,9 @@
     "semantic_hash": "4f3a3fc4089496a241ab805a158e8050"
   },
   "next-env.d.ts": {
-    "mtime": 1784992969.987091,
-    "ast_hash": "2a74d3909800ca5467fa83b0ab4a4890",
-    "semantic_hash": ""
+    "mtime": 1781417756.278374,
+    "ast_hash": "d0f8375ae1199dc7acd3977fc33b78b8",
+    "semantic_hash": "d0f8375ae1199dc7acd3977fc33b78b8"
   },
   "next.config.mjs": {
     "mtime": 1778066612.404738,
@@ -977,11 +977,6 @@
   "app/icon.svg": {
     "mtime": 1778066612.364856,
     "ast_hash": "0ad3bddf17c7449fd854953e403525c5",
-    "semantic_hash": ""
-  },
-  "components/DiagramPreviewModal.tsx": {
-    "mtime": 1784992451.5063968,
-    "ast_hash": "5f469ef0254aeedff71ace294a45293d",
     "semantic_hash": ""
   }
 }

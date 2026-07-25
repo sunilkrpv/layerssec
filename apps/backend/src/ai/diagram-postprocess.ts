@@ -36,3 +36,37 @@ export function validateOversizeWarning(
 export function coerceName(v: unknown, maxLen: number): string | undefined {
   return typeof v === 'string' && v.trim().length > 0 ? v.trim().slice(0, maxLen) : undefined;
 }
+
+/**
+ * Pull the first balanced top-level JSON object out of a raw LLM response.
+ *
+ * Robust to what fence-stripping alone misses: reasoning preambles (`<think>…</think>`),
+ * prose ("Here is the JSON:"), markdown fences anywhere, and trailing commentary after
+ * the object. Scans brace depth while respecting string literals + escapes, so braces
+ * inside string values don't end the object early. Throws if no balanced object exists.
+ */
+export function extractJsonObject(raw: string): string {
+  const withoutThink = raw.replace(/<think>[\s\S]*?<\/think>/gi, '');
+  const start = withoutThink.indexOf('{');
+  if (start === -1) throw new Error('no JSON object found in LLM response');
+
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+  for (let i = start; i < withoutThink.length; i++) {
+    const ch = withoutThink[i];
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (ch === '\\') escaped = true;
+      else if (ch === '"') inString = false;
+      continue;
+    }
+    if (ch === '"') inString = true;
+    else if (ch === '{') depth++;
+    else if (ch === '}') {
+      depth--;
+      if (depth === 0) return withoutThink.slice(start, i + 1);
+    }
+  }
+  throw new Error('unbalanced JSON object in LLM response');
+}

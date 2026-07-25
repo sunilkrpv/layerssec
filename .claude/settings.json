@@ -17,7 +17,10 @@
       "Bash(sed -n '133,145p' /Users/sunil/Development/github/layerssec/apps/backend/src/ai/ai.controller.ts)",
       "Bash(sed -n '756,820p' /Users/sunil/Development/github/layerssec/apps/backend/src/ai/ai.service.ts)",
       "Bash(git -C /Users/sunil/Development/github/layerssec add apps/frontend/components/projects/CanvasPane.tsx apps/frontend/components/projects/NewFlowDialog.tsx apps/frontend/components/projects/ProjectShell.tsx)",
-      "Bash(git -C /Users/sunil/Development/github/layerssec status)"
+      "Bash(git -C /Users/sunil/Development/github/layerssec status)",
+      "Bash(cd /Users/sunil/Development/github/layerssec *)",
+      "Read(//Users/sunil/.claude/plugins/cache/claude-plugins-official/superpowers/6.1.1/skills/subagent-driven-development/scripts/**)",
+      "Read(//Users/sunil/.claude/plugins/cache/claude-plugins-official/superpowers/6.1.1/skills/subagent-driven-development/**)"
     ]
   },
   "hooks": {

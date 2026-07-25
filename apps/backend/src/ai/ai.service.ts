@@ -1,6 +1,6 @@
 import { Injectable, InternalServerErrorException, Logger, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { intelSynthesisPrompt } from './prompts/intel-synthesis.prompt';
-import { sanitizeNodePositions, validateOversizeWarning, coerceName } from './diagram-postprocess';
+import { sanitizeNodePositions, validateOversizeWarning, coerceName, extractJsonObject } from './diagram-postprocess';
 
 // ── Exported interfaces ────────────────────────────────────────────────────
 
@@ -61,6 +61,9 @@ import { ChatGenerateDto } from './dto/chat-generate.dto';
 import { ChatEvaluateDto } from './dto/chat-evaluate.dto';
 import { ChatAskDto } from './dto/chat-ask.dto';
 import { ContextualAskDto } from './dto/contextual-ask.dto';
+import { NEW_PROJECT_CONVERSE_PROMPT } from './prompts/new-project-converse-prompt';
+import { parseConverse, ConverseResult } from './new-project/converse-parser';
+import { ConverseDto } from './dto/converse.dto';
 
 @Injectable()
 export class AiService {
@@ -133,11 +136,7 @@ export class AiService {
     const startTime = Date.now();
     const llmResult = await this.llm.invoke(LAYERS_SYSTEM_PROMPT, userMessage, { ...llmConfig, promptName: 'LAYERS_SYSTEM_PROMPT' });
     const durationMs = Date.now() - startTime;
-    const raw = llmResult.content
-      .replace(/^```json\s*/i, '')
-      .replace(/^```\s*/i, '')
-      .replace(/```\s*$/i, '')
-      .trim();
+    const raw = extractJsonObject(llmResult.content);
     const diagram = JSON.parse(raw) as {
       projectName?: unknown;
       diagramName?: unknown;
@@ -198,6 +197,97 @@ export class AiService {
       ]);
     }
     return { projectName, diagramName, nodes: sanitizedNodes, edges: diagram.edges, oversizeWarning };
+  }
+
+  // ── New-project conversational DFD builder ───────────────────────────────
+
+  async converse(userId: string, dto: ConverseDto): Promise<ConverseResult> {
+    const turn = dto.messages.length;
+    this.logger.log(`[new-project] turn=${turn} userId=${userId} projectId=${dto.projectId} received`);
+    if (process.env.AI_DEBUG === 'true') {
+      const last = dto.messages[dto.messages.length - 1]?.text ?? '';
+      this.logger.log(`[new-project] input(120)="${last.slice(0, 120)}"`);
+    }
+
+    const transcript = dto.messages
+      .map((m) => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.text}`)
+      .join('\n');
+    const llmConfig = await this.buildLlmConfig(userId);
+    const startTime = Date.now();
+    const llmResult = await this.llm.invoke(NEW_PROJECT_CONVERSE_PROMPT, transcript, {
+      ...llmConfig,
+      promptName: 'NEW_PROJECT_CONVERSE_PROMPT',
+    });
+    const durationMs = Date.now() - startTime;
+
+    let result: ConverseResult;
+    try {
+      result = parseConverse(llmResult.content, (id) =>
+        this.logger.warn(`[new-project] node ${id} missing valid position — defaulting`),
+      );
+    } catch (err) {
+      // Log only the error type by default — JSON.parse errors embed a snippet of the raw
+      // LLM output (which can echo user content), so the full message is gated behind AI_DEBUG.
+      const errName = err instanceof Error ? err.name : 'Error';
+      this.logger.error(`[new-project] parse-failed turn=${turn} err=${errName}`);
+      if (process.env.AI_DEBUG === 'true') {
+        this.logger.error(`[new-project] parse-failed detail: ${String(err)}`);
+      }
+      // Degrade to an ask so the conversation can continue.
+      result = { mode: 'ask', message: 'Could you add a bit more detail about that flow?' };
+    }
+
+    if (result.mode === 'generate') {
+      const nodeCount = result.nodes.length;
+      const edgeCount = result.edges.length;
+      const boundaryCount = (result.nodes as Array<{ type?: string }>).filter((n) => n.type === 'trustboundary').length;
+      this.logger.log(`[new-project] mode=generate turn=${turn} parsed nodes=${nodeCount} edges=${edgeCount} boundaries=${boundaryCount}`);
+    } else {
+      this.logger.log(`[new-project] mode=${result.mode} turn=${turn}`);
+    }
+
+    const lastUser = [...dto.messages].reverse().find((m) => m.role === 'user')?.text ?? '';
+    await this.prisma.aiInteraction
+      .create({
+        data: {
+          userId,
+          diagramId: null,
+          prompt: `[new-project] ${lastUser}`,
+          response: {
+            mode: result.mode,
+            ...(result.mode === 'generate'
+              ? { nodeCount: result.nodes.length, edgeCount: result.edges.length, diagramName: result.diagramName }
+              : { message: result.message }),
+          },
+          tokensUsed: llmResult.tokensUsed,
+          inputTokens: llmResult.inputTokens,
+          outputTokens: llmResult.outputTokens,
+          model: `${llmResult.provider}/${llmResult.model}`,
+          durationMs,
+        },
+      })
+      .catch((e: unknown) => this.logger.error(`[new-project] failed to persist aiInteraction: ${String(e)}`));
+
+    const assistantContent =
+      result.mode === 'generate'
+        ? `${result.message} (${result.nodes.length} nodes, ${result.edges.length} edges)`
+        : result.message;
+    await this.chat
+      .saveMessages(dto.projectId, userId, [
+        { role: 'user', content: lastUser },
+        {
+          role: 'assistant',
+          content: assistantContent,
+          provider: llmResult.provider,
+          model: llmResult.model,
+          inputTokens: llmResult.inputTokens,
+          outputTokens: llmResult.outputTokens,
+        },
+      ])
+      .catch((e: unknown) => this.logger.error(`[new-project] failed to persist chat: ${String(e)}`));
+
+    this.logger.log(`[new-project] done turn=${turn} durationMs=${durationMs}`);
+    return result;
   }
 
   async chatEvaluate(userId: string, dto: ChatEvaluateDto, res: Response) {

@@ -51,6 +51,27 @@ describe('parseConverse', () => {
     }
   });
 
+  it('parses despite a prose preamble before the JSON', () => {
+    const r = parseConverse('Here is the JSON you asked for:\n{"mode":"ask","message":"hi"}');
+    expect(r.mode).toBe('ask');
+  });
+
+  it('parses despite a <think> reasoning block before the JSON', () => {
+    const r = parseConverse('<think>the user wants a login flow, generate it</think>\n{"mode":"refuse","message":"software only"}');
+    expect(r.mode).toBe('refuse');
+  });
+
+  it('parses despite trailing commentary after the JSON object', () => {
+    const r = parseConverse('{"mode":"ask","message":"which flow?"}\nHope that helps!');
+    expect(r.mode).toBe('ask');
+  });
+
+  it('does not end the object early on braces inside string values', () => {
+    const r = parseConverse('{"mode":"ask","message":"use the {placeholder} value"}');
+    if (r.mode === 'ask') expect(r.message).toBe('use the {placeholder} value');
+    else throw new Error('expected ask');
+  });
+
   it('throws on invalid JSON', () => {
     expect(() => parseConverse('not json')).toThrow();
   });
