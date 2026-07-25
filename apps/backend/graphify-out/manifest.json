@@ -110,9 +110,9 @@
     "semantic_hash": "e490822aec9f629734413ef560f13d9e"
   },
   "src/ai/ai.controller.ts": {
-    "mtime": 1781431254.614096,
-    "ast_hash": "b1906775631e08ba6113d613c70c2a70",
-    "semantic_hash": "b1906775631e08ba6113d613c70c2a70"
+    "mtime": 1784992224.205936,
+    "ast_hash": "29e226ee8ad97662932966efa40dab0b",
+    "semantic_hash": ""
   },
   "src/ai/ai.module.ts": {
     "mtime": 1781427006.2570388,
@@ -125,8 +125,8 @@
     "semantic_hash": ""
   },
   "src/ai/ai.service.ts": {
-    "mtime": 1784991482.3022006,
-    "ast_hash": "686a6ee62a0dfda382c80c295db094cf",
+    "mtime": 1784993754.7717602,
+    "ast_hash": "33647b1959e945388c8d2f9918a9aff1",
     "semantic_hash": ""
   },
   "src/ai/dto/attack-mind.dto.ts": {
@@ -705,8 +705,8 @@
     "semantic_hash": ""
   },
   "src/ai/diagram-postprocess.ts": {
-    "mtime": 1784982654.3079753,
-    "ast_hash": "b905edecd00c4c6121794430f90e9f4d",
+    "mtime": 1784993727.2416365,
+    "ast_hash": "281524bffcc6f4ba861ed1ec97f4378b",
     "semantic_hash": ""
   },
   "src/ai/dto/converse.dto.ts": {
@@ -715,18 +715,18 @@
     "semantic_hash": ""
   },
   "src/ai/new-project/converse-parser.spec.ts": {
-    "mtime": 1784987337.3196127,
-    "ast_hash": "965db5cc6e2aff1dafd7084a92985697",
+    "mtime": 1784993783.7722492,
+    "ast_hash": "80a94a1abeecc3f2e53b72f4ae683d3d",
     "semantic_hash": ""
   },
   "src/ai/new-project/converse-parser.ts": {
-    "mtime": 1784987418.119503,
-    "ast_hash": "09743589914cecf2583896ef9f4ec927",
+    "mtime": 1784993737.579694,
+    "ast_hash": "1a6bba75874d3ed5a5943e104f1182de",
     "semantic_hash": ""
   },
   "src/ai/prompts/new-project-converse-prompt.ts": {
-    "mtime": 1784987156.9512584,
-    "ast_hash": "3a68a5fd535109fefcbcca1c4656e086",
+    "mtime": 1784993769.6648297,
+    "ast_hash": "6f42ca2ee2bfa6684980e14148ea9bf9",
     "semantic_hash": ""
   }
 }

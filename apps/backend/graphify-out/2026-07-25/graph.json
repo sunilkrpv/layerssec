@@ -384,8 +384,8 @@
       "source_location": "L30",
       "_origin": "ast",
       "id": "package_dependencies_anthropic_ai_sdk",
-      "community": 106,
-      "community_name": "@anthropic-ai/sdk",
+      "community": 39,
+      "community_name": "Module 39",
       "norm_label": "@anthropic-ai/sdk"
     },
     {
@@ -395,8 +395,8 @@
       "source_location": "L30",
       "_origin": "ast",
       "id": "anthropic_ai_sdk",
-      "community": 106,
-      "community_name": "@anthropic-ai/sdk",
+      "community": 39,
+      "community_name": "Module 39",
       "norm_label": "@anthropic-ai/sdk"
     },
     {
@@ -406,8 +406,8 @@
       "source_location": "L31",
       "_origin": "ast",
       "id": "package_dependencies_chroma_core_default_embed",
-      "community": 39,
-      "community_name": "Module 39",
+      "community": 32,
+      "community_name": "Module 32",
       "norm_label": "@chroma-core/default-embed"
     },
     {
@@ -417,8 +417,8 @@
       "source_location": "L31",
       "_origin": "ast",
       "id": "chroma_core_default_embed",
-      "community": 39,
-      "community_name": "Module 39",
+      "community": 32,
+      "community_name": "Module 32",
       "norm_label": "@chroma-core/default-embed"
     },
     {
@@ -1844,8 +1844,8 @@
       "source_location": "L27",
       "_origin": "ast",
       "id": "src_ai_ai_controller_aicontroller_constructor",
-      "community": 22,
-      "community_name": "Module 22",
+      "community": 16,
+      "community_name": "AI Service Core",
       "norm_label": ".constructor()"
     },
     {
@@ -2138,7 +2138,7 @@
       "label": "AiService",
       "file_type": "code",
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L66",
+      "source_location": "L69",
       "_origin": "ast",
       "id": "src_ai_ai_service_aiservice",
       "community": 16,
@@ -2163,26 +2163,26 @@
       "source_location": "",
       "_origin": "ast",
       "id": "injectqueue",
-      "community": 5,
-      "community_name": "Chroma / Queue Services",
+      "community": 16,
+      "community_name": "AI Service Core",
       "norm_label": "injectqueue"
     },
     {
       "label": ".constructor()",
       "file_type": "code",
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L70",
+      "source_location": "L73",
       "_origin": "ast",
       "id": "src_ai_ai_service_aiservice_constructor",
-      "community": 5,
-      "community_name": "Chroma / Queue Services",
+      "community": 16,
+      "community_name": "AI Service Core",
       "norm_label": ".constructor()"
     },
     {
       "label": ".buildLlmConfig()",
       "file_type": "code",
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L83",
+      "source_location": "L86",
       "_origin": "ast",
       "id": "src_ai_ai_service_aiservice_buildllmconfig",
       "community": 16,
@@ -2193,7 +2193,7 @@
       "label": ".generate()",
       "file_type": "code",
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L103",
+      "source_location": "L106",
       "_origin": "ast",
       "id": "src_ai_ai_service_aiservice_generate",
       "community": 16,
@@ -2204,7 +2204,7 @@
       "label": ".suggest()",
       "file_type": "code",
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L113",
+      "source_location": "L116",
       "_origin": "ast",
       "id": "src_ai_ai_service_aiservice_suggest",
       "community": 16,
@@ -2215,7 +2215,7 @@
       "label": ".refine()",
       "file_type": "code",
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L118",
+      "source_location": "L121",
       "_origin": "ast",
       "id": "src_ai_ai_service_aiservice_refine",
       "community": 16,
@@ -2226,18 +2226,29 @@
       "label": ".chatGenerate()",
       "file_type": "code",
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L128",
+      "source_location": "L131",
       "_origin": "ast",
       "id": "src_ai_ai_service_aiservice_chatgenerate",
-      "community": 32,
-      "community_name": "Module 32",
+      "community": 16,
+      "community_name": "AI Service Core",
       "norm_label": ".chatgenerate()"
+    },
+    {
+      "label": ".converse()",
+      "file_type": "code",
+      "source_file": "src/ai/ai.service.ts",
+      "source_location": "L208",
+      "_origin": "ast",
+      "id": "src_ai_ai_service_aiservice_converse",
+      "community": 16,
+      "community_name": "AI Service Core",
+      "norm_label": ".converse()"
     },
     {
       "label": ".chatEvaluate()",
       "file_type": "code",
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L203",
+      "source_location": "L291",
       "_origin": "ast",
       "id": "src_ai_ai_service_aiservice_chatevaluate",
       "community": 16,
@@ -2248,7 +2259,7 @@
       "label": ".chatAsk()",
       "file_type": "code",
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L265",
+      "source_location": "L353",
       "_origin": "ast",
       "id": "src_ai_ai_service_aiservice_chatask",
       "community": 16,
@@ -2259,7 +2270,7 @@
       "label": ".contextualAsk()",
       "file_type": "code",
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L364",
+      "source_location": "L452",
       "_origin": "ast",
       "id": "src_ai_ai_service_aiservice_contextualask",
       "community": 16,
@@ -2270,7 +2281,7 @@
       "label": ".threatAnalysis()",
       "file_type": "code",
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L443",
+      "source_location": "L531",
       "_origin": "ast",
       "id": "src_ai_ai_service_aiservice_threatanalysis",
       "community": 16,
@@ -2281,7 +2292,7 @@
       "label": ".declutter()",
       "file_type": "code",
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L532",
+      "source_location": "L620",
       "_origin": "ast",
       "id": "src_ai_ai_service_aiservice_declutter",
       "community": 16,
@@ -2292,18 +2303,18 @@
       "label": ".postureScore()",
       "file_type": "code",
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L620",
+      "source_location": "L708",
       "_origin": "ast",
       "id": "src_ai_ai_service_aiservice_posturescore",
-      "community": 2,
-      "community_name": "Suggest-Flow / Posture DTOs",
+      "community": 16,
+      "community_name": "AI Service Core",
       "norm_label": ".posturescore()"
     },
     {
       "label": ".attackMind()",
       "file_type": "code",
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L684",
+      "source_location": "L772",
       "_origin": "ast",
       "id": "src_ai_ai_service_aiservice_attackmind",
       "community": 16,
@@ -2314,7 +2325,7 @@
       "label": ".fetchProjectContextForDiagram()",
       "file_type": "code",
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L746",
+      "source_location": "L834",
       "_origin": "ast",
       "id": "src_ai_ai_service_aiservice_fetchprojectcontextfordiagram",
       "community": 16,
@@ -2325,7 +2336,7 @@
       "label": ".submitThreatAnalysis()",
       "file_type": "code",
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L762",
+      "source_location": "L850",
       "_origin": "ast",
       "id": "src_ai_ai_service_aiservice_submitthreatanalysis",
       "community": 26,
@@ -2336,18 +2347,18 @@
       "label": ".submitPostureScore()",
       "file_type": "code",
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L782",
+      "source_location": "L870",
       "_origin": "ast",
       "id": "src_ai_ai_service_aiservice_submitposturescore",
-      "community": 30,
-      "community_name": "Module 30",
+      "community": 2,
+      "community_name": "Suggest-Flow / Posture DTOs",
       "norm_label": ".submitposturescore()"
     },
     {
       "label": ".getPipelineStatus()",
       "file_type": "code",
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L801",
+      "source_location": "L889",
       "_origin": "ast",
       "id": "src_ai_ai_service_aiservice_getpipelinestatus",
       "community": 0,
@@ -2358,7 +2369,7 @@
       "label": ".getPipelineStatusForDiagram()",
       "file_type": "code",
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L831",
+      "source_location": "L919",
       "_origin": "ast",
       "id": "src_ai_ai_service_aiservice_getpipelinestatusfordiagram",
       "community": 0,
@@ -2369,7 +2380,7 @@
       "label": ".threatAgentChat()",
       "file_type": "code",
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L863",
+      "source_location": "L951",
       "_origin": "ast",
       "id": "src_ai_ai_service_aiservice_threatagentchat",
       "community": 16,
@@ -2380,29 +2391,29 @@
       "label": ".postureScoreStream()",
       "file_type": "code",
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L1035",
+      "source_location": "L1123",
       "_origin": "ast",
       "id": "src_ai_ai_service_aiservice_posturescorestream",
-      "community": 30,
-      "community_name": "Module 30",
+      "community": 2,
+      "community_name": "Suggest-Flow / Posture DTOs",
       "norm_label": ".posturescorestream()"
     },
     {
       "label": ".attackMindStream()",
       "file_type": "code",
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L1089",
+      "source_location": "L1177",
       "_origin": "ast",
       "id": "src_ai_ai_service_aiservice_attackmindstream",
-      "community": 16,
-      "community_name": "AI Service Core",
+      "community": 18,
+      "community_name": "Module 18",
       "norm_label": ".attackmindstream()"
     },
     {
       "label": ".intelSynthesis()",
       "file_type": "code",
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L1144",
+      "source_location": "L1232",
       "_origin": "ast",
       "id": "src_ai_ai_service_aiservice_intelsynthesis",
       "community": 16,
@@ -2413,7 +2424,7 @@
       "label": ".generateIntelReport()",
       "file_type": "code",
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L1277",
+      "source_location": "L1365",
       "_origin": "ast",
       "id": "src_ai_ai_service_aiservice_generateintelreport",
       "community": 98,
@@ -2424,7 +2435,7 @@
       "label": ".callAi()",
       "file_type": "code",
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L1299",
+      "source_location": "L1387",
       "_origin": "ast",
       "id": "src_ai_ai_service_aiservice_callai",
       "community": 16,
@@ -2438,8 +2449,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_ai_diagram_postprocess_spec",
-      "community": 32,
-      "community_name": "Module 32",
+      "community": 16,
+      "community_name": "AI Service Core",
       "norm_label": "diagram-postprocess.spec.ts"
     },
     {
@@ -2449,8 +2460,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_ai_diagram_postprocess",
-      "community": 32,
-      "community_name": "Module 32",
+      "community": 16,
+      "community_name": "AI Service Core",
       "norm_label": "diagram-postprocess.ts"
     },
     {
@@ -2460,8 +2471,8 @@
       "source_location": "L4",
       "_origin": "ast",
       "id": "src_ai_diagram_postprocess_sanitizenodepositions",
-      "community": 32,
-      "community_name": "Module 32",
+      "community": 16,
+      "community_name": "AI Service Core",
       "norm_label": "sanitizenodepositions()"
     },
     {
@@ -2471,8 +2482,8 @@
       "source_location": "L20",
       "_origin": "ast",
       "id": "src_ai_diagram_postprocess_validateoversizewarning",
-      "community": 32,
-      "community_name": "Module 32",
+      "community": 16,
+      "community_name": "AI Service Core",
       "norm_label": "validateoversizewarning()"
     },
     {
@@ -2482,8 +2493,8 @@
       "source_location": "L36",
       "_origin": "ast",
       "id": "src_ai_diagram_postprocess_coercename",
-      "community": 32,
-      "community_name": "Module 32",
+      "community": 16,
+      "community_name": "AI Service Core",
       "norm_label": "coercename()"
     },
     {
@@ -2493,8 +2504,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_ai_dto_attack_mind_dto",
-      "community": 21,
-      "community_name": "Module 21",
+      "community": 18,
+      "community_name": "Module 18",
       "norm_label": "attack-mind.dto.ts"
     },
     {
@@ -2504,8 +2515,8 @@
       "source_location": "L3",
       "_origin": "ast",
       "id": "src_ai_dto_attack_mind_dto_attackminddto",
-      "community": 21,
-      "community_name": "Module 21",
+      "community": 18,
+      "community_name": "Module 18",
       "norm_label": "attackminddto"
     },
     {
@@ -2515,8 +2526,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "src_ai_dto_attack_mind_dto_ts_isstring",
-      "community": 21,
-      "community_name": "Module 21",
+      "community": 18,
+      "community_name": "Module 18",
       "norm_label": "isstring"
     },
     {
@@ -2526,8 +2537,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "src_ai_dto_attack_mind_dto_ts_isobject",
-      "community": 21,
-      "community_name": "Module 21",
+      "community": 18,
+      "community_name": "Module 18",
       "norm_label": "isobject"
     },
     {
@@ -2537,8 +2548,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "src_ai_dto_attack_mind_dto_ts_isoptional",
-      "community": 21,
-      "community_name": "Module 21",
+      "community": 18,
+      "community_name": "Module 18",
       "norm_label": "isoptional"
     },
     {
@@ -2548,8 +2559,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "src_ai_dto_attack_mind_dto_ts_isboolean",
-      "community": 21,
-      "community_name": "Module 21",
+      "community": 18,
+      "community_name": "Module 18",
       "norm_label": "isboolean"
     },
     {
@@ -2559,8 +2570,8 @@
       "source_location": "L23",
       "_origin": "ast",
       "id": "src_ai_dto_attack_mind_dto_saveattacksimulationdto",
-      "community": 21,
-      "community_name": "Module 21",
+      "community": 18,
+      "community_name": "Module 18",
       "norm_label": "saveattacksimulationdto"
     },
     {
@@ -2570,8 +2581,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "src_ai_dto_attack_mind_dto_ts_isarray",
-      "community": 21,
-      "community_name": "Module 21",
+      "community": 18,
+      "community_name": "Module 18",
       "norm_label": "isarray"
     },
     {
@@ -2581,8 +2592,8 @@
       "source_location": "L40",
       "_origin": "ast",
       "id": "src_ai_dto_attack_mind_dto_submitattackminddto",
-      "community": 21,
-      "community_name": "Module 21",
+      "community": 18,
+      "community_name": "Module 18",
       "norm_label": "submitattackminddto"
     },
     {
@@ -2592,8 +2603,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "src_ai_dto_attack_mind_dto_ts_isint",
-      "community": 21,
-      "community_name": "Module 21",
+      "community": 18,
+      "community_name": "Module 18",
       "norm_label": "isint"
     },
     {
@@ -2713,8 +2724,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_ai_dto_chat_evaluate_dto",
-      "community": 102,
-      "community_name": "ChatEvaluateDto",
+      "community": 15,
+      "community_name": "AI Chat Generate",
       "norm_label": "chat-evaluate.dto.ts"
     },
     {
@@ -2724,8 +2735,8 @@
       "source_location": "L3",
       "_origin": "ast",
       "id": "src_ai_dto_chat_evaluate_dto_chatevaluatedto",
-      "community": 102,
-      "community_name": "ChatEvaluateDto",
+      "community": 15,
+      "community_name": "AI Chat Generate",
       "norm_label": "chatevaluatedto"
     },
     {
@@ -2735,8 +2746,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "src_ai_dto_chat_evaluate_dto_ts_isarray",
-      "community": 102,
-      "community_name": "ChatEvaluateDto",
+      "community": 15,
+      "community_name": "AI Chat Generate",
       "norm_label": "isarray"
     },
     {
@@ -2746,8 +2757,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "src_ai_dto_chat_evaluate_dto_ts_isoptional",
-      "community": 102,
-      "community_name": "ChatEvaluateDto",
+      "community": 15,
+      "community_name": "AI Chat Generate",
       "norm_label": "isoptional"
     },
     {
@@ -2757,8 +2768,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "src_ai_dto_chat_evaluate_dto_ts_isstring",
-      "community": 102,
-      "community_name": "ChatEvaluateDto",
+      "community": 15,
+      "community_name": "AI Chat Generate",
       "norm_label": "isstring"
     },
     {
@@ -2768,8 +2779,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_ai_dto_chat_generate_dto",
-      "community": 32,
-      "community_name": "Module 32",
+      "community": 24,
+      "community_name": "Module 24",
       "norm_label": "chat-generate.dto.ts"
     },
     {
@@ -2779,8 +2790,8 @@
       "source_location": "L3",
       "_origin": "ast",
       "id": "src_ai_dto_chat_generate_dto_chatgeneratedto",
-      "community": 32,
-      "community_name": "Module 32",
+      "community": 24,
+      "community_name": "Module 24",
       "norm_label": "chatgeneratedto"
     },
     {
@@ -2790,8 +2801,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "src_ai_dto_chat_generate_dto_ts_isstring",
-      "community": 32,
-      "community_name": "Module 32",
+      "community": 24,
+      "community_name": "Module 24",
       "norm_label": "isstring"
     },
     {
@@ -2801,8 +2812,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "src_ai_dto_chat_generate_dto_ts_isoptional",
-      "community": 32,
-      "community_name": "Module 32",
+      "community": 24,
+      "community_name": "Module 24",
       "norm_label": "isoptional"
     },
     {
@@ -2905,14 +2916,113 @@
       "norm_label": "type"
     },
     {
+      "label": "converse.dto.ts",
+      "file_type": "code",
+      "source_file": "src/ai/dto/converse.dto.ts",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "src_ai_dto_converse_dto",
+      "community": 21,
+      "community_name": "Module 21",
+      "norm_label": "converse.dto.ts"
+    },
+    {
+      "label": "ConverseMessageDto",
+      "file_type": "code",
+      "source_file": "src/ai/dto/converse.dto.ts",
+      "source_location": "L4",
+      "_origin": "ast",
+      "id": "src_ai_dto_converse_dto_conversemessagedto",
+      "community": 21,
+      "community_name": "Module 21",
+      "norm_label": "conversemessagedto"
+    },
+    {
+      "label": "IsIn",
+      "file_type": "code",
+      "source_file": "",
+      "source_location": "",
+      "_origin": "ast",
+      "id": "src_ai_dto_converse_dto_ts_isin",
+      "community": 21,
+      "community_name": "Module 21",
+      "norm_label": "isin"
+    },
+    {
+      "label": "IsString",
+      "file_type": "code",
+      "source_file": "",
+      "source_location": "",
+      "_origin": "ast",
+      "id": "src_ai_dto_converse_dto_ts_isstring",
+      "community": 21,
+      "community_name": "Module 21",
+      "norm_label": "isstring"
+    },
+    {
+      "label": "ConverseDto",
+      "file_type": "code",
+      "source_file": "src/ai/dto/converse.dto.ts",
+      "source_location": "L12",
+      "_origin": "ast",
+      "id": "src_ai_dto_converse_dto_conversedto",
+      "community": 21,
+      "community_name": "Module 21",
+      "norm_label": "conversedto"
+    },
+    {
+      "label": "IsUUID",
+      "file_type": "code",
+      "source_file": "",
+      "source_location": "",
+      "_origin": "ast",
+      "id": "src_ai_dto_converse_dto_ts_isuuid",
+      "community": 21,
+      "community_name": "Module 21",
+      "norm_label": "isuuid"
+    },
+    {
+      "label": "IsArray",
+      "file_type": "code",
+      "source_file": "",
+      "source_location": "",
+      "_origin": "ast",
+      "id": "src_ai_dto_converse_dto_ts_isarray",
+      "community": 21,
+      "community_name": "Module 21",
+      "norm_label": "isarray"
+    },
+    {
+      "label": "ValidateNested",
+      "file_type": "code",
+      "source_file": "",
+      "source_location": "",
+      "_origin": "ast",
+      "id": "src_ai_dto_converse_dto_ts_validatenested",
+      "community": 21,
+      "community_name": "Module 21",
+      "norm_label": "validatenested"
+    },
+    {
+      "label": "Type",
+      "file_type": "code",
+      "source_file": "",
+      "source_location": "",
+      "_origin": "ast",
+      "id": "src_ai_dto_converse_dto_ts_type",
+      "community": 21,
+      "community_name": "Module 21",
+      "norm_label": "type"
+    },
+    {
       "label": "declutter.dto.ts",
       "file_type": "code",
       "source_file": "src/ai/dto/declutter.dto.ts",
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_ai_dto_declutter_dto",
-      "community": 33,
-      "community_name": "Module 33",
+      "community": 15,
+      "community_name": "AI Chat Generate",
       "norm_label": "declutter.dto.ts"
     },
     {
@@ -2922,8 +3032,8 @@
       "source_location": "L3",
       "_origin": "ast",
       "id": "src_ai_dto_declutter_dto_declutterdto",
-      "community": 33,
-      "community_name": "Module 33",
+      "community": 15,
+      "community_name": "AI Chat Generate",
       "norm_label": "declutterdto"
     },
     {
@@ -2933,8 +3043,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "src_ai_dto_declutter_dto_ts_isarray",
-      "community": 33,
-      "community_name": "Module 33",
+      "community": 15,
+      "community_name": "AI Chat Generate",
       "norm_label": "isarray"
     },
     {
@@ -2944,8 +3054,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "src_ai_dto_declutter_dto_ts_isoptional",
-      "community": 33,
-      "community_name": "Module 33",
+      "community": 15,
+      "community_name": "AI Chat Generate",
       "norm_label": "isoptional"
     },
     {
@@ -2955,8 +3065,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "src_ai_dto_declutter_dto_ts_isstring",
-      "community": 33,
-      "community_name": "Module 33",
+      "community": 15,
+      "community_name": "AI Chat Generate",
       "norm_label": "isstring"
     },
     {
@@ -2966,8 +3076,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_ai_dto_generate_dto",
-      "community": 103,
-      "community_name": "GenerateDto",
+      "community": 15,
+      "community_name": "AI Chat Generate",
       "norm_label": "generate.dto.ts"
     },
     {
@@ -2977,8 +3087,8 @@
       "source_location": "L3",
       "_origin": "ast",
       "id": "src_ai_dto_generate_dto_generatedto",
-      "community": 103,
-      "community_name": "GenerateDto",
+      "community": 15,
+      "community_name": "AI Chat Generate",
       "norm_label": "generatedto"
     },
     {
@@ -2988,8 +3098,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "src_ai_dto_generate_dto_ts_isstring",
-      "community": 103,
-      "community_name": "GenerateDto",
+      "community": 15,
+      "community_name": "AI Chat Generate",
       "norm_label": "isstring"
     },
     {
@@ -2999,8 +3109,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "src_ai_dto_generate_dto_ts_isoptional",
-      "community": 103,
-      "community_name": "GenerateDto",
+      "community": 15,
+      "community_name": "AI Chat Generate",
       "norm_label": "isoptional"
     },
     {
@@ -3010,8 +3120,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "src_ai_dto_generate_dto_ts_isobject",
-      "community": 103,
-      "community_name": "GenerateDto",
+      "community": 15,
+      "community_name": "AI Chat Generate",
       "norm_label": "isobject"
     },
     {
@@ -3021,8 +3131,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_ai_dto_posture_score_dto",
-      "community": 97,
-      "community_name": "PostureScoreDto",
+      "community": 15,
+      "community_name": "AI Chat Generate",
       "norm_label": "posture-score.dto.ts"
     },
     {
@@ -3032,8 +3142,8 @@
       "source_location": "L3",
       "_origin": "ast",
       "id": "src_ai_dto_posture_score_dto_posturescoredto",
-      "community": 97,
-      "community_name": "PostureScoreDto",
+      "community": 15,
+      "community_name": "AI Chat Generate",
       "norm_label": "posturescoredto"
     },
     {
@@ -3043,8 +3153,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "src_ai_dto_posture_score_dto_ts_isstring",
-      "community": 97,
-      "community_name": "PostureScoreDto",
+      "community": 15,
+      "community_name": "AI Chat Generate",
       "norm_label": "isstring"
     },
     {
@@ -3054,8 +3164,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "isnumber",
-      "community": 97,
-      "community_name": "PostureScoreDto",
+      "community": 15,
+      "community_name": "AI Chat Generate",
       "norm_label": "isnumber"
     },
     {
@@ -3065,8 +3175,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "src_ai_dto_posture_score_dto_ts_isobject",
-      "community": 97,
-      "community_name": "PostureScoreDto",
+      "community": 15,
+      "community_name": "AI Chat Generate",
       "norm_label": "isobject"
     },
     {
@@ -3076,8 +3186,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "src_ai_dto_posture_score_dto_ts_isboolean",
-      "community": 97,
-      "community_name": "PostureScoreDto",
+      "community": 15,
+      "community_name": "AI Chat Generate",
       "norm_label": "isboolean"
     },
     {
@@ -3087,8 +3197,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "src_ai_dto_posture_score_dto_ts_isoptional",
-      "community": 97,
-      "community_name": "PostureScoreDto",
+      "community": 15,
+      "community_name": "AI Chat Generate",
       "norm_label": "isoptional"
     },
     {
@@ -3142,8 +3252,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_ai_dto_suggest_flow_dto",
-      "community": 22,
-      "community_name": "Module 22",
+      "community": 16,
+      "community_name": "AI Service Core",
       "norm_label": "suggest-flow.dto.ts"
     },
     {
@@ -3153,8 +3263,8 @@
       "source_location": "L3",
       "_origin": "ast",
       "id": "src_ai_dto_suggest_flow_dto_suggestflowdto",
-      "community": 22,
-      "community_name": "Module 22",
+      "community": 16,
+      "community_name": "AI Service Core",
       "norm_label": "suggestflowdto"
     },
     {
@@ -3164,8 +3274,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "src_ai_dto_suggest_flow_dto_ts_isuuid",
-      "community": 22,
-      "community_name": "Module 22",
+      "community": 16,
+      "community_name": "AI Service Core",
       "norm_label": "isuuid"
     },
     {
@@ -3175,8 +3285,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "src_ai_dto_suggest_flow_dto_ts_isstring",
-      "community": 22,
-      "community_name": "Module 22",
+      "community": 16,
+      "community_name": "AI Service Core",
       "norm_label": "isstring"
     },
     {
@@ -3186,8 +3296,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "src_ai_dto_suggest_flow_dto_ts_isoptional",
-      "community": 22,
-      "community_name": "Module 22",
+      "community": 16,
+      "community_name": "AI Service Core",
       "norm_label": "isoptional"
     },
     {
@@ -3472,8 +3582,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_ai_llm_service",
-      "community": 46,
-      "community_name": "Module 46",
+      "community": 16,
+      "community_name": "AI Service Core",
       "norm_label": "llm.service.ts"
     },
     {
@@ -3483,8 +3593,8 @@
       "source_location": "L8",
       "_origin": "ast",
       "id": "src_ai_llm_service_llmprovider",
-      "community": 46,
-      "community_name": "Module 46",
+      "community": 16,
+      "community_name": "AI Service Core",
       "norm_label": "llmprovider"
     },
     {
@@ -3494,8 +3604,8 @@
       "source_location": "L10",
       "_origin": "ast",
       "id": "src_ai_llm_service_llmresponse",
-      "community": 46,
-      "community_name": "Module 46",
+      "community": 16,
+      "community_name": "AI Service Core",
       "norm_label": "llmresponse"
     },
     {
@@ -3505,8 +3615,8 @@
       "source_location": "L19",
       "_origin": "ast",
       "id": "src_ai_llm_service_llmcallconfig",
-      "community": 46,
-      "community_name": "Module 46",
+      "community": 16,
+      "community_name": "AI Service Core",
       "norm_label": "llmcallconfig"
     },
     {
@@ -3516,8 +3626,8 @@
       "source_location": "L39",
       "_origin": "ast",
       "id": "src_ai_llm_service_ollama_context_map",
-      "community": 46,
-      "community_name": "Module 46",
+      "community": 16,
+      "community_name": "AI Service Core",
       "norm_label": "ollama_context_map"
     },
     {
@@ -3527,8 +3637,8 @@
       "source_location": "L53",
       "_origin": "ast",
       "id": "src_ai_llm_service_resolvenumctx",
-      "community": 46,
-      "community_name": "Module 46",
+      "community": 16,
+      "community_name": "AI Service Core",
       "norm_label": "resolvenumctx()"
     },
     {
@@ -3538,8 +3648,8 @@
       "source_location": "L75",
       "_origin": "ast",
       "id": "src_ai_llm_service_applyollamaoptimizations",
-      "community": 38,
-      "community_name": "LlmService",
+      "community": 16,
+      "community_name": "AI Service Core",
       "norm_label": "applyollamaoptimizations()"
     },
     {
@@ -3549,8 +3659,8 @@
       "source_location": "L95",
       "_origin": "ast",
       "id": "src_ai_llm_service_llmservice",
-      "community": 38,
-      "community_name": "LlmService",
+      "community": 16,
+      "community_name": "AI Service Core",
       "norm_label": "llmservice"
     },
     {
@@ -3560,8 +3670,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "src_ai_llm_service_ts_injectable",
-      "community": 38,
-      "community_name": "LlmService",
+      "community": 16,
+      "community_name": "AI Service Core",
       "norm_label": "injectable"
     },
     {
@@ -3571,8 +3681,8 @@
       "source_location": "L107",
       "_origin": "ast",
       "id": "src_ai_llm_service_llmservice_constructor",
-      "community": 46,
-      "community_name": "Module 46",
+      "community": 16,
+      "community_name": "AI Service Core",
       "norm_label": ".constructor()"
     },
     {
@@ -3582,8 +3692,8 @@
       "source_location": "L166",
       "_origin": "ast",
       "id": "src_ai_llm_service_llmservice_resolvellm",
-      "community": 38,
-      "community_name": "LlmService",
+      "community": 16,
+      "community_name": "AI Service Core",
       "norm_label": ".resolvellm()"
     },
     {
@@ -3593,8 +3703,8 @@
       "source_location": "L211",
       "_origin": "ast",
       "id": "src_ai_llm_service_llmservice_invokewiththinking",
-      "community": 38,
-      "community_name": "LlmService",
+      "community": 16,
+      "community_name": "AI Service Core",
       "norm_label": ".invokewiththinking()"
     },
     {
@@ -3604,8 +3714,8 @@
       "source_location": "L262",
       "_origin": "ast",
       "id": "src_ai_llm_service_llmservice_invoke",
-      "community": 38,
-      "community_name": "LlmService",
+      "community": 16,
+      "community_name": "AI Service Core",
       "norm_label": ".invoke()"
     },
     {
@@ -3615,8 +3725,8 @@
       "source_location": "L302",
       "_origin": "ast",
       "id": "src_ai_llm_service_llmservice_stream",
-      "community": 38,
-      "community_name": "LlmService",
+      "community": 16,
+      "community_name": "AI Service Core",
       "norm_label": ".stream()"
     },
     {
@@ -3626,8 +3736,8 @@
       "source_location": "L330",
       "_origin": "ast",
       "id": "src_ai_llm_service_llmservice_streamconversation",
-      "community": 38,
-      "community_name": "LlmService",
+      "community": 16,
+      "community_name": "AI Service Core",
       "norm_label": ".streamconversation()"
     },
     {
@@ -3637,8 +3747,8 @@
       "source_location": "L363",
       "_origin": "ast",
       "id": "src_ai_llm_service_llmservice_rethrowconnectionerror",
-      "community": 38,
-      "community_name": "LlmService",
+      "community": 16,
+      "community_name": "AI Service Core",
       "norm_label": ".rethrowconnectionerror()"
     },
     {
@@ -3648,9 +3758,64 @@
       "source_location": "L377",
       "_origin": "ast",
       "id": "src_ai_llm_service_llmservice_extracttext",
-      "community": 38,
-      "community_name": "LlmService",
+      "community": 16,
+      "community_name": "AI Service Core",
       "norm_label": ".extracttext()"
+    },
+    {
+      "label": "converse-parser.spec.ts",
+      "file_type": "code",
+      "source_file": "src/ai/new-project/converse-parser.spec.ts",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "src_ai_new_project_converse_parser_spec",
+      "community": 16,
+      "community_name": "AI Service Core",
+      "norm_label": "converse-parser.spec.ts"
+    },
+    {
+      "label": "converse-parser.ts",
+      "file_type": "code",
+      "source_file": "src/ai/new-project/converse-parser.ts",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "src_ai_new_project_converse_parser",
+      "community": 16,
+      "community_name": "AI Service Core",
+      "norm_label": "converse-parser.ts"
+    },
+    {
+      "label": "ConverseResult",
+      "file_type": "code",
+      "source_file": "src/ai/new-project/converse-parser.ts",
+      "source_location": "L3",
+      "_origin": "ast",
+      "id": "src_ai_new_project_converse_parser_converseresult",
+      "community": 16,
+      "community_name": "AI Service Core",
+      "norm_label": "converseresult"
+    },
+    {
+      "label": "stripTechnology()",
+      "file_type": "code",
+      "source_file": "src/ai/new-project/converse-parser.ts",
+      "source_location": "L16",
+      "_origin": "ast",
+      "id": "src_ai_new_project_converse_parser_striptechnology",
+      "community": 16,
+      "community_name": "AI Service Core",
+      "norm_label": "striptechnology()"
+    },
+    {
+      "label": "parseConverse()",
+      "file_type": "code",
+      "source_file": "src/ai/new-project/converse-parser.ts",
+      "source_location": "L28",
+      "_origin": "ast",
+      "id": "src_ai_new_project_converse_parser_parseconverse",
+      "community": 16,
+      "community_name": "AI Service Core",
+      "norm_label": "parseconverse()"
     },
     {
       "label": "attack-mind-prompt.spec.ts",
@@ -3659,8 +3824,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_ai_prompts_attack_mind_prompt_spec",
-      "community": 52,
-      "community_name": "Module 52",
+      "community": 17,
+      "community_name": "Attack Mind Prompt",
       "norm_label": "attack-mind-prompt.spec.ts"
     },
     {
@@ -3670,8 +3835,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_ai_prompts_attack_mind_prompt",
-      "community": 52,
-      "community_name": "Module 52",
+      "community": 17,
+      "community_name": "Attack Mind Prompt",
       "norm_label": "attack-mind-prompt.ts"
     },
     {
@@ -3681,8 +3846,8 @@
       "source_location": "L82",
       "_origin": "ast",
       "id": "src_ai_prompts_attack_mind_prompt_attackmindinput",
-      "community": 52,
-      "community_name": "Module 52",
+      "community": 17,
+      "community_name": "Attack Mind Prompt",
       "norm_label": "attackmindinput"
     },
     {
@@ -3692,8 +3857,8 @@
       "source_location": "L93",
       "_origin": "ast",
       "id": "src_ai_prompts_attack_mind_prompt_buildattackmindprompt",
-      "community": 52,
-      "community_name": "Module 52",
+      "community": 17,
+      "community_name": "Attack Mind Prompt",
       "norm_label": "buildattackmindprompt()"
     },
     {
@@ -3827,6 +3992,17 @@
       "community": 24,
       "community_name": "Module 24",
       "norm_label": "layers-system-prompt.ts"
+    },
+    {
+      "label": "new-project-converse-prompt.ts",
+      "file_type": "code",
+      "source_file": "src/ai/prompts/new-project-converse-prompt.ts",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "src_ai_prompts_new_project_converse_prompt",
+      "community": 24,
+      "community_name": "Module 24",
+      "norm_label": "new-project-converse-prompt.ts"
     },
     {
       "label": "posture-score-prompt.ts",
@@ -3967,8 +4143,8 @@
       "source_location": "L217",
       "_origin": "ast",
       "id": "src_ai_prompts_posture_score_prompt_buildposturescoreprompt",
-      "community": 2,
-      "community_name": "Suggest-Flow / Posture DTOs",
+      "community": 16,
+      "community_name": "AI Service Core",
       "norm_label": "buildposturescoreprompt()"
     },
     {
@@ -3978,8 +4154,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_ai_prompts_project_context_hint",
-      "community": 52,
-      "community_name": "Module 52",
+      "community": 17,
+      "community_name": "Attack Mind Prompt",
       "norm_label": "project-context-hint.ts"
     },
     {
@@ -3989,8 +4165,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_ai_prompts_project_context_hint_projectcontexthint",
-      "community": 52,
-      "community_name": "Module 52",
+      "community": 17,
+      "community_name": "Attack Mind Prompt",
       "norm_label": "projectcontexthint"
     },
     {
@@ -4000,8 +4176,8 @@
       "source_location": "L7",
       "_origin": "ast",
       "id": "src_ai_prompts_project_context_hint_formatprojectcontextblock",
-      "community": 52,
-      "community_name": "Module 52",
+      "community": 17,
+      "community_name": "Attack Mind Prompt",
       "norm_label": "formatprojectcontextblock()"
     },
     {
@@ -4033,8 +4209,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_ai_prompts_suggest_flow_prompt",
-      "community": 22,
-      "community_name": "Module 22",
+      "community": 16,
+      "community_name": "AI Service Core",
       "norm_label": "suggest-flow.prompt.ts"
     },
     {
@@ -4044,8 +4220,8 @@
       "source_location": "L3",
       "_origin": "ast",
       "id": "src_ai_prompts_suggest_flow_prompt_suggestflowprompt",
-      "community": 22,
-      "community_name": "Module 22",
+      "community": 16,
+      "community_name": "AI Service Core",
       "norm_label": "suggestflowprompt"
     },
     {
@@ -4187,8 +4363,8 @@
       "source_location": "L342",
       "_origin": "ast",
       "id": "src_ai_prompts_threat_analysis_prompt_selectthreatsystemprompt",
-      "community": 17,
-      "community_name": "Attack Mind Prompt",
+      "community": 26,
+      "community_name": "Module 26",
       "norm_label": "selectthreatsystemprompt()"
     },
     {
@@ -4198,8 +4374,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_ai_suggest_flow_service_spec",
-      "community": 22,
-      "community_name": "Module 22",
+      "community": 16,
+      "community_name": "AI Service Core",
       "norm_label": "suggest-flow.service.spec.ts"
     },
     {
@@ -4209,8 +4385,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_ai_suggest_flow_service",
-      "community": 22,
-      "community_name": "Module 22",
+      "community": 16,
+      "community_name": "AI Service Core",
       "norm_label": "suggest-flow.service.ts"
     },
     {
@@ -4220,8 +4396,8 @@
       "source_location": "L13",
       "_origin": "ast",
       "id": "src_ai_suggest_flow_service_suggestflowservice",
-      "community": 22,
-      "community_name": "Module 22",
+      "community": 16,
+      "community_name": "AI Service Core",
       "norm_label": "suggestflowservice"
     },
     {
@@ -4231,8 +4407,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "src_ai_suggest_flow_service_ts_injectable",
-      "community": 22,
-      "community_name": "Module 22",
+      "community": 16,
+      "community_name": "AI Service Core",
       "norm_label": "injectable"
     },
     {
@@ -4242,8 +4418,8 @@
       "source_location": "L14",
       "_origin": "ast",
       "id": "src_ai_suggest_flow_service_suggestflowservice_constructor",
-      "community": 22,
-      "community_name": "Module 22",
+      "community": 16,
+      "community_name": "AI Service Core",
       "norm_label": ".constructor()"
     },
     {
@@ -4253,8 +4429,8 @@
       "source_location": "L16",
       "_origin": "ast",
       "id": "src_ai_suggest_flow_service_suggestflowservice_suggest",
-      "community": 22,
-      "community_name": "Module 22",
+      "community": 16,
+      "community_name": "AI Service Core",
       "norm_label": ".suggest()"
     },
     {
@@ -4605,8 +4781,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_auth_decorators_current_user_decorator",
-      "community": 101,
-      "community_name": "user-settings.controller.ts",
+      "community": 1,
+      "community_name": "Auth Guards + Chat Controller",
       "norm_label": "current-user.decorator.ts"
     },
     {
@@ -4759,8 +4935,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_auth_guards_jwt_auth_guard",
-      "community": 101,
-      "community_name": "user-settings.controller.ts",
+      "community": 1,
+      "community_name": "Auth Guards + Chat Controller",
       "norm_label": "jwt-auth.guard.ts"
     },
     {
@@ -4770,8 +4946,8 @@
       "source_location": "L5",
       "_origin": "ast",
       "id": "src_auth_guards_jwt_auth_guard_jwtauthguard",
-      "community": 101,
-      "community_name": "user-settings.controller.ts",
+      "community": 1,
+      "community_name": "Auth Guards + Chat Controller",
       "norm_label": "jwtauthguard"
     },
     {
@@ -4781,8 +4957,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "src_auth_guards_jwt_auth_guard_ts_injectable",
-      "community": 101,
-      "community_name": "user-settings.controller.ts",
+      "community": 1,
+      "community_name": "Auth Guards + Chat Controller",
       "norm_label": "injectable"
     },
     {
@@ -4979,8 +5155,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_chat_chat_module",
-      "community": 1,
-      "community_name": "Auth Guards + Chat Controller",
+      "community": 8,
+      "community_name": "Nest Modules Wiring",
       "norm_label": "chat.module.ts"
     },
     {
@@ -5386,8 +5562,8 @@
       "source_location": "L183",
       "_origin": "ast",
       "id": "src_common_url_safety_issafehttpsurl",
-      "community": 47,
-      "community_name": "user-settings.service.ts",
+      "community": 19,
+      "community_name": "Module 19",
       "norm_label": "issafehttpsurl()"
     },
     {
@@ -5694,8 +5870,8 @@
       "source_location": "L20",
       "_origin": "ast",
       "id": "src_diagrams_diagrams_service_diagramsservice_constructor",
-      "community": 3,
-      "community_name": "Diagrams Controller (Versioning)",
+      "community": 5,
+      "community_name": "Chroma / Queue Services",
       "norm_label": ".constructor()"
     },
     {
@@ -6145,8 +6321,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_jobs_dto_submit_posture_score_dto",
-      "community": 30,
-      "community_name": "Module 30",
+      "community": 2,
+      "community_name": "Suggest-Flow / Posture DTOs",
       "norm_label": "submit-posture-score.dto.ts"
     },
     {
@@ -6156,8 +6332,8 @@
       "source_location": "L3",
       "_origin": "ast",
       "id": "src_jobs_dto_submit_posture_score_dto_submitposturescoredto",
-      "community": 30,
-      "community_name": "Module 30",
+      "community": 2,
+      "community_name": "Suggest-Flow / Posture DTOs",
       "norm_label": "submitposturescoredto"
     },
     {
@@ -6167,8 +6343,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "src_jobs_dto_submit_posture_score_dto_ts_isstring",
-      "community": 30,
-      "community_name": "Module 30",
+      "community": 2,
+      "community_name": "Suggest-Flow / Posture DTOs",
       "norm_label": "isstring"
     },
     {
@@ -6178,8 +6354,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "src_jobs_dto_submit_posture_score_dto_ts_isint",
-      "community": 30,
-      "community_name": "Module 30",
+      "community": 2,
+      "community_name": "Suggest-Flow / Posture DTOs",
       "norm_label": "isint"
     },
     {
@@ -6189,8 +6365,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "src_jobs_dto_submit_posture_score_dto_ts_isobject",
-      "community": 30,
-      "community_name": "Module 30",
+      "community": 2,
+      "community_name": "Suggest-Flow / Posture DTOs",
       "norm_label": "isobject"
     },
     {
@@ -6200,8 +6376,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "src_jobs_dto_submit_posture_score_dto_ts_isboolean",
-      "community": 30,
-      "community_name": "Module 30",
+      "community": 2,
+      "community_name": "Suggest-Flow / Posture DTOs",
       "norm_label": "isboolean"
     },
     {
@@ -6211,8 +6387,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "src_jobs_dto_submit_posture_score_dto_ts_isoptional",
-      "community": 30,
-      "community_name": "Module 30",
+      "community": 2,
+      "community_name": "Suggest-Flow / Posture DTOs",
       "norm_label": "isoptional"
     },
     {
@@ -6321,8 +6497,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_jobs_jobs_controller",
-      "community": 101,
-      "community_name": "user-settings.controller.ts",
+      "community": 1,
+      "community_name": "Auth Guards + Chat Controller",
       "norm_label": "jobs.controller.ts"
     },
     {
@@ -6596,8 +6772,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_jobs_processors_attack_simulation_processor",
-      "community": 52,
-      "community_name": "Module 52",
+      "community": 17,
+      "community_name": "Attack Mind Prompt",
       "norm_label": "attack-simulation.processor.ts"
     },
     {
@@ -6607,8 +6783,8 @@
       "source_location": "L14",
       "_origin": "ast",
       "id": "src_jobs_processors_attack_simulation_processor_attacksimjobpayload",
-      "community": 21,
-      "community_name": "Module 21",
+      "community": 18,
+      "community_name": "Module 18",
       "norm_label": "attacksimjobpayload"
     },
     {
@@ -6618,8 +6794,8 @@
       "source_location": "L20",
       "_origin": "ast",
       "id": "src_jobs_processors_attack_simulation_processor_attacksimjobresult",
-      "community": 52,
-      "community_name": "Module 52",
+      "community": 17,
+      "community_name": "Attack Mind Prompt",
       "norm_label": "attacksimjobresult"
     },
     {
@@ -6629,8 +6805,8 @@
       "source_location": "L28",
       "_origin": "ast",
       "id": "src_jobs_processors_attack_simulation_processor_attacksimulationprocessor",
-      "community": 38,
-      "community_name": "LlmService",
+      "community": 16,
+      "community_name": "AI Service Core",
       "norm_label": "attacksimulationprocessor"
     },
     {
@@ -6640,8 +6816,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "src_jobs_processors_attack_simulation_processor_ts_processor",
-      "community": 38,
-      "community_name": "LlmService",
+      "community": 16,
+      "community_name": "AI Service Core",
       "norm_label": "processor"
     },
     {
@@ -6651,8 +6827,8 @@
       "source_location": "L31",
       "_origin": "ast",
       "id": "src_jobs_processors_attack_simulation_processor_attacksimulationprocessor_constructor",
-      "community": 38,
-      "community_name": "LlmService",
+      "community": 16,
+      "community_name": "AI Service Core",
       "norm_label": ".constructor()"
     },
     {
@@ -6662,8 +6838,8 @@
       "source_location": "L40",
       "_origin": "ast",
       "id": "src_jobs_processors_attack_simulation_processor_attacksimulationprocessor_process",
-      "community": 38,
-      "community_name": "LlmService",
+      "community": 16,
+      "community_name": "AI Service Core",
       "norm_label": ".process()"
     },
     {
@@ -6673,8 +6849,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_jobs_processors_posture_score_processor",
-      "community": 30,
-      "community_name": "Module 30",
+      "community": 2,
+      "community_name": "Suggest-Flow / Posture DTOs",
       "norm_label": "posture-score.processor.ts"
     },
     {
@@ -6684,8 +6860,8 @@
       "source_location": "L17",
       "_origin": "ast",
       "id": "src_jobs_processors_posture_score_processor_posturescorejobpayload",
-      "community": 30,
-      "community_name": "Module 30",
+      "community": 2,
+      "community_name": "Suggest-Flow / Posture DTOs",
       "norm_label": "posturescorejobpayload"
     },
     {
@@ -6695,8 +6871,8 @@
       "source_location": "L23",
       "_origin": "ast",
       "id": "src_jobs_processors_posture_score_processor_posturescorejobresult",
-      "community": 30,
-      "community_name": "Module 30",
+      "community": 2,
+      "community_name": "Suggest-Flow / Posture DTOs",
       "norm_label": "posturescorejobresult"
     },
     {
@@ -6706,8 +6882,8 @@
       "source_location": "L34",
       "_origin": "ast",
       "id": "src_jobs_processors_posture_score_processor_posturescoreprocessor",
-      "community": 30,
-      "community_name": "Module 30",
+      "community": 16,
+      "community_name": "AI Service Core",
       "norm_label": "posturescoreprocessor"
     },
     {
@@ -6717,8 +6893,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "src_jobs_processors_posture_score_processor_ts_processor",
-      "community": 30,
-      "community_name": "Module 30",
+      "community": 16,
+      "community_name": "AI Service Core",
       "norm_label": "processor"
     },
     {
@@ -6728,8 +6904,8 @@
       "source_location": "L37",
       "_origin": "ast",
       "id": "src_jobs_processors_posture_score_processor_posturescoreprocessor_constructor",
-      "community": 30,
-      "community_name": "Module 30",
+      "community": 16,
+      "community_name": "AI Service Core",
       "norm_label": ".constructor()"
     },
     {
@@ -6739,8 +6915,8 @@
       "source_location": "L46",
       "_origin": "ast",
       "id": "src_jobs_processors_posture_score_processor_posturescoreprocessor_process",
-      "community": 2,
-      "community_name": "Suggest-Flow / Posture DTOs",
+      "community": 16,
+      "community_name": "AI Service Core",
       "norm_label": ".process()"
     },
     {
@@ -6750,8 +6926,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_jobs_processors_threat_analysis_processor",
-      "community": 17,
-      "community_name": "Attack Mind Prompt",
+      "community": 26,
+      "community_name": "Module 26",
       "norm_label": "threat-analysis.processor.ts"
     },
     {
@@ -6761,8 +6937,8 @@
       "source_location": "L16",
       "_origin": "ast",
       "id": "src_jobs_processors_threat_analysis_processor_threatanalysisjobpayload",
-      "community": 17,
-      "community_name": "Attack Mind Prompt",
+      "community": 26,
+      "community_name": "Module 26",
       "norm_label": "threatanalysisjobpayload"
     },
     {
@@ -6772,8 +6948,8 @@
       "source_location": "L24",
       "_origin": "ast",
       "id": "src_jobs_processors_threat_analysis_processor_threatanalysisjobresult",
-      "community": 17,
-      "community_name": "Attack Mind Prompt",
+      "community": 26,
+      "community_name": "Module 26",
       "norm_label": "threatanalysisjobresult"
     },
     {
@@ -6783,8 +6959,8 @@
       "source_location": "L32",
       "_origin": "ast",
       "id": "src_jobs_processors_threat_analysis_processor_threatanalysisprocessor",
-      "community": 17,
-      "community_name": "Attack Mind Prompt",
+      "community": 26,
+      "community_name": "Module 26",
       "norm_label": "threatanalysisprocessor"
     },
     {
@@ -6794,8 +6970,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "src_jobs_processors_threat_analysis_processor_ts_processor",
-      "community": 17,
-      "community_name": "Attack Mind Prompt",
+      "community": 26,
+      "community_name": "Module 26",
       "norm_label": "processor"
     },
     {
@@ -6805,8 +6981,8 @@
       "source_location": "L35",
       "_origin": "ast",
       "id": "src_jobs_processors_threat_analysis_processor_threatanalysisprocessor_constructor",
-      "community": 17,
-      "community_name": "Attack Mind Prompt",
+      "community": 26,
+      "community_name": "Module 26",
       "norm_label": ".constructor()"
     },
     {
@@ -6816,8 +6992,8 @@
       "source_location": "L44",
       "_origin": "ast",
       "id": "src_jobs_processors_threat_analysis_processor_threatanalysisprocessor_process",
-      "community": 17,
-      "community_name": "Attack Mind Prompt",
+      "community": 26,
+      "community_name": "Module 26",
       "norm_label": ".process()"
     },
     {
@@ -7091,8 +7267,8 @@
       "source_location": "L19",
       "_origin": "ast",
       "id": "src_onboarding_onboarding_service_onboardingservice_constructor",
-      "community": 12,
-      "community_name": "Prisma / Core Services",
+      "community": 9,
+      "community_name": "Onboarding",
       "norm_label": ".constructor()"
     },
     {
@@ -7124,8 +7300,8 @@
       "source_location": "L75",
       "_origin": "ast",
       "id": "src_onboarding_onboarding_service_onboardingservice_markfirstprojectcreated",
-      "community": 104,
-      "community_name": ".create",
+      "community": 4,
+      "community_name": "Project DTOs + Compliance",
       "norm_label": ".markfirstprojectcreated()"
     },
     {
@@ -7135,8 +7311,8 @@
       "source_location": "L92",
       "_origin": "ast",
       "id": "src_onboarding_onboarding_service_onboardingservice_markfirstthreatanalysis",
-      "community": 0,
-      "community_name": "Threat / Intel Controllers",
+      "community": 9,
+      "community_name": "Onboarding",
       "norm_label": ".markfirstthreatanalysis()"
     },
     {
@@ -7146,8 +7322,8 @@
       "source_location": "L105",
       "_origin": "ast",
       "id": "src_onboarding_onboarding_service_onboardingservice_markfirstposturescore",
-      "community": 2,
-      "community_name": "Suggest-Flow / Posture DTOs",
+      "community": 16,
+      "community_name": "AI Service Core",
       "norm_label": ".markfirstposturescore()"
     },
     {
@@ -7157,8 +7333,8 @@
       "source_location": "L118",
       "_origin": "ast",
       "id": "src_onboarding_onboarding_service_onboardingservice_markfirstattacksim",
-      "community": 0,
-      "community_name": "Threat / Intel Controllers",
+      "community": 9,
+      "community_name": "Onboarding",
       "norm_label": ".markfirstattacksim()"
     },
     {
@@ -7454,8 +7630,8 @@
       "source_location": "L13",
       "_origin": "ast",
       "id": "src_projects_projects_controller_projectscontroller",
-      "community": 34,
-      "community_name": "Module 34",
+      "community": 4,
+      "community_name": "Project DTOs + Compliance",
       "norm_label": "projectscontroller"
     },
     {
@@ -7465,8 +7641,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "src_projects_projects_controller_ts_controller",
-      "community": 34,
-      "community_name": "Module 34",
+      "community": 4,
+      "community_name": "Project DTOs + Compliance",
       "norm_label": "controller"
     },
     {
@@ -7476,8 +7652,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "src_projects_projects_controller_ts_useguards",
-      "community": 34,
-      "community_name": "Module 34",
+      "community": 4,
+      "community_name": "Project DTOs + Compliance",
       "norm_label": "useguards"
     },
     {
@@ -7487,8 +7663,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "src_projects_projects_controller_ts_get",
-      "community": 34,
-      "community_name": "Module 34",
+      "community": 4,
+      "community_name": "Project DTOs + Compliance",
       "norm_label": "get"
     },
     {
@@ -7498,8 +7674,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "src_projects_projects_controller_ts_param",
-      "community": 34,
-      "community_name": "Module 34",
+      "community": 4,
+      "community_name": "Project DTOs + Compliance",
       "norm_label": "param"
     },
     {
@@ -7509,8 +7685,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "src_projects_projects_controller_ts_post",
-      "community": 104,
-      "community_name": ".create",
+      "community": 4,
+      "community_name": "Project DTOs + Compliance",
       "norm_label": "post"
     },
     {
@@ -7520,8 +7696,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "src_projects_projects_controller_ts_body",
-      "community": 104,
-      "community_name": ".create",
+      "community": 4,
+      "community_name": "Project DTOs + Compliance",
       "norm_label": "body"
     },
     {
@@ -7531,8 +7707,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "src_projects_projects_controller_ts_patch",
-      "community": 34,
-      "community_name": "Module 34",
+      "community": 4,
+      "community_name": "Project DTOs + Compliance",
       "norm_label": "patch"
     },
     {
@@ -7542,8 +7718,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "src_projects_projects_controller_ts_delete",
-      "community": 34,
-      "community_name": "Module 34",
+      "community": 4,
+      "community_name": "Project DTOs + Compliance",
       "norm_label": "delete"
     },
     {
@@ -7553,8 +7729,8 @@
       "source_location": "L14",
       "_origin": "ast",
       "id": "src_projects_projects_controller_projectscontroller_constructor",
-      "community": 34,
-      "community_name": "Module 34",
+      "community": 4,
+      "community_name": "Project DTOs + Compliance",
       "norm_label": ".constructor()"
     },
     {
@@ -7564,8 +7740,8 @@
       "source_location": "L17",
       "_origin": "ast",
       "id": "src_projects_projects_controller_projectscontroller_findall",
-      "community": 34,
-      "community_name": "Module 34",
+      "community": 4,
+      "community_name": "Project DTOs + Compliance",
       "norm_label": ".findall()"
     },
     {
@@ -7575,8 +7751,8 @@
       "source_location": "L22",
       "_origin": "ast",
       "id": "src_projects_projects_controller_projectscontroller_getsummary",
-      "community": 34,
-      "community_name": "Module 34",
+      "community": 4,
+      "community_name": "Project DTOs + Compliance",
       "norm_label": ".getsummary()"
     },
     {
@@ -7586,8 +7762,8 @@
       "source_location": "L27",
       "_origin": "ast",
       "id": "src_projects_projects_controller_projectscontroller_getoverview",
-      "community": 34,
-      "community_name": "Module 34",
+      "community": 4,
+      "community_name": "Project DTOs + Compliance",
       "norm_label": ".getoverview()"
     },
     {
@@ -7597,8 +7773,8 @@
       "source_location": "L35",
       "_origin": "ast",
       "id": "src_projects_projects_controller_projectscontroller_findone",
-      "community": 34,
-      "community_name": "Module 34",
+      "community": 4,
+      "community_name": "Project DTOs + Compliance",
       "norm_label": ".findone()"
     },
     {
@@ -7608,8 +7784,8 @@
       "source_location": "L43",
       "_origin": "ast",
       "id": "src_projects_projects_controller_projectscontroller_create",
-      "community": 104,
-      "community_name": ".create",
+      "community": 4,
+      "community_name": "Project DTOs + Compliance",
       "norm_label": ".create()"
     },
     {
@@ -7619,8 +7795,8 @@
       "source_location": "L51",
       "_origin": "ast",
       "id": "src_projects_projects_controller_projectscontroller_update",
-      "community": 34,
-      "community_name": "Module 34",
+      "community": 4,
+      "community_name": "Project DTOs + Compliance",
       "norm_label": ".update()"
     },
     {
@@ -7630,8 +7806,8 @@
       "source_location": "L60",
       "_origin": "ast",
       "id": "src_projects_projects_controller_projectscontroller_remove",
-      "community": 34,
-      "community_name": "Module 34",
+      "community": 4,
+      "community_name": "Project DTOs + Compliance",
       "norm_label": ".remove()"
     },
     {
@@ -7674,8 +7850,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_projects_projects_service_spec",
-      "community": 105,
-      "community_name": "projects.service.spec.ts",
+      "community": 9,
+      "community_name": "Onboarding",
       "norm_label": "projects.service.spec.ts"
     },
     {
@@ -7685,8 +7861,8 @@
       "source_location": "L7",
       "_origin": "ast",
       "id": "src_projects_projects_service_spec_mockprisma",
-      "community": 105,
-      "community_name": "projects.service.spec.ts",
+      "community": 9,
+      "community_name": "Onboarding",
       "norm_label": "mockprisma"
     },
     {
@@ -7696,8 +7872,8 @@
       "source_location": "L38",
       "_origin": "ast",
       "id": "src_projects_projects_service_spec_mockragindexing",
-      "community": 105,
-      "community_name": "projects.service.spec.ts",
+      "community": 9,
+      "community_name": "Onboarding",
       "norm_label": "mockragindexing"
     },
     {
@@ -7707,8 +7883,8 @@
       "source_location": "L42",
       "_origin": "ast",
       "id": "src_projects_projects_service_spec_mockonboarding",
-      "community": 105,
-      "community_name": "projects.service.spec.ts",
+      "community": 9,
+      "community_name": "Onboarding",
       "norm_label": "mockonboarding"
     },
     {
@@ -7740,8 +7916,8 @@
       "source_location": "L18",
       "_origin": "ast",
       "id": "src_projects_projects_service_projectsservice",
-      "community": 100,
-      "community_name": "ProjectsService",
+      "community": 4,
+      "community_name": "Project DTOs + Compliance",
       "norm_label": "projectsservice"
     },
     {
@@ -7751,8 +7927,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "src_projects_projects_service_ts_injectable",
-      "community": 100,
-      "community_name": "ProjectsService",
+      "community": 4,
+      "community_name": "Project DTOs + Compliance",
       "norm_label": "injectable"
     },
     {
@@ -7762,8 +7938,8 @@
       "source_location": "L21",
       "_origin": "ast",
       "id": "src_projects_projects_service_projectsservice_constructor",
-      "community": 9,
-      "community_name": "Onboarding",
+      "community": 5,
+      "community_name": "Chroma / Queue Services",
       "norm_label": ".constructor()"
     },
     {
@@ -7773,8 +7949,8 @@
       "source_location": "L27",
       "_origin": "ast",
       "id": "src_projects_projects_service_projectsservice_findallbyuser",
-      "community": 34,
-      "community_name": "Module 34",
+      "community": 4,
+      "community_name": "Project DTOs + Compliance",
       "norm_label": ".findallbyuser()"
     },
     {
@@ -7784,8 +7960,8 @@
       "source_location": "L56",
       "_origin": "ast",
       "id": "src_projects_projects_service_projectsservice_findbyid",
-      "community": 34,
-      "community_name": "Module 34",
+      "community": 4,
+      "community_name": "Project DTOs + Compliance",
       "norm_label": ".findbyid()"
     },
     {
@@ -7795,8 +7971,8 @@
       "source_location": "L73",
       "_origin": "ast",
       "id": "src_projects_projects_service_projectsservice_create",
-      "community": 104,
-      "community_name": ".create",
+      "community": 4,
+      "community_name": "Project DTOs + Compliance",
       "norm_label": ".create()"
     },
     {
@@ -7806,8 +7982,8 @@
       "source_location": "L84",
       "_origin": "ast",
       "id": "src_projects_projects_service_projectsservice_update",
-      "community": 100,
-      "community_name": "ProjectsService",
+      "community": 4,
+      "community_name": "Project DTOs + Compliance",
       "norm_label": ".update()"
     },
     {
@@ -7817,8 +7993,8 @@
       "source_location": "L89",
       "_origin": "ast",
       "id": "src_projects_projects_service_projectsservice_remove",
-      "community": 100,
-      "community_name": "ProjectsService",
+      "community": 4,
+      "community_name": "Project DTOs + Compliance",
       "norm_label": ".remove()"
     },
     {
@@ -7828,8 +8004,8 @@
       "source_location": "L116",
       "_origin": "ast",
       "id": "src_projects_projects_service_projectsservice_getsummary",
-      "community": 34,
-      "community_name": "Module 34",
+      "community": 4,
+      "community_name": "Project DTOs + Compliance",
       "norm_label": ".getsummary()"
     },
     {
@@ -7839,8 +8015,8 @@
       "source_location": "L151",
       "_origin": "ast",
       "id": "src_projects_projects_service_projectsservice_getoverview",
-      "community": 100,
-      "community_name": "ProjectsService",
+      "community": 4,
+      "community_name": "Project DTOs + Compliance",
       "norm_label": ".getoverview()"
     },
     {
@@ -7850,8 +8026,8 @@
       "source_location": "L276",
       "_origin": "ast",
       "id": "src_projects_projects_service_projectsservice_ensureownership",
-      "community": 100,
-      "community_name": "ProjectsService",
+      "community": 4,
+      "community_name": "Project DTOs + Compliance",
       "norm_label": ".ensureownership()"
     },
     {
@@ -7861,8 +8037,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_rag_chroma_service",
-      "community": 5,
-      "community_name": "Chroma / Queue Services",
+      "community": 11,
+      "community_name": "AI Controller (Attack/Posture/Intel)",
       "norm_label": "chroma.service.ts"
     },
     {
@@ -7872,8 +8048,8 @@
       "source_location": "L8",
       "_origin": "ast",
       "id": "src_rag_chroma_service_ragdocument",
-      "community": 5,
-      "community_name": "Chroma / Queue Services",
+      "community": 11,
+      "community_name": "AI Controller (Attack/Posture/Intel)",
       "norm_label": "ragdocument"
     },
     {
@@ -7883,8 +8059,8 @@
       "source_location": "L14",
       "_origin": "ast",
       "id": "src_rag_chroma_service_ragqueryresult",
-      "community": 5,
-      "community_name": "Chroma / Queue Services",
+      "community": 11,
+      "community_name": "AI Controller (Attack/Posture/Intel)",
       "norm_label": "ragqueryresult"
     },
     {
@@ -7993,8 +8169,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_rag_rag_context_service",
-      "community": 5,
-      "community_name": "Chroma / Queue Services",
+      "community": 11,
+      "community_name": "AI Controller (Attack/Posture/Intel)",
       "norm_label": "rag-context.service.ts"
     },
     {
@@ -8004,8 +8180,8 @@
       "source_location": "L5",
       "_origin": "ast",
       "id": "src_rag_rag_context_service_nodesummary",
-      "community": 5,
-      "community_name": "Chroma / Queue Services",
+      "community": 11,
+      "community_name": "AI Controller (Attack/Posture/Intel)",
       "norm_label": "nodesummary"
     },
     {
@@ -8015,8 +8191,8 @@
       "source_location": "L12",
       "_origin": "ast",
       "id": "src_rag_rag_context_service_diagraminfo",
-      "community": 5,
-      "community_name": "Chroma / Queue Services",
+      "community": 11,
+      "community_name": "AI Controller (Attack/Posture/Intel)",
       "norm_label": "diagraminfo"
     },
     {
@@ -8026,8 +8202,8 @@
       "source_location": "L21",
       "_origin": "ast",
       "id": "src_rag_rag_context_service_versionsummary",
-      "community": 5,
-      "community_name": "Chroma / Queue Services",
+      "community": 11,
+      "community_name": "AI Controller (Attack/Posture/Intel)",
       "norm_label": "versionsummary"
     },
     {
@@ -8037,8 +8213,8 @@
       "source_location": "L28",
       "_origin": "ast",
       "id": "src_rag_rag_context_service_ragcontextservice",
-      "community": 5,
-      "community_name": "Chroma / Queue Services",
+      "community": 22,
+      "community_name": "Module 22",
       "norm_label": "ragcontextservice"
     },
     {
@@ -8048,8 +8224,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "src_rag_rag_context_service_ts_injectable",
-      "community": 5,
-      "community_name": "Chroma / Queue Services",
+      "community": 22,
+      "community_name": "Module 22",
       "norm_label": "injectable"
     },
     {
@@ -8070,8 +8246,8 @@
       "source_location": "L40",
       "_origin": "ast",
       "id": "src_rag_rag_context_service_ragcontextservice_gathercontext",
-      "community": 5,
-      "community_name": "Chroma / Queue Services",
+      "community": 22,
+      "community_name": "Module 22",
       "norm_label": ".gathercontext()"
     },
     {
@@ -8081,8 +8257,8 @@
       "source_location": "L58",
       "_origin": "ast",
       "id": "src_rag_rag_context_service_ragcontextservice_semanticsearch",
-      "community": 5,
-      "community_name": "Chroma / Queue Services",
+      "community": 22,
+      "community_name": "Module 22",
       "norm_label": ".semanticsearch()"
     },
     {
@@ -8092,8 +8268,8 @@
       "source_location": "L66",
       "_origin": "ast",
       "id": "src_rag_rag_context_service_ragcontextservice_getdiagraminfo",
-      "community": 5,
-      "community_name": "Chroma / Queue Services",
+      "community": 22,
+      "community_name": "Module 22",
       "norm_label": ".getdiagraminfo()"
     },
     {
@@ -8103,8 +8279,8 @@
       "source_location": "L94",
       "_origin": "ast",
       "id": "src_rag_rag_context_service_ragcontextservice_getdiagramnodes",
-      "community": 5,
-      "community_name": "Chroma / Queue Services",
+      "community": 22,
+      "community_name": "Module 22",
       "norm_label": ".getdiagramnodes()"
     },
     {
@@ -8114,8 +8290,8 @@
       "source_location": "L127",
       "_origin": "ast",
       "id": "src_rag_rag_context_service_ragcontextservice_listprojectversions",
-      "community": 5,
-      "community_name": "Chroma / Queue Services",
+      "community": 22,
+      "community_name": "Module 22",
       "norm_label": ".listprojectversions()"
     },
     {
@@ -8125,8 +8301,8 @@
       "source_location": "L146",
       "_origin": "ast",
       "id": "src_rag_rag_context_service_ragcontextservice_buildcontextstring",
-      "community": 5,
-      "community_name": "Chroma / Queue Services",
+      "community": 22,
+      "community_name": "Module 22",
       "norm_label": ".buildcontextstring()"
     },
     {
@@ -8136,8 +8312,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_rag_rag_indexing_service",
-      "community": 5,
-      "community_name": "Chroma / Queue Services",
+      "community": 11,
+      "community_name": "AI Controller (Attack/Posture/Intel)",
       "norm_label": "rag-indexing.service.ts"
     },
     {
@@ -8147,8 +8323,8 @@
       "source_location": "L4",
       "_origin": "ast",
       "id": "src_rag_rag_indexing_service_layermap",
-      "community": 5,
-      "community_name": "Chroma / Queue Services",
+      "community": 11,
+      "community_name": "AI Controller (Attack/Posture/Intel)",
       "norm_label": "layermap"
     },
     {
@@ -8158,8 +8334,8 @@
       "source_location": "L14",
       "_origin": "ast",
       "id": "src_rag_rag_indexing_service_chatmessageitem",
-      "community": 5,
-      "community_name": "Chroma / Queue Services",
+      "community": 11,
+      "community_name": "AI Controller (Attack/Posture/Intel)",
       "norm_label": "chatmessageitem"
     },
     {
@@ -8213,8 +8389,8 @@
       "source_location": "L104",
       "_origin": "ast",
       "id": "src_rag_rag_indexing_service_ragindexingservice_deleteprojectcontext",
-      "community": 100,
-      "community_name": "ProjectsService",
+      "community": 5,
+      "community_name": "Chroma / Queue Services",
       "norm_label": ".deleteprojectcontext()"
     },
     {
@@ -8246,8 +8422,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_rag_rag_module",
-      "community": 5,
-      "community_name": "Chroma / Queue Services",
+      "community": 11,
+      "community_name": "AI Controller (Attack/Posture/Intel)",
       "norm_label": "rag.module.ts"
     },
     {
@@ -8257,8 +8433,8 @@
       "source_location": "L11",
       "_origin": "ast",
       "id": "src_rag_rag_module_ragmodule",
-      "community": 5,
-      "community_name": "Chroma / Queue Services",
+      "community": 11,
+      "community_name": "AI Controller (Attack/Posture/Intel)",
       "norm_label": "ragmodule"
     },
     {
@@ -8268,8 +8444,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "src_rag_rag_module_ts_global",
-      "community": 5,
-      "community_name": "Chroma / Queue Services",
+      "community": 11,
+      "community_name": "AI Controller (Attack/Posture/Intel)",
       "norm_label": "global"
     },
     {
@@ -8279,8 +8455,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "src_rag_rag_module_ts_module",
-      "community": 5,
-      "community_name": "Chroma / Queue Services",
+      "community": 11,
+      "community_name": "AI Controller (Attack/Posture/Intel)",
       "norm_label": "module"
     },
     {
@@ -8367,8 +8543,8 @@
       "source_location": "L13",
       "_origin": "ast",
       "id": "src_threat_dto_save_threat_model_dto_threatitemdto",
-      "community": 49,
-      "community_name": "Module 49",
+      "community": 18,
+      "community_name": "Module 18",
       "norm_label": "threatitemdto"
     },
     {
@@ -8378,8 +8554,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "src_threat_dto_save_threat_model_dto_ts_isstring",
-      "community": 49,
-      "community_name": "Module 49",
+      "community": 18,
+      "community_name": "Module 18",
       "norm_label": "isstring"
     },
     {
@@ -8389,8 +8565,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "src_threat_dto_save_threat_model_dto_ts_isenum",
-      "community": 49,
-      "community_name": "Module 49",
+      "community": 18,
+      "community_name": "Module 18",
       "norm_label": "isenum"
     },
     {
@@ -8400,8 +8576,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "src_threat_dto_save_threat_model_dto_ts_isoptional",
-      "community": 49,
-      "community_name": "Module 49",
+      "community": 18,
+      "community_name": "Module 18",
       "norm_label": "isoptional"
     },
     {
@@ -8411,8 +8587,8 @@
       "source_location": "L45",
       "_origin": "ast",
       "id": "src_threat_dto_save_threat_model_dto_savethreatmodeldto",
-      "community": 49,
-      "community_name": "Module 49",
+      "community": 18,
+      "community_name": "Module 18",
       "norm_label": "savethreatmodeldto"
     },
     {
@@ -8422,8 +8598,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "src_threat_dto_save_threat_model_dto_ts_isint",
-      "community": 49,
-      "community_name": "Module 49",
+      "community": 18,
+      "community_name": "Module 18",
       "norm_label": "isint"
     },
     {
@@ -8433,8 +8609,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "src_threat_dto_save_threat_model_dto_ts_isobject",
-      "community": 49,
-      "community_name": "Module 49",
+      "community": 18,
+      "community_name": "Module 18",
       "norm_label": "isobject"
     },
     {
@@ -8444,8 +8620,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "src_threat_dto_save_threat_model_dto_ts_isarray",
-      "community": 49,
-      "community_name": "Module 49",
+      "community": 18,
+      "community_name": "Module 18",
       "norm_label": "isarray"
     },
     {
@@ -8455,8 +8631,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "src_threat_dto_save_threat_model_dto_ts_validatenested",
-      "community": 49,
-      "community_name": "Module 49",
+      "community": 18,
+      "community_name": "Module 18",
       "norm_label": "validatenested"
     },
     {
@@ -8466,8 +8642,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "src_threat_dto_save_threat_model_dto_ts_type",
-      "community": 49,
-      "community_name": "Module 49",
+      "community": 18,
+      "community_name": "Module 18",
       "norm_label": "type"
     },
     {
@@ -8840,8 +9016,8 @@
       "source_location": "L71",
       "_origin": "ast",
       "id": "src_threat_report_service_reportservice_constructor",
-      "community": 12,
-      "community_name": "Prisma / Core Services",
+      "community": 96,
+      "community_name": "ReportService",
       "norm_label": ".constructor()"
     },
     {
@@ -9401,8 +9577,8 @@
       "source_location": "L19",
       "_origin": "ast",
       "id": "src_threat_threat_service_threatservice_constructor",
-      "community": 0,
-      "community_name": "Threat / Intel Controllers",
+      "community": 9,
+      "community_name": "Onboarding",
       "norm_label": ".constructor()"
     },
     {
@@ -9456,8 +9632,8 @@
       "source_location": "L123",
       "_origin": "ast",
       "id": "src_threat_threat_service_threatservice_createthreat",
-      "community": 0,
-      "community_name": "Threat / Intel Controllers",
+      "community": 18,
+      "community_name": "Module 18",
       "norm_label": ".createthreat()"
     },
     {
@@ -9610,8 +9786,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_user_settings_ai_models_service",
-      "community": 19,
-      "community_name": "Module 19",
+      "community": 30,
+      "community_name": "Module 30",
       "norm_label": "ai-models.service.ts"
     },
     {
@@ -9621,8 +9797,8 @@
       "source_location": "L7",
       "_origin": "ast",
       "id": "src_user_settings_ai_models_service_reasoninglevel",
-      "community": 19,
-      "community_name": "Module 19",
+      "community": 30,
+      "community_name": "Module 30",
       "norm_label": "reasoninglevel"
     },
     {
@@ -9632,8 +9808,8 @@
       "source_location": "L9",
       "_origin": "ast",
       "id": "src_user_settings_ai_models_service_aimodelinfo",
-      "community": 19,
-      "community_name": "Module 19",
+      "community": 30,
+      "community_name": "Module 30",
       "norm_label": "aimodelinfo"
     },
     {
@@ -9643,8 +9819,8 @@
       "source_location": "L18",
       "_origin": "ast",
       "id": "src_user_settings_ai_models_service_aimodelsresponse",
-      "community": 19,
-      "community_name": "Module 19",
+      "community": 30,
+      "community_name": "Module 30",
       "norm_label": "aimodelsresponse"
     },
     {
@@ -9654,8 +9830,8 @@
       "source_location": "L28",
       "_origin": "ast",
       "id": "src_user_settings_ai_models_service_openai_enrich",
-      "community": 19,
-      "community_name": "Module 19",
+      "community": 30,
+      "community_name": "Module 30",
       "norm_label": "openai_enrich"
     },
     {
@@ -9819,8 +9995,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_user_settings_dto_update_ai_settings_dto",
-      "community": 47,
-      "community_name": "user-settings.service.ts",
+      "community": 19,
+      "community_name": "Module 19",
       "norm_label": "update-ai-settings.dto.ts"
     },
     {
@@ -9830,8 +10006,8 @@
       "source_location": "L4",
       "_origin": "ast",
       "id": "src_user_settings_dto_update_ai_settings_dto_aiproviderdto",
-      "community": 47,
-      "community_name": "user-settings.service.ts",
+      "community": 19,
+      "community_name": "Module 19",
       "norm_label": "aiproviderdto"
     },
     {
@@ -9918,8 +10094,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_user_settings_user_settings_controller",
-      "community": 101,
-      "community_name": "user-settings.controller.ts",
+      "community": 1,
+      "community_name": "Auth Guards + Chat Controller",
       "norm_label": "user-settings.controller.ts"
     },
     {
@@ -9973,8 +10149,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "put",
-      "community": 43,
-      "community_name": "UserSettingsController",
+      "community": 47,
+      "community_name": "user-settings.service.ts",
       "norm_label": "put"
     },
     {
@@ -9984,8 +10160,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "src_user_settings_user_settings_controller_ts_body",
-      "community": 43,
-      "community_name": "UserSettingsController",
+      "community": 47,
+      "community_name": "user-settings.service.ts",
       "norm_label": "body"
     },
     {
@@ -10028,8 +10204,8 @@
       "source_location": "L23",
       "_origin": "ast",
       "id": "src_user_settings_user_settings_controller_usersettingscontroller_updateaisettings",
-      "community": 43,
-      "community_name": "UserSettingsController",
+      "community": 47,
+      "community_name": "user-settings.service.ts",
       "norm_label": ".updateaisettings()"
     },
     {
@@ -10094,8 +10270,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_user_settings_user_settings_service",
-      "community": 47,
-      "community_name": "user-settings.service.ts",
+      "community": 19,
+      "community_name": "Module 19",
       "norm_label": "user-settings.service.ts"
     },
     {
@@ -10105,8 +10281,8 @@
       "source_location": "L8",
       "_origin": "ast",
       "id": "src_user_settings_user_settings_service_aisettingsresponse",
-      "community": 47,
-      "community_name": "user-settings.service.ts",
+      "community": 19,
+      "community_name": "Module 19",
       "norm_label": "aisettingsresponse"
     },
     {
@@ -10171,8 +10347,8 @@
       "source_location": "L97",
       "_origin": "ast",
       "id": "src_user_settings_user_settings_service_usersettingsservice_getdecryptedapikey",
-      "community": 42,
-      "community_name": "AiModelsService",
+      "community": 16,
+      "community_name": "AI Service Core",
       "norm_label": ".getdecryptedapikey()"
     },
     {
@@ -10215,8 +10391,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_users_dto_update_user_dto",
-      "community": 11,
-      "community_name": "AI Controller (Attack/Posture/Intel)",
+      "community": 1,
+      "community_name": "Auth Guards + Chat Controller",
       "norm_label": "update-user.dto.ts"
     },
     {
@@ -10226,8 +10402,8 @@
       "source_location": "L3",
       "_origin": "ast",
       "id": "src_users_dto_update_user_dto_updateuserdto",
-      "community": 11,
-      "community_name": "AI Controller (Attack/Posture/Intel)",
+      "community": 1,
+      "community_name": "Auth Guards + Chat Controller",
       "norm_label": "updateuserdto"
     },
     {
@@ -10237,8 +10413,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "src_users_dto_update_user_dto_ts_isoptional",
-      "community": 11,
-      "community_name": "AI Controller (Attack/Posture/Intel)",
+      "community": 1,
+      "community_name": "Auth Guards + Chat Controller",
       "norm_label": "isoptional"
     },
     {
@@ -10248,8 +10424,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "src_users_dto_update_user_dto_ts_isstring",
-      "community": 11,
-      "community_name": "AI Controller (Attack/Posture/Intel)",
+      "community": 1,
+      "community_name": "Auth Guards + Chat Controller",
       "norm_label": "isstring"
     },
     {
@@ -10259,8 +10435,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_users_users_controller",
-      "community": 11,
-      "community_name": "AI Controller (Attack/Posture/Intel)",
+      "community": 1,
+      "community_name": "Auth Guards + Chat Controller",
       "norm_label": "users.controller.ts"
     },
     {
@@ -10270,8 +10446,8 @@
       "source_location": "L9",
       "_origin": "ast",
       "id": "src_users_users_controller_userscontroller",
-      "community": 11,
-      "community_name": "AI Controller (Attack/Posture/Intel)",
+      "community": 1,
+      "community_name": "Auth Guards + Chat Controller",
       "norm_label": "userscontroller"
     },
     {
@@ -10281,8 +10457,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "src_users_users_controller_ts_controller",
-      "community": 11,
-      "community_name": "AI Controller (Attack/Posture/Intel)",
+      "community": 1,
+      "community_name": "Auth Guards + Chat Controller",
       "norm_label": "controller"
     },
     {
@@ -10292,8 +10468,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "src_users_users_controller_ts_useguards",
-      "community": 11,
-      "community_name": "AI Controller (Attack/Posture/Intel)",
+      "community": 1,
+      "community_name": "Auth Guards + Chat Controller",
       "norm_label": "useguards"
     },
     {
@@ -10303,8 +10479,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "src_users_users_controller_ts_get",
-      "community": 11,
-      "community_name": "AI Controller (Attack/Posture/Intel)",
+      "community": 1,
+      "community_name": "Auth Guards + Chat Controller",
       "norm_label": "get"
     },
     {
@@ -10314,8 +10490,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "src_users_users_controller_ts_patch",
-      "community": 11,
-      "community_name": "AI Controller (Attack/Posture/Intel)",
+      "community": 1,
+      "community_name": "Auth Guards + Chat Controller",
       "norm_label": "patch"
     },
     {
@@ -10325,8 +10501,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "src_users_users_controller_ts_body",
-      "community": 11,
-      "community_name": "AI Controller (Attack/Posture/Intel)",
+      "community": 1,
+      "community_name": "Auth Guards + Chat Controller",
       "norm_label": "body"
     },
     {
@@ -10336,8 +10512,8 @@
       "source_location": "L10",
       "_origin": "ast",
       "id": "src_users_users_controller_userscontroller_constructor",
-      "community": 11,
-      "community_name": "AI Controller (Attack/Posture/Intel)",
+      "community": 1,
+      "community_name": "Auth Guards + Chat Controller",
       "norm_label": ".constructor()"
     },
     {
@@ -10347,8 +10523,8 @@
       "source_location": "L13",
       "_origin": "ast",
       "id": "src_users_users_controller_userscontroller_getme",
-      "community": 11,
-      "community_name": "AI Controller (Attack/Posture/Intel)",
+      "community": 1,
+      "community_name": "Auth Guards + Chat Controller",
       "norm_label": ".getme()"
     },
     {
@@ -10358,8 +10534,8 @@
       "source_location": "L18",
       "_origin": "ast",
       "id": "src_users_users_controller_userscontroller_updateme",
-      "community": 11,
-      "community_name": "AI Controller (Attack/Posture/Intel)",
+      "community": 1,
+      "community_name": "Auth Guards + Chat Controller",
       "norm_label": ".updateme()"
     },
     {
@@ -10369,8 +10545,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_users_users_module",
-      "community": 11,
-      "community_name": "AI Controller (Attack/Posture/Intel)",
+      "community": 1,
+      "community_name": "Auth Guards + Chat Controller",
       "norm_label": "users.module.ts"
     },
     {
@@ -10380,8 +10556,8 @@
       "source_location": "L10",
       "_origin": "ast",
       "id": "src_users_users_module_usersmodule",
-      "community": 11,
-      "community_name": "AI Controller (Attack/Posture/Intel)",
+      "community": 1,
+      "community_name": "Auth Guards + Chat Controller",
       "norm_label": "usersmodule"
     },
     {
@@ -10391,8 +10567,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "src_users_users_module_ts_module",
-      "community": 11,
-      "community_name": "AI Controller (Attack/Posture/Intel)",
+      "community": 1,
+      "community_name": "Auth Guards + Chat Controller",
       "norm_label": "module"
     },
     {
@@ -10402,8 +10578,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_users_users_service",
-      "community": 11,
-      "community_name": "AI Controller (Attack/Posture/Intel)",
+      "community": 1,
+      "community_name": "Auth Guards + Chat Controller",
       "norm_label": "users.service.ts"
     },
     {
@@ -10413,8 +10589,8 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "src_users_users_service_usersservice",
-      "community": 11,
-      "community_name": "AI Controller (Attack/Posture/Intel)",
+      "community": 1,
+      "community_name": "Auth Guards + Chat Controller",
       "norm_label": "usersservice"
     },
     {
@@ -10424,8 +10600,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "src_users_users_service_ts_injectable",
-      "community": 11,
-      "community_name": "AI Controller (Attack/Posture/Intel)",
+      "community": 1,
+      "community_name": "Auth Guards + Chat Controller",
       "norm_label": "injectable"
     },
     {
@@ -10435,8 +10611,8 @@
       "source_location": "L7",
       "_origin": "ast",
       "id": "src_users_users_service_usersservice_constructor",
-      "community": 11,
-      "community_name": "AI Controller (Attack/Posture/Intel)",
+      "community": 1,
+      "community_name": "Auth Guards + Chat Controller",
       "norm_label": ".constructor()"
     },
     {
@@ -10446,8 +10622,8 @@
       "source_location": "L9",
       "_origin": "ast",
       "id": "src_users_users_service_usersservice_findbyid",
-      "community": 11,
-      "community_name": "AI Controller (Attack/Posture/Intel)",
+      "community": 1,
+      "community_name": "Auth Guards + Chat Controller",
       "norm_label": ".findbyid()"
     },
     {
@@ -10457,8 +10633,8 @@
       "source_location": "L18",
       "_origin": "ast",
       "id": "src_users_users_service_usersservice_update",
-      "community": 11,
-      "community_name": "AI Controller (Attack/Posture/Intel)",
+      "community": 1,
+      "community_name": "Auth Guards + Chat Controller",
       "norm_label": ".update()"
     },
     {
@@ -15442,7 +15618,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L66",
+      "source_location": "L69",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_ai_ai_service",
@@ -15645,6 +15821,30 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "src/ai/ai.service.ts",
+      "source_location": "L66",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_ai_ai_service",
+      "target": "src_ai_dto_converse_dto",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/ai/ai.service.ts",
+      "source_location": "L66",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_ai_ai_service",
+      "target": "src_ai_dto_converse_dto_conversedto",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/ai/ai.service.ts",
       "source_location": "L51",
       "weight": 1.0,
       "_origin": "ast",
@@ -15770,6 +15970,42 @@
       "_origin": "ast",
       "source": "src_ai_ai_service",
       "target": "src_ai_llm_service_llmservice",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/ai/ai.service.ts",
+      "source_location": "L65",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_ai_ai_service",
+      "target": "src_ai_new_project_converse_parser",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/ai/ai.service.ts",
+      "source_location": "L65",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_ai_ai_service",
+      "target": "src_ai_new_project_converse_parser_converseresult",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/ai/ai.service.ts",
+      "source_location": "L65",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_ai_ai_service",
+      "target": "src_ai_new_project_converse_parser_parseconverse",
       "confidence_score": 1.0
     },
     {
@@ -15938,6 +16174,18 @@
       "_origin": "ast",
       "source": "src_ai_ai_service",
       "target": "src_ai_prompts_layers_system_prompt",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/ai/ai.service.ts",
+      "source_location": "L64",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_ai_ai_service",
+      "target": "src_ai_prompts_new_project_converse_prompt",
       "confidence_score": 1.0
     },
     {
@@ -16436,7 +16684,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L684",
+      "source_location": "L772",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_ai_ai_service_aiservice",
@@ -16447,7 +16695,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L1089",
+      "source_location": "L1177",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_ai_ai_service_aiservice",
@@ -16458,7 +16706,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L83",
+      "source_location": "L86",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_ai_ai_service_aiservice",
@@ -16469,7 +16717,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L1299",
+      "source_location": "L1387",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_ai_ai_service_aiservice",
@@ -16480,7 +16728,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L265",
+      "source_location": "L353",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_ai_ai_service_aiservice",
@@ -16491,7 +16739,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L203",
+      "source_location": "L291",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_ai_ai_service_aiservice",
@@ -16502,7 +16750,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L128",
+      "source_location": "L131",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_ai_ai_service_aiservice",
@@ -16513,7 +16761,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L70",
+      "source_location": "L73",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_ai_ai_service_aiservice",
@@ -16524,7 +16772,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L364",
+      "source_location": "L452",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_ai_ai_service_aiservice",
@@ -16535,77 +16783,11 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L532",
+      "source_location": "L208",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_ai_ai_service_aiservice",
-      "target": "src_ai_ai_service_aiservice_declutter",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "method",
-      "confidence": "EXTRACTED",
-      "source_file": "src/ai/ai.service.ts",
-      "source_location": "L746",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "src_ai_ai_service_aiservice",
-      "target": "src_ai_ai_service_aiservice_fetchprojectcontextfordiagram",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "method",
-      "confidence": "EXTRACTED",
-      "source_file": "src/ai/ai.service.ts",
-      "source_location": "L103",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "src_ai_ai_service_aiservice",
-      "target": "src_ai_ai_service_aiservice_generate",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "method",
-      "confidence": "EXTRACTED",
-      "source_file": "src/ai/ai.service.ts",
-      "source_location": "L1277",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "src_ai_ai_service_aiservice",
-      "target": "src_ai_ai_service_aiservice_generateintelreport",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "method",
-      "confidence": "EXTRACTED",
-      "source_file": "src/ai/ai.service.ts",
-      "source_location": "L801",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "src_ai_ai_service_aiservice",
-      "target": "src_ai_ai_service_aiservice_getpipelinestatus",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "method",
-      "confidence": "EXTRACTED",
-      "source_file": "src/ai/ai.service.ts",
-      "source_location": "L831",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "src_ai_ai_service_aiservice",
-      "target": "src_ai_ai_service_aiservice_getpipelinestatusfordiagram",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "method",
-      "confidence": "EXTRACTED",
-      "source_file": "src/ai/ai.service.ts",
-      "source_location": "L1144",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "src_ai_ai_service_aiservice",
-      "target": "src_ai_ai_service_aiservice_intelsynthesis",
+      "target": "src_ai_ai_service_aiservice_converse",
       "confidence_score": 1.0
     },
     {
@@ -16616,6 +16798,83 @@
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_ai_ai_service_aiservice",
+      "target": "src_ai_ai_service_aiservice_declutter",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "src/ai/ai.service.ts",
+      "source_location": "L834",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_ai_ai_service_aiservice",
+      "target": "src_ai_ai_service_aiservice_fetchprojectcontextfordiagram",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "src/ai/ai.service.ts",
+      "source_location": "L106",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_ai_ai_service_aiservice",
+      "target": "src_ai_ai_service_aiservice_generate",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "src/ai/ai.service.ts",
+      "source_location": "L1365",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_ai_ai_service_aiservice",
+      "target": "src_ai_ai_service_aiservice_generateintelreport",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "src/ai/ai.service.ts",
+      "source_location": "L889",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_ai_ai_service_aiservice",
+      "target": "src_ai_ai_service_aiservice_getpipelinestatus",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "src/ai/ai.service.ts",
+      "source_location": "L919",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_ai_ai_service_aiservice",
+      "target": "src_ai_ai_service_aiservice_getpipelinestatusfordiagram",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "src/ai/ai.service.ts",
+      "source_location": "L1232",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_ai_ai_service_aiservice",
+      "target": "src_ai_ai_service_aiservice_intelsynthesis",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "src/ai/ai.service.ts",
+      "source_location": "L708",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_ai_ai_service_aiservice",
       "target": "src_ai_ai_service_aiservice_posturescore",
       "confidence_score": 1.0
     },
@@ -16623,7 +16882,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L1035",
+      "source_location": "L1123",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_ai_ai_service_aiservice",
@@ -16634,7 +16893,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L118",
+      "source_location": "L121",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_ai_ai_service_aiservice",
@@ -16645,7 +16904,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L782",
+      "source_location": "L870",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_ai_ai_service_aiservice",
@@ -16656,7 +16915,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L762",
+      "source_location": "L850",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_ai_ai_service_aiservice",
@@ -16667,7 +16926,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L113",
+      "source_location": "L116",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_ai_ai_service_aiservice",
@@ -16678,7 +16937,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L863",
+      "source_location": "L951",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_ai_ai_service_aiservice",
@@ -16689,7 +16948,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L443",
+      "source_location": "L531",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_ai_ai_service_aiservice",
@@ -16700,7 +16959,7 @@
       "relation": "references",
       "confidence": "EXTRACTED",
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L65",
+      "source_location": "L68",
       "weight": 1.0,
       "context": "decorator",
       "_origin": "ast",
@@ -16748,7 +17007,7 @@
       "relation": "references",
       "confidence": "EXTRACTED",
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L80",
+      "source_location": "L83",
       "weight": 1.0,
       "context": "decorator",
       "_origin": "ast",
@@ -16761,7 +17020,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L70",
+      "source_location": "L73",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_ai_ai_service_aiservice_constructor",
@@ -16773,7 +17032,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L70",
+      "source_location": "L73",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_ai_ai_service_aiservice_constructor",
@@ -16785,7 +17044,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L70",
+      "source_location": "L73",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_ai_ai_service_aiservice_constructor",
@@ -16797,7 +17056,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L70",
+      "source_location": "L73",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_ai_ai_service_aiservice_constructor",
@@ -16809,7 +17068,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L70",
+      "source_location": "L73",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_ai_ai_service_aiservice_constructor",
@@ -16821,7 +17080,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L70",
+      "source_location": "L73",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_ai_ai_service_aiservice_constructor",
@@ -16833,7 +17092,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L70",
+      "source_location": "L73",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_ai_ai_service_aiservice_constructor",
@@ -16845,7 +17104,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L699",
+      "source_location": "L787",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_ai_ai_service_aiservice_attackmind",
@@ -16857,7 +17116,7 @@
       "context": "generic_arg",
       "confidence": "EXTRACTED",
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L83",
+      "source_location": "L86",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_ai_ai_service_aiservice_buildllmconfig",
@@ -16870,7 +17129,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L84",
+      "source_location": "L87",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_ai_ai_service_aiservice_buildllmconfig",
@@ -16882,7 +17141,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L90",
+      "source_location": "L93",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_ai_ai_service_aiservice_buildllmconfig",
@@ -16893,7 +17152,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L1307",
+      "source_location": "L1395",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_ai_ai_service_aiservice_callai",
@@ -16905,7 +17164,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L274",
+      "source_location": "L362",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_ai_ai_service_aiservice_chatask",
@@ -16917,7 +17176,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L227",
+      "source_location": "L315",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_ai_ai_service_aiservice_chatevaluate",
@@ -16929,7 +17188,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L132",
+      "source_location": "L135",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_ai_ai_service_aiservice_chatgenerate",
@@ -16941,7 +17200,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L379",
+      "source_location": "L467",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_ai_ai_service_aiservice_contextualask",
@@ -16953,7 +17212,19 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L562",
+      "source_location": "L219",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_ai_ai_service_aiservice_converse",
+      "target": "src_ai_ai_service_aiservice_buildllmconfig",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/ai/ai.service.ts",
+      "source_location": "L650",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_ai_ai_service_aiservice_declutter",
@@ -16965,7 +17236,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L1235",
+      "source_location": "L1323",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_ai_ai_service_aiservice_intelsynthesis",
@@ -16977,7 +17248,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L626",
+      "source_location": "L714",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_ai_ai_service_aiservice_posturescore",
@@ -16989,7 +17260,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L910",
+      "source_location": "L998",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_ai_ai_service_aiservice_threatagentchat",
@@ -17001,7 +17272,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L489",
+      "source_location": "L577",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_ai_ai_service_aiservice_threatanalysis",
@@ -17013,7 +17284,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L110",
+      "source_location": "L113",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_ai_ai_service_aiservice_generate",
@@ -17026,7 +17297,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L109",
+      "source_location": "L112",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_ai_ai_service_aiservice_generate",
@@ -17037,7 +17308,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L115",
+      "source_location": "L118",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_ai_ai_service_aiservice_suggest",
@@ -17050,7 +17321,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L114",
+      "source_location": "L117",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_ai_ai_service_aiservice_suggest",
@@ -17061,7 +17332,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L125",
+      "source_location": "L128",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_ai_ai_service_aiservice_refine",
@@ -17074,7 +17345,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L124",
+      "source_location": "L127",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_ai_ai_service_aiservice_refine",
@@ -17086,7 +17357,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L156",
+      "source_location": "L159",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_ai_ai_service_aiservice_chatgenerate",
@@ -17098,7 +17369,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L152",
+      "source_location": "L155",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_ai_ai_service_aiservice_chatgenerate",
@@ -17110,7 +17381,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L155",
+      "source_location": "L158",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_ai_ai_service_aiservice_chatgenerate",
@@ -17121,7 +17392,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L128",
+      "source_location": "L131",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_ai_ai_service_aiservice_chatgenerate",
@@ -17134,7 +17405,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L134",
+      "source_location": "L137",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_ai_ai_service_aiservice_chatgenerate",
@@ -17146,7 +17417,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L186",
+      "source_location": "L189",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_ai_ai_service_aiservice_chatgenerate",
@@ -17157,7 +17428,67 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L203",
+      "source_location": "L208",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_ai_ai_service_aiservice_converse",
+      "target": "src_ai_dto_converse_dto_conversedto",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/ai/ai.service.ts",
+      "source_location": "L221",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_ai_ai_service_aiservice_converse",
+      "target": "src_ai_llm_service_llmservice_invoke"
+    },
+    {
+      "relation": "references",
+      "context": "generic_arg",
+      "confidence": "EXTRACTED",
+      "source_file": "src/ai/ai.service.ts",
+      "source_location": "L208",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_ai_ai_service_aiservice_converse",
+      "target": "src_ai_new_project_converse_parser_converseresult",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/ai/ai.service.ts",
+      "source_location": "L229",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_ai_ai_service_aiservice_converse",
+      "target": "src_ai_new_project_converse_parser_parseconverse"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/ai/ai.service.ts",
+      "source_location": "L273",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_ai_ai_service_aiservice_converse",
+      "target": "src_chat_chat_service_chatservice_savemessages"
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "src/ai/ai.service.ts",
+      "source_location": "L291",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_ai_ai_service_aiservice_chatevaluate",
@@ -17170,7 +17501,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L235",
+      "source_location": "L323",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_ai_ai_service_aiservice_chatevaluate",
@@ -17182,7 +17513,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L256",
+      "source_location": "L344",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_ai_ai_service_aiservice_chatevaluate",
@@ -17193,7 +17524,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L265",
+      "source_location": "L353",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_ai_ai_service_aiservice_chatask",
@@ -17206,7 +17537,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L281",
+      "source_location": "L369",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_ai_ai_service_aiservice_chatask",
@@ -17218,7 +17549,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L271",
+      "source_location": "L359",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_ai_ai_service_aiservice_chatask",
@@ -17230,7 +17561,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L342",
+      "source_location": "L430",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_ai_ai_service_aiservice_chatask",
@@ -17241,7 +17572,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L364",
+      "source_location": "L452",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_ai_ai_service_aiservice_contextualask",
@@ -17254,7 +17585,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L386",
+      "source_location": "L474",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_ai_ai_service_aiservice_contextualask",
@@ -17266,7 +17597,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L377",
+      "source_location": "L465",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_ai_ai_service_aiservice_contextualask",
@@ -17278,7 +17609,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L433",
+      "source_location": "L521",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_ai_ai_service_aiservice_contextualask",
@@ -17290,7 +17621,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L370",
+      "source_location": "L458",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_ai_ai_service_aiservice_contextualask",
@@ -17302,7 +17633,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L434",
+      "source_location": "L522",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_ai_ai_service_aiservice_contextualask",
@@ -17313,7 +17644,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L477",
+      "source_location": "L565",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_ai_ai_service_aiservice_threatanalysis",
@@ -17325,7 +17656,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L443",
+      "source_location": "L531",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_ai_ai_service_aiservice_threatanalysis",
@@ -17338,7 +17669,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L492",
+      "source_location": "L580",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_ai_ai_service_aiservice_threatanalysis",
@@ -17350,7 +17681,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L478",
+      "source_location": "L566",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_ai_ai_service_aiservice_threatanalysis",
@@ -17361,7 +17692,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L532",
+      "source_location": "L620",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_ai_ai_service_aiservice_declutter",
@@ -17374,7 +17705,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L568",
+      "source_location": "L656",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_ai_ai_service_aiservice_declutter",
@@ -17386,7 +17717,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L561",
+      "source_location": "L649",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_ai_ai_service_aiservice_declutter",
@@ -17397,7 +17728,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L620",
+      "source_location": "L708",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_ai_ai_service_aiservice_posturescore",
@@ -17410,7 +17741,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L630",
+      "source_location": "L718",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_ai_ai_service_aiservice_posturescore",
@@ -17422,7 +17753,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L629",
+      "source_location": "L717",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_ai_ai_service_aiservice_posturescore",
@@ -17434,7 +17765,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L621",
+      "source_location": "L709",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_ai_ai_service_aiservice_posturescore",
@@ -17446,7 +17777,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L636",
+      "source_location": "L724",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_ai_ai_service_aiservice_posturescore",
@@ -17458,7 +17789,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L661",
+      "source_location": "L749",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_ai_ai_service_aiservice_posturescore",
@@ -17469,7 +17800,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L685",
+      "source_location": "L773",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_ai_ai_service_aiservice_attackmind",
@@ -17481,7 +17812,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L684",
+      "source_location": "L772",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_ai_ai_service_aiservice_attackmind",
@@ -17494,7 +17825,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L711",
+      "source_location": "L799",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_ai_ai_service_aiservice_attackmind",
@@ -17506,7 +17837,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L719",
+      "source_location": "L807",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_ai_ai_service_aiservice_attackmind",
@@ -17518,7 +17849,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L686",
+      "source_location": "L774",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_ai_ai_service_aiservice_attackmind",
@@ -17529,7 +17860,7 @@
       "context": "generic_arg",
       "confidence": "EXTRACTED",
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L746",
+      "source_location": "L834",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_ai_ai_service_aiservice_fetchprojectcontextfordiagram",
@@ -17541,7 +17872,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L762",
+      "source_location": "L850",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_ai_ai_service_aiservice_submitthreatanalysis",
@@ -17553,7 +17884,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L782",
+      "source_location": "L870",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_ai_ai_service_aiservice_submitposturescore",
@@ -17565,7 +17896,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L863",
+      "source_location": "L951",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_ai_ai_service_aiservice_threatagentchat",
@@ -17578,7 +17909,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L916",
+      "source_location": "L1004",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_ai_ai_service_aiservice_threatagentchat",
@@ -17590,7 +17921,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L900",
+      "source_location": "L988",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_ai_ai_service_aiservice_threatagentchat",
@@ -17602,7 +17933,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L949",
+      "source_location": "L1037",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_ai_ai_service_aiservice_threatagentchat",
@@ -17614,7 +17945,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L955",
+      "source_location": "L1043",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_ai_ai_service_aiservice_threatagentchat",
@@ -17625,7 +17956,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L1035",
+      "source_location": "L1123",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_ai_ai_service_aiservice_posturescorestream",
@@ -17637,7 +17968,7 @@
       "context": "parameter_type",
       "confidence": "EXTRACTED",
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L1089",
+      "source_location": "L1177",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_ai_ai_service_aiservice_attackmindstream",
@@ -17650,7 +17981,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L1238",
+      "source_location": "L1326",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_ai_ai_service_aiservice_intelsynthesis",
@@ -17662,7 +17993,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L1295",
+      "source_location": "L1383",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_ai_ai_service_aiservice_generateintelreport",
@@ -17686,7 +18017,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/ai/ai.service.ts",
-      "source_location": "L1311",
+      "source_location": "L1399",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_ai_ai_service_aiservice_callai",
@@ -17772,6 +18103,90 @@
       "source": "src_ai_diagram_postprocess",
       "target": "src_ai_diagram_postprocess_validateoversizewarning",
       "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/ai/new-project/converse-parser.ts",
+      "source_location": "L1",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_ai_new_project_converse_parser",
+      "target": "src_ai_diagram_postprocess",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/ai/new-project/converse-parser.ts",
+      "source_location": "L1",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_ai_new_project_converse_parser",
+      "target": "src_ai_diagram_postprocess_sanitizenodepositions",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/ai/new-project/converse-parser.ts",
+      "source_location": "L43",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_ai_new_project_converse_parser_parseconverse",
+      "target": "src_ai_diagram_postprocess_sanitizenodepositions"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/ai/new-project/converse-parser.ts",
+      "source_location": "L1",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_ai_new_project_converse_parser",
+      "target": "src_ai_diagram_postprocess_validateoversizewarning",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/ai/new-project/converse-parser.ts",
+      "source_location": "L50",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_ai_new_project_converse_parser_parseconverse",
+      "target": "src_ai_diagram_postprocess_validateoversizewarning"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/ai/new-project/converse-parser.ts",
+      "source_location": "L1",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_ai_new_project_converse_parser",
+      "target": "src_ai_diagram_postprocess_coercename",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/ai/new-project/converse-parser.ts",
+      "source_location": "L47",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_ai_new_project_converse_parser_parseconverse",
+      "target": "src_ai_diagram_postprocess_coercename"
     },
     {
       "relation": "contains",
@@ -18362,6 +18777,100 @@
       "_origin": "ast",
       "source": "src_ai_dto_contextual_ask_dto_contextualaskdto",
       "target": "src_ai_dto_contextual_ask_dto_ts_validatenested",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/ai/dto/converse.dto.ts",
+      "source_location": "L12",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_ai_dto_converse_dto",
+      "target": "src_ai_dto_converse_dto_conversedto",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/ai/dto/converse.dto.ts",
+      "source_location": "L4",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_ai_dto_converse_dto",
+      "target": "src_ai_dto_converse_dto_conversemessagedto",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "source_file": "src/ai/dto/converse.dto.ts",
+      "source_location": "L5",
+      "weight": 1.0,
+      "context": "decorator",
+      "_origin": "ast",
+      "source": "src_ai_dto_converse_dto_conversemessagedto",
+      "target": "src_ai_dto_converse_dto_ts_isin",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "source_file": "src/ai/dto/converse.dto.ts",
+      "source_location": "L8",
+      "weight": 1.0,
+      "context": "decorator",
+      "_origin": "ast",
+      "source": "src_ai_dto_converse_dto_conversemessagedto",
+      "target": "src_ai_dto_converse_dto_ts_isstring",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "source_file": "src/ai/dto/converse.dto.ts",
+      "source_location": "L16",
+      "weight": 1.0,
+      "context": "decorator",
+      "_origin": "ast",
+      "source": "src_ai_dto_converse_dto_conversedto",
+      "target": "src_ai_dto_converse_dto_ts_isarray",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "source_file": "src/ai/dto/converse.dto.ts",
+      "source_location": "L13",
+      "weight": 1.0,
+      "context": "decorator",
+      "_origin": "ast",
+      "source": "src_ai_dto_converse_dto_conversedto",
+      "target": "src_ai_dto_converse_dto_ts_isuuid",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "source_file": "src/ai/dto/converse.dto.ts",
+      "source_location": "L18",
+      "weight": 1.0,
+      "context": "decorator",
+      "_origin": "ast",
+      "source": "src_ai_dto_converse_dto_conversedto",
+      "target": "src_ai_dto_converse_dto_ts_type",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "source_file": "src/ai/dto/converse.dto.ts",
+      "source_location": "L17",
+      "weight": 1.0,
+      "context": "decorator",
+      "_origin": "ast",
+      "source": "src_ai_dto_converse_dto_conversedto",
+      "target": "src_ai_dto_converse_dto_ts_validatenested",
       "confidence_score": 1.0
     },
     {
@@ -19664,6 +20173,75 @@
       "_origin": "ast",
       "source": "src_ai_llm_service_llmservice_streamconversation",
       "target": "src_ai_llm_service_llmservice_extracttext",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/ai/new-project/converse-parser.spec.ts",
+      "source_location": "L1",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_ai_new_project_converse_parser_spec",
+      "target": "src_ai_new_project_converse_parser",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "src/ai/new-project/converse-parser.spec.ts",
+      "source_location": "L1",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_ai_new_project_converse_parser_spec",
+      "target": "src_ai_new_project_converse_parser_parseconverse",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/ai/new-project/converse-parser.ts",
+      "source_location": "L3",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_ai_new_project_converse_parser",
+      "target": "src_ai_new_project_converse_parser_converseresult",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/ai/new-project/converse-parser.ts",
+      "source_location": "L28",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_ai_new_project_converse_parser",
+      "target": "src_ai_new_project_converse_parser_parseconverse",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/ai/new-project/converse-parser.ts",
+      "source_location": "L16",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_ai_new_project_converse_parser",
+      "target": "src_ai_new_project_converse_parser_striptechnology",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/ai/new-project/converse-parser.ts",
+      "source_location": "L43",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_ai_new_project_converse_parser_parseconverse",
+      "target": "src_ai_new_project_converse_parser_striptechnology",
       "confidence_score": 1.0
     },
     {
@@ -35205,5 +35783,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "35b4618b96440eeecbff0381d47ff888f65bfcfe"
+  "built_at_commit": "8b59e284094a1979f2d9e5a748c18963a2d72647"
 }

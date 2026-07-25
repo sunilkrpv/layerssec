@@ -220,8 +220,8 @@
     "semantic_hash": "26666a29f73da444e1bd57b60dd4535b"
   },
   "components/NewProjectChat.tsx": {
-    "mtime": 1784992616.1104612,
-    "ast_hash": "a511b90feec76698f566f4bdd93dcf71",
+    "mtime": 1784993050.6104102,
+    "ast_hash": "ceadcc21f7242ba8758752f9fc13e1fe",
     "semantic_hash": ""
   },
   "components/NodeContextMenu.tsx": {
@@ -880,8 +880,8 @@
     "semantic_hash": "4f3a3fc4089496a241ab805a158e8050"
   },
   "next-env.d.ts": {
-    "mtime": 1784992969.987091,
-    "ast_hash": "2a74d3909800ca5467fa83b0ab4a4890",
+    "mtime": 1784993116.5136585,
+    "ast_hash": "d0f8375ae1199dc7acd3977fc33b78b8",
     "semantic_hash": ""
   },
   "next.config.mjs": {
