@@ -1,5 +1,6 @@
 import { Injectable, InternalServerErrorException, Logger, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { intelSynthesisPrompt } from './prompts/intel-synthesis.prompt';
+import { sanitizeNodePositions, validateOversizeWarning, coerceName } from './diagram-postprocess';
 
 // ── Exported interfaces ────────────────────────────────────────────────────
 
@@ -148,35 +149,12 @@ export class AiService {
       throw new InternalServerErrorException('AI returned invalid diagram structure');
     }
 
-    // Sanitize node positions — React Flow crashes if `position.x` is undefined
-    const sanitizedNodes = (diagram.nodes as Array<Record<string, unknown>>).map((n, idx) => {
-      const pos = n.position as { x?: unknown; y?: unknown } | undefined;
-      const hasValid = pos && typeof pos.x === 'number' && typeof pos.y === 'number';
-      if (!hasValid) {
-        this.logger.warn(`[ChatGenerate] node ${String(n.id ?? idx)} missing valid position — defaulting`);
-        return { ...n, position: { x: 100 + (idx % 5) * 220, y: 100 + Math.floor(idx / 5) * 160 } };
-      }
-      return n;
-    });
-
-    // Validate oversizeWarning shape — drop if malformed
-    const oversizeWarning =
-      diagram.oversizeWarning &&
-      typeof diagram.oversizeWarning.reason === 'string' &&
-      Array.isArray(diagram.oversizeWarning.suggestedSplits) &&
-      diagram.oversizeWarning.suggestedSplits.every((s) => typeof s === 'string')
-        ? diagram.oversizeWarning
-        : undefined;
-
-    // Validate projectName / diagramName — fall back to undefined; frontend handles default
-    const projectName =
-      typeof diagram.projectName === 'string' && diagram.projectName.trim().length > 0
-        ? diagram.projectName.trim().slice(0, 60)
-        : undefined;
-    const diagramName =
-      typeof diagram.diagramName === 'string' && diagram.diagramName.trim().length > 0
-        ? diagram.diagramName.trim().slice(0, 80)
-        : undefined;
+    const sanitizedNodes = sanitizeNodePositions(diagram.nodes, (id) =>
+      this.logger.warn(`[ChatGenerate] node ${id} missing valid position — defaulting`),
+    );
+    const oversizeWarning = validateOversizeWarning(diagram.oversizeWarning);
+    const projectName = coerceName(diagram.projectName, 60);
+    const diagramName = coerceName(diagram.diagramName, 80);
 
     await this.prisma.aiInteraction.create({
       data: {
