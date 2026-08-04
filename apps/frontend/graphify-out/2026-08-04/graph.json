@@ -10,8 +10,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "app_activity_page",
-      "community": 74,
-      "community_name": "activity/page.tsx",
+      "community": 9,
+      "community_name": "AI Activity Page",
       "norm_label": "activity/page.tsx"
     },
     {
@@ -21,8 +21,8 @@
       "source_location": "L4",
       "_origin": "ast",
       "id": "app_activity_page_metadata",
-      "community": 74,
-      "community_name": "activity/page.tsx",
+      "community": 9,
+      "community_name": "AI Activity Page",
       "norm_label": "metadata"
     },
     {
@@ -32,8 +32,8 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "app_activity_page_page",
-      "community": 74,
-      "community_name": "activity/page.tsx",
+      "community": 9,
+      "community_name": "AI Activity Page",
       "norm_label": "page()"
     },
     {
@@ -252,8 +252,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "app_login_page",
-      "community": 25,
-      "community_name": "Module 25",
+      "community": 9,
+      "community_name": "AI Activity Page",
       "norm_label": "login/page.tsx"
     },
     {
@@ -263,8 +263,8 @@
       "source_location": "L3",
       "_origin": "ast",
       "id": "app_login_page_loginroute",
-      "community": 25,
-      "community_name": "Module 25",
+      "community": 9,
+      "community_name": "AI Activity Page",
       "norm_label": "loginroute()"
     },
     {
@@ -802,8 +802,8 @@
       "source_location": "L535",
       "_origin": "ast",
       "id": "components_aiactivitypage_aiactivitypage",
-      "community": 16,
-      "community_name": "Menu Bar + Theme",
+      "community": 9,
+      "community_name": "AI Activity Page",
       "norm_label": "aiactivitypage()"
     },
     {
@@ -1099,8 +1099,8 @@
       "source_location": "L51",
       "_origin": "ast",
       "id": "components_aihistorypage_aihistorypage",
-      "community": 11,
-      "community_name": "Apply Diagram + Chat Composer",
+      "community": 16,
+      "community_name": "Menu Bar + Theme",
       "norm_label": "aihistorypage()"
     },
     {
@@ -1352,8 +1352,8 @@
       "source_location": "L502",
       "_origin": "ast",
       "id": "components_aisettingspage_aisettingspage",
-      "community": 10,
-      "community_name": "API Client Layer",
+      "community": 1,
+      "community_name": "Home / AI Settings Pages",
       "norm_label": "aisettingspage()"
     },
     {
@@ -1484,8 +1484,8 @@
       "source_location": "L105",
       "_origin": "ast",
       "id": "components_allprojectsdashboard_statcard",
-      "community": 15,
-      "community_name": "All Projects Dashboard",
+      "community": 26,
+      "community_name": "Module 26",
       "norm_label": "statcard()"
     },
     {
@@ -1495,8 +1495,8 @@
       "source_location": "L134",
       "_origin": "ast",
       "id": "components_allprojectsdashboard_skeleton",
-      "community": 15,
-      "community_name": "All Projects Dashboard",
+      "community": 26,
+      "community_name": "Module 26",
       "norm_label": "skeleton()"
     },
     {
@@ -1649,8 +1649,8 @@
       "source_location": "L55",
       "_origin": "ast",
       "id": "components_attackmindpanel_pathcard",
-      "community": 18,
-      "community_name": "Module 18",
+      "community": 3,
+      "community_name": "AI Chat Panel",
       "norm_label": "pathcard()"
     },
     {
@@ -1781,8 +1781,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "components_authmodal",
-      "community": 25,
-      "community_name": "Module 25",
+      "community": 9,
+      "community_name": "AI Activity Page",
       "norm_label": "authmodal.tsx"
     },
     {
@@ -1792,8 +1792,8 @@
       "source_location": "L9",
       "_origin": "ast",
       "id": "components_authmodal_authmodalprops",
-      "community": 25,
-      "community_name": "Module 25",
+      "community": 9,
+      "community_name": "AI Activity Page",
       "norm_label": "authmodalprops"
     },
     {
@@ -1803,8 +1803,8 @@
       "source_location": "L14",
       "_origin": "ast",
       "id": "components_authmodal_tab",
-      "community": 25,
-      "community_name": "Module 25",
+      "community": 9,
+      "community_name": "AI Activity Page",
       "norm_label": "tab"
     },
     {
@@ -1814,8 +1814,8 @@
       "source_location": "L16",
       "_origin": "ast",
       "id": "components_authmodal_authmodal",
-      "community": 25,
-      "community_name": "Module 25",
+      "community": 9,
+      "community_name": "AI Activity Page",
       "norm_label": "authmodal()"
     },
     {
@@ -1880,8 +1880,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "components_deletelayermodal",
-      "community": 6,
-      "community_name": "Diagram Page Shell",
+      "community": 59,
+      "community_name": "Module 59",
       "norm_label": "deletelayermodal.tsx"
     },
     {
@@ -1891,8 +1891,8 @@
       "source_location": "L5",
       "_origin": "ast",
       "id": "components_deletelayermodal_deletelayermodalprops",
-      "community": 6,
-      "community_name": "Diagram Page Shell",
+      "community": 59,
+      "community_name": "Module 59",
       "norm_label": "deletelayermodalprops"
     },
     {
@@ -1902,8 +1902,8 @@
       "source_location": "L13",
       "_origin": "ast",
       "id": "components_deletelayermodal_deletelayermodal",
-      "community": 6,
-      "community_name": "Diagram Page Shell",
+      "community": 59,
+      "community_name": "Module 59",
       "norm_label": "deletelayermodal()"
     },
     {
@@ -2067,8 +2067,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "components_diagrampreviewmodal",
-      "community": 29,
-      "community_name": "Module 29",
+      "community": 23,
+      "community_name": "Module 23",
       "norm_label": "diagrampreviewmodal.tsx"
     },
     {
@@ -2078,8 +2078,8 @@
       "source_location": "L7",
       "_origin": "ast",
       "id": "components_diagrampreviewmodal_diagrampreviewmodalprops",
-      "community": 29,
-      "community_name": "Module 29",
+      "community": 23,
+      "community_name": "Module 23",
       "norm_label": "diagrampreviewmodalprops"
     },
     {
@@ -2089,8 +2089,8 @@
       "source_location": "L14",
       "_origin": "ast",
       "id": "components_diagrampreviewmodal_diagrampreviewmodal",
-      "community": 29,
-      "community_name": "Module 29",
+      "community": 23,
+      "community_name": "Module 23",
       "norm_label": "diagrampreviewmodal()"
     },
     {
@@ -2100,8 +2100,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "components_diffcanvas",
-      "community": 41,
-      "community_name": "Module 41",
+      "community": 23,
+      "community_name": "Module 23",
       "norm_label": "diffcanvas.tsx"
     },
     {
@@ -2111,8 +2111,8 @@
       "source_location": "L12",
       "_origin": "ast",
       "id": "components_diffcanvas_diffnodedata",
-      "community": 41,
-      "community_name": "Module 41",
+      "community": 23,
+      "community_name": "Module 23",
       "norm_label": "diffnodedata"
     },
     {
@@ -2122,8 +2122,8 @@
       "source_location": "L18",
       "_origin": "ast",
       "id": "components_diffcanvas_status_ring",
-      "community": 41,
-      "community_name": "Module 41",
+      "community": 23,
+      "community_name": "Module 23",
       "norm_label": "status_ring"
     },
     {
@@ -2133,8 +2133,8 @@
       "source_location": "L25",
       "_origin": "ast",
       "id": "components_diffcanvas_status_badge",
-      "community": 41,
-      "community_name": "Module 41",
+      "community": 23,
+      "community_name": "Module 23",
       "norm_label": "status_badge"
     },
     {
@@ -2144,8 +2144,8 @@
       "source_location": "L32",
       "_origin": "ast",
       "id": "components_diffcanvas_status_symbol",
-      "community": 41,
-      "community_name": "Module 41",
+      "community": 23,
+      "community_name": "Module 23",
       "norm_label": "status_symbol"
     },
     {
@@ -2166,8 +2166,8 @@
       "source_location": "L68",
       "_origin": "ast",
       "id": "components_diffcanvas_diffnodetypes",
-      "community": 41,
-      "community_name": "Module 41",
+      "community": 23,
+      "community_name": "Module 23",
       "norm_label": "diffnodetypes"
     },
     {
@@ -2177,8 +2177,8 @@
       "source_location": "L69",
       "_origin": "ast",
       "id": "components_diffcanvas_diffedgetypes",
-      "community": 41,
-      "community_name": "Module 41",
+      "community": 23,
+      "community_name": "Module 23",
       "norm_label": "diffedgetypes"
     },
     {
@@ -2188,8 +2188,8 @@
       "source_location": "L73",
       "_origin": "ast",
       "id": "components_diffcanvas_reactflowinner",
-      "community": 41,
-      "community_name": "Module 41",
+      "community": 23,
+      "community_name": "Module 23",
       "norm_label": "reactflowinner()"
     },
     {
@@ -2199,8 +2199,8 @@
       "source_location": "L103",
       "_origin": "ast",
       "id": "components_diffcanvas_versioninfo",
-      "community": 41,
-      "community_name": "Module 41",
+      "community": 23,
+      "community_name": "Module 23",
       "norm_label": "versioninfo"
     },
     {
@@ -2210,8 +2210,8 @@
       "source_location": "L108",
       "_origin": "ast",
       "id": "components_diffcanvas_diffcanvasprops",
-      "community": 41,
-      "community_name": "Module 41",
+      "community": 23,
+      "community_name": "Module 23",
       "norm_label": "diffcanvasprops"
     },
     {
@@ -2221,8 +2221,8 @@
       "source_location": "L118",
       "_origin": "ast",
       "id": "components_diffcanvas_diffcanvas",
-      "community": 41,
-      "community_name": "Module 41",
+      "community": 23,
+      "community_name": "Module 23",
       "norm_label": "diffcanvas()"
     },
     {
@@ -2232,8 +2232,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "components_difflayerspanel",
-      "community": 59,
-      "community_name": "Module 59",
+      "community": 23,
+      "community_name": "Module 23",
       "norm_label": "difflayerspanel.tsx"
     },
     {
@@ -2243,8 +2243,8 @@
       "source_location": "L8",
       "_origin": "ast",
       "id": "components_difflayerspanel_status_dot",
-      "community": 59,
-      "community_name": "Module 59",
+      "community": 23,
+      "community_name": "Module 23",
       "norm_label": "status_dot"
     },
     {
@@ -2254,8 +2254,8 @@
       "source_location": "L15",
       "_origin": "ast",
       "id": "components_difflayerspanel_status_row",
-      "community": 59,
-      "community_name": "Module 59",
+      "community": 23,
+      "community_name": "Module 23",
       "norm_label": "status_row"
     },
     {
@@ -2265,8 +2265,8 @@
       "source_location": "L22",
       "_origin": "ast",
       "id": "components_difflayerspanel_status_label",
-      "community": 59,
-      "community_name": "Module 59",
+      "community": 23,
+      "community_name": "Module 23",
       "norm_label": "status_label"
     },
     {
@@ -2276,8 +2276,8 @@
       "source_location": "L31",
       "_origin": "ast",
       "id": "components_difflayerspanel_layerrow",
-      "community": 59,
-      "community_name": "Module 59",
+      "community": 23,
+      "community_name": "Module 23",
       "norm_label": "layerrow()"
     },
     {
@@ -2287,8 +2287,8 @@
       "source_location": "L88",
       "_origin": "ast",
       "id": "components_difflayerspanel_difflayerspanelprops",
-      "community": 59,
-      "community_name": "Module 59",
+      "community": 23,
+      "community_name": "Module 23",
       "norm_label": "difflayerspanelprops"
     },
     {
@@ -2298,8 +2298,8 @@
       "source_location": "L94",
       "_origin": "ast",
       "id": "components_difflayerspanel_difflayerspanel",
-      "community": 59,
-      "community_name": "Module 59",
+      "community": 23,
+      "community_name": "Module 23",
       "norm_label": "difflayerspanel()"
     },
     {
@@ -2309,8 +2309,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "components_diffpage",
-      "community": 49,
-      "community_name": "Module 49",
+      "community": 23,
+      "community_name": "Module 23",
       "norm_label": "diffpage.tsx"
     },
     {
@@ -2320,8 +2320,8 @@
       "source_location": "L13",
       "_origin": "ast",
       "id": "components_diffpage_extractlayersfromcanvasdata",
-      "community": 49,
-      "community_name": "Module 49",
+      "community": 23,
+      "community_name": "Module 23",
       "norm_label": "extractlayersfromcanvasdata()"
     },
     {
@@ -2331,8 +2331,8 @@
       "source_location": "L22",
       "_origin": "ast",
       "id": "components_diffpage_diffpage",
-      "community": 49,
-      "community_name": "Module 49",
+      "community": 23,
+      "community_name": "Module 23",
       "norm_label": "diffpage()"
     },
     {
@@ -2518,8 +2518,8 @@
       "source_location": "L48",
       "_origin": "ast",
       "id": "components_homesidebar_homesidebarprops",
-      "community": 15,
-      "community_name": "All Projects Dashboard",
+      "community": 28,
+      "community_name": "Module 28",
       "norm_label": "homesidebarprops"
     },
     {
@@ -2562,8 +2562,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "components_layerbar",
-      "community": 11,
-      "community_name": "Apply Diagram + Chat Composer",
+      "community": 6,
+      "community_name": "Diagram Page Shell",
       "norm_label": "layerbar.tsx"
     },
     {
@@ -2584,8 +2584,8 @@
       "source_location": "L16",
       "_origin": "ast",
       "id": "components_layerbar_layerbar",
-      "community": 11,
-      "community_name": "Apply Diagram + Chat Composer",
+      "community": 6,
+      "community_name": "Diagram Page Shell",
       "norm_label": "layerbar()"
     },
     {
@@ -2694,8 +2694,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "components_loginpage",
-      "community": 25,
-      "community_name": "Module 25",
+      "community": 9,
+      "community_name": "AI Activity Page",
       "norm_label": "loginpage.tsx"
     },
     {
@@ -2705,8 +2705,8 @@
       "source_location": "L11",
       "_origin": "ast",
       "id": "components_loginpage_diagramillustration",
-      "community": 25,
-      "community_name": "Module 25",
+      "community": 9,
+      "community_name": "AI Activity Page",
       "norm_label": "diagramillustration()"
     },
     {
@@ -2716,8 +2716,8 @@
       "source_location": "L99",
       "_origin": "ast",
       "id": "components_loginpage_capabilities",
-      "community": 25,
-      "community_name": "Module 25",
+      "community": 9,
+      "community_name": "AI Activity Page",
       "norm_label": "capabilities"
     },
     {
@@ -2727,8 +2727,8 @@
       "source_location": "L118",
       "_origin": "ast",
       "id": "components_loginpage_loginpage",
-      "community": 25,
-      "community_name": "Module 25",
+      "community": 9,
+      "community_name": "AI Activity Page",
       "norm_label": "loginpage()"
     },
     {
@@ -2738,8 +2738,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "components_menubar",
-      "community": 73,
-      "community_name": "useTheme",
+      "community": 30,
+      "community_name": "Module 30",
       "norm_label": "menubar.tsx"
     },
     {
@@ -2749,8 +2749,8 @@
       "source_location": "L9",
       "_origin": "ast",
       "id": "components_menubar_menubarprops",
-      "community": 73,
-      "community_name": "useTheme",
+      "community": 30,
+      "community_name": "Module 30",
       "norm_label": "menubarprops"
     },
     {
@@ -2760,8 +2760,8 @@
       "source_location": "L18",
       "_origin": "ast",
       "id": "components_menubar_theme_cycle",
-      "community": 73,
-      "community_name": "useTheme",
+      "community": 30,
+      "community_name": "Module 30",
       "norm_label": "theme_cycle"
     },
     {
@@ -2771,8 +2771,8 @@
       "source_location": "L19",
       "_origin": "ast",
       "id": "components_menubar_theme_icons",
-      "community": 73,
-      "community_name": "useTheme",
+      "community": 30,
+      "community_name": "Module 30",
       "norm_label": "theme_icons"
     },
     {
@@ -2782,8 +2782,8 @@
       "source_location": "L24",
       "_origin": "ast",
       "id": "components_menubar_theme_labels",
-      "community": 73,
-      "community_name": "useTheme",
+      "community": 30,
+      "community_name": "Module 30",
       "norm_label": "theme_labels"
     },
     {
@@ -2793,8 +2793,8 @@
       "source_location": "L30",
       "_origin": "ast",
       "id": "components_menubar_menubar",
-      "community": 73,
-      "community_name": "useTheme",
+      "community": 48,
+      "community_name": "Module 48",
       "norm_label": "menubar()"
     },
     {
@@ -2804,8 +2804,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "components_minidiagrampreview",
-      "community": 72,
-      "community_name": "MiniDiagramPreview.tsx",
+      "community": 23,
+      "community_name": "Module 23",
       "norm_label": "minidiagrampreview.tsx"
     },
     {
@@ -2815,8 +2815,8 @@
       "source_location": "L11",
       "_origin": "ast",
       "id": "components_minidiagrampreview_mininodedata",
-      "community": 72,
-      "community_name": "MiniDiagramPreview.tsx",
+      "community": 23,
+      "community_name": "Module 23",
       "norm_label": "mininodedata"
     },
     {
@@ -2837,8 +2837,8 @@
       "source_location": "L38",
       "_origin": "ast",
       "id": "components_minidiagrampreview_mininodetypes",
-      "community": 72,
-      "community_name": "MiniDiagramPreview.tsx",
+      "community": 23,
+      "community_name": "Module 23",
       "norm_label": "mininodetypes"
     },
     {
@@ -2848,8 +2848,8 @@
       "source_location": "L39",
       "_origin": "ast",
       "id": "components_minidiagrampreview_miniedgetypes",
-      "community": 72,
-      "community_name": "MiniDiagramPreview.tsx",
+      "community": 23,
+      "community_name": "Module 23",
       "norm_label": "miniedgetypes"
     },
     {
@@ -2859,8 +2859,8 @@
       "source_location": "L43",
       "_origin": "ast",
       "id": "components_minidiagrampreview_fitonmount",
-      "community": 72,
-      "community_name": "MiniDiagramPreview.tsx",
+      "community": 23,
+      "community_name": "Module 23",
       "norm_label": "fitonmount()"
     },
     {
@@ -2870,8 +2870,8 @@
       "source_location": "L53",
       "_origin": "ast",
       "id": "components_minidiagrampreview_minidiagrampreviewprops",
-      "community": 72,
-      "community_name": "MiniDiagramPreview.tsx",
+      "community": 23,
+      "community_name": "Module 23",
       "norm_label": "minidiagrampreviewprops"
     },
     {
@@ -2881,8 +2881,8 @@
       "source_location": "L61",
       "_origin": "ast",
       "id": "components_minidiagrampreview_inner",
-      "community": 72,
-      "community_name": "MiniDiagramPreview.tsx",
+      "community": 23,
+      "community_name": "Module 23",
       "norm_label": "inner()"
     },
     {
@@ -2892,8 +2892,8 @@
       "source_location": "L104",
       "_origin": "ast",
       "id": "components_minidiagrampreview_minidiagrampreview",
-      "community": 72,
-      "community_name": "MiniDiagramPreview.tsx",
+      "community": 23,
+      "community_name": "Module 23",
       "norm_label": "minidiagrampreview()"
     },
     {
@@ -2958,8 +2958,8 @@
       "source_location": "L59",
       "_origin": "ast",
       "id": "components_newprojectchat_chatbubble",
-      "community": 29,
-      "community_name": "Module 29",
+      "community": 26,
+      "community_name": "Module 26",
       "norm_label": "chatbubble()"
     },
     {
@@ -3002,8 +3002,8 @@
       "source_location": "L156",
       "_origin": "ast",
       "id": "components_newprojectchat_actionbuttons",
-      "community": 29,
-      "community_name": "Module 29",
+      "community": 26,
+      "community_name": "Module 26",
       "norm_label": "actionbuttons()"
     },
     {
@@ -3024,8 +3024,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "components_nodecontextmenu",
-      "community": 13,
-      "community_name": "Project Page (Split View)",
+      "community": 16,
+      "community_name": "Menu Bar + Theme",
       "norm_label": "nodecontextmenu.tsx"
     },
     {
@@ -3035,8 +3035,8 @@
       "source_location": "L7",
       "_origin": "ast",
       "id": "components_nodecontextmenu_nodecontextmenuprops",
-      "community": 13,
-      "community_name": "Project Page (Split View)",
+      "community": 16,
+      "community_name": "Menu Bar + Theme",
       "norm_label": "nodecontextmenuprops"
     },
     {
@@ -3046,8 +3046,8 @@
       "source_location": "L37",
       "_origin": "ast",
       "id": "components_nodecontextmenu_nodecontextmenu",
-      "community": 13,
-      "community_name": "Project Page (Split View)",
+      "community": 16,
+      "community_name": "Menu Bar + Theme",
       "norm_label": "nodecontextmenu()"
     },
     {
@@ -3057,8 +3057,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "components_nodepalette",
-      "community": 70,
-      "community_name": "NodePalette.tsx",
+      "community": 2,
+      "community_name": "UI Primitives Demos",
       "norm_label": "nodepalette.tsx"
     },
     {
@@ -3068,8 +3068,8 @@
       "source_location": "L13",
       "_origin": "ast",
       "id": "components_nodepalette_nodepaletteprops",
-      "community": 23,
-      "community_name": "Module 23",
+      "community": 2,
+      "community_name": "UI Primitives Demos",
       "norm_label": "nodepaletteprops"
     },
     {
@@ -3079,8 +3079,8 @@
       "source_location": "L20",
       "_origin": "ast",
       "id": "components_nodepalette_clouditems",
-      "community": 70,
-      "community_name": "NodePalette.tsx",
+      "community": 2,
+      "community_name": "UI Primitives Demos",
       "norm_label": "clouditems"
     },
     {
@@ -3090,8 +3090,8 @@
       "source_location": "L21",
       "_origin": "ast",
       "id": "components_nodepalette_shapeitems",
-      "community": 70,
-      "community_name": "NodePalette.tsx",
+      "community": 2,
+      "community_name": "UI Primitives Demos",
       "norm_label": "shapeitems"
     },
     {
@@ -3101,8 +3101,8 @@
       "source_location": "L22",
       "_origin": "ast",
       "id": "components_nodepalette_c4items",
-      "community": 70,
-      "community_name": "NodePalette.tsx",
+      "community": 2,
+      "community_name": "UI Primitives Demos",
       "norm_label": "c4items"
     },
     {
@@ -3112,8 +3112,8 @@
       "source_location": "L24",
       "_origin": "ast",
       "id": "components_nodepalette_diagram_sections",
-      "community": 70,
-      "community_name": "NodePalette.tsx",
+      "community": 2,
+      "community_name": "UI Primitives Demos",
       "norm_label": "diagram_sections"
     },
     {
@@ -3123,8 +3123,8 @@
       "source_location": "L30",
       "_origin": "ast",
       "id": "components_nodepalette_ui_categories",
-      "community": 70,
-      "community_name": "NodePalette.tsx",
+      "community": 2,
+      "community_name": "UI Primitives Demos",
       "norm_label": "ui_categories"
     },
     {
@@ -3134,8 +3134,8 @@
       "source_location": "L36",
       "_origin": "ast",
       "id": "components_nodepalette_touicategory",
-      "community": 70,
-      "community_name": "NodePalette.tsx",
+      "community": 2,
+      "community_name": "UI Primitives Demos",
       "norm_label": "touicategory()"
     },
     {
@@ -3145,8 +3145,8 @@
       "source_location": "L42",
       "_origin": "ast",
       "id": "components_nodepalette_node_items",
-      "community": 70,
-      "community_name": "NodePalette.tsx",
+      "community": 2,
+      "community_name": "UI Primitives Demos",
       "norm_label": "node_items"
     },
     {
@@ -3156,8 +3156,8 @@
       "source_location": "L52",
       "_origin": "ast",
       "id": "components_nodepalette_nodepalette",
-      "community": 70,
-      "community_name": "NodePalette.tsx",
+      "community": 2,
+      "community_name": "UI Primitives Demos",
       "norm_label": "nodepalette()"
     },
     {
@@ -3200,8 +3200,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "components_pipelinenudge",
-      "community": 35,
-      "community_name": "PipelineNudge.tsx",
+      "community": 3,
+      "community_name": "AI Chat Panel",
       "norm_label": "pipelinenudge.tsx"
     },
     {
@@ -3211,8 +3211,8 @@
       "source_location": "L17",
       "_origin": "ast",
       "id": "components_pipelinenudge_pipelinenudgeprops",
-      "community": 35,
-      "community_name": "PipelineNudge.tsx",
+      "community": 3,
+      "community_name": "AI Chat Panel",
       "norm_label": "pipelinenudgeprops"
     },
     {
@@ -3222,8 +3222,8 @@
       "source_location": "L35",
       "_origin": "ast",
       "id": "components_pipelinenudge_pipelinenudge",
-      "community": 35,
-      "community_name": "PipelineNudge.tsx",
+      "community": 3,
+      "community_name": "AI Chat Panel",
       "norm_label": "pipelinenudge()"
     },
     {
@@ -3519,8 +3519,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "components_projecteditmodal",
-      "community": 13,
-      "community_name": "Project Page (Split View)",
+      "community": 15,
+      "community_name": "All Projects Dashboard",
       "norm_label": "projecteditmodal.tsx"
     },
     {
@@ -3530,8 +3530,8 @@
       "source_location": "L11",
       "_origin": "ast",
       "id": "components_projecteditmodal_props",
-      "community": 13,
-      "community_name": "Project Page (Split View)",
+      "community": 15,
+      "community_name": "All Projects Dashboard",
       "norm_label": "props"
     },
     {
@@ -3541,8 +3541,8 @@
       "source_location": "L20",
       "_origin": "ast",
       "id": "components_projecteditmodal_projecteditmodal",
-      "community": 13,
-      "community_name": "Project Page (Split View)",
+      "community": 15,
+      "community_name": "All Projects Dashboard",
       "norm_label": "projecteditmodal()"
     },
     {
@@ -3607,8 +3607,8 @@
       "source_location": "L25",
       "_origin": "ast",
       "id": "components_projectslistpage_projectslistinner",
-      "community": 5,
-      "community_name": "Projects List + Modals",
+      "community": 29,
+      "community_name": "Module 29",
       "norm_label": "projectslistinner()"
     },
     {
@@ -3629,8 +3629,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "components_projectsmodal",
-      "community": 6,
-      "community_name": "Diagram Page Shell",
+      "community": 29,
+      "community_name": "Module 29",
       "norm_label": "projectsmodal.tsx"
     },
     {
@@ -3640,8 +3640,8 @@
       "source_location": "L8",
       "_origin": "ast",
       "id": "components_projectsmodal_projectsmodalprops",
-      "community": 6,
-      "community_name": "Diagram Page Shell",
+      "community": 29,
+      "community_name": "Module 29",
       "norm_label": "projectsmodalprops"
     },
     {
@@ -4168,8 +4168,8 @@
       "source_location": "L501",
       "_origin": "ast",
       "id": "components_threatdetailpage_detailtopbar",
-      "community": 16,
-      "community_name": "Menu Bar + Theme",
+      "community": 21,
+      "community_name": "Module 21",
       "norm_label": "detailtopbar()"
     },
     {
@@ -4498,8 +4498,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "components_threatsdashboardpage",
-      "community": 7,
-      "community_name": "Threat Filters + Add Modal",
+      "community": 36,
+      "community_name": "Module 36",
       "norm_label": "threatsdashboardpage.tsx"
     },
     {
@@ -4509,8 +4509,8 @@
       "source_location": "L25",
       "_origin": "ast",
       "id": "components_threatsdashboardpage_props",
-      "community": 7,
-      "community_name": "Threat Filters + Add Modal",
+      "community": 36,
+      "community_name": "Module 36",
       "norm_label": "props"
     },
     {
@@ -4520,8 +4520,8 @@
       "source_location": "L27",
       "_origin": "ast",
       "id": "components_threatsdashboardpage_threatsdashboardpage",
-      "community": 26,
-      "community_name": "Module 26",
+      "community": 16,
+      "community_name": "Menu Bar + Theme",
       "norm_label": "threatsdashboardpage()"
     },
     {
@@ -4674,8 +4674,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "components_trustmappage",
-      "community": 14,
-      "community_name": "Flow Overlay + Kanban",
+      "community": 16,
+      "community_name": "Menu Bar + Theme",
       "norm_label": "trustmappage.tsx"
     },
     {
@@ -4685,8 +4685,8 @@
       "source_location": "L25",
       "_origin": "ast",
       "id": "components_trustmappage_props",
-      "community": 14,
-      "community_name": "Flow Overlay + Kanban",
+      "community": 16,
+      "community_name": "Menu Bar + Theme",
       "norm_label": "props"
     },
     {
@@ -4696,8 +4696,8 @@
       "source_location": "L29",
       "_origin": "ast",
       "id": "components_trustmappage_trustmappage",
-      "community": 14,
-      "community_name": "Flow Overlay + Kanban",
+      "community": 16,
+      "community_name": "Menu Bar + Theme",
       "norm_label": "trustmappage()"
     },
     {
@@ -4707,8 +4707,8 @@
       "source_location": "L392",
       "_origin": "ast",
       "id": "components_trustmappage_breadcrumbprops",
-      "community": 14,
-      "community_name": "Flow Overlay + Kanban",
+      "community": 16,
+      "community_name": "Menu Bar + Theme",
       "norm_label": "breadcrumbprops"
     },
     {
@@ -4718,8 +4718,8 @@
       "source_location": "L397",
       "_origin": "ast",
       "id": "components_trustmappage_layerbreadcrumb",
-      "community": 14,
-      "community_name": "Flow Overlay + Kanban",
+      "community": 16,
+      "community_name": "Menu Bar + Theme",
       "norm_label": "layerbreadcrumb()"
     },
     {
@@ -4729,8 +4729,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "components_versioncomparesheet",
-      "community": 10,
-      "community_name": "API Client Layer",
+      "community": 5,
+      "community_name": "Projects List + Modals",
       "norm_label": "versioncomparesheet.tsx"
     },
     {
@@ -4740,8 +4740,8 @@
       "source_location": "L8",
       "_origin": "ast",
       "id": "components_versioncomparesheet_versioncomparesheetprops",
-      "community": 10,
-      "community_name": "API Client Layer",
+      "community": 5,
+      "community_name": "Projects List + Modals",
       "norm_label": "versioncomparesheetprops"
     },
     {
@@ -4751,8 +4751,8 @@
       "source_location": "L13",
       "_origin": "ast",
       "id": "components_versioncomparesheet_versioncomparesheet",
-      "community": 10,
-      "community_name": "API Client Layer",
+      "community": 5,
+      "community_name": "Projects List + Modals",
       "norm_label": "versioncomparesheet()"
     },
     {
@@ -6115,8 +6115,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "components_projects_deleteprojectmodal",
-      "community": 5,
-      "community_name": "Projects List + Modals",
+      "community": 49,
+      "community_name": "Module 49",
       "norm_label": "deleteprojectmodal.tsx"
     },
     {
@@ -6126,8 +6126,8 @@
       "source_location": "L7",
       "_origin": "ast",
       "id": "components_projects_deleteprojectmodal_phase",
-      "community": 5,
-      "community_name": "Projects List + Modals",
+      "community": 49,
+      "community_name": "Module 49",
       "norm_label": "phase"
     },
     {
@@ -6137,8 +6137,8 @@
       "source_location": "L9",
       "_origin": "ast",
       "id": "components_projects_deleteprojectmodal_props",
-      "community": 5,
-      "community_name": "Projects List + Modals",
+      "community": 49,
+      "community_name": "Module 49",
       "norm_label": "props"
     },
     {
@@ -6148,8 +6148,8 @@
       "source_location": "L15",
       "_origin": "ast",
       "id": "components_projects_deleteprojectmodal_deleteprojectmodal",
-      "community": 5,
-      "community_name": "Projects List + Modals",
+      "community": 49,
+      "community_name": "Module 49",
       "norm_label": "deleteprojectmodal()"
     },
     {
@@ -6291,8 +6291,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "components_projects_projectmetadataform",
-      "community": 28,
-      "community_name": "Module 28",
+      "community": 41,
+      "community_name": "Module 41",
       "norm_label": "projectmetadataform.tsx"
     },
     {
@@ -6302,8 +6302,8 @@
       "source_location": "L8",
       "_origin": "ast",
       "id": "components_projects_projectmetadataform_compliance_options",
-      "community": 28,
-      "community_name": "Module 28",
+      "community": 41,
+      "community_name": "Module 41",
       "norm_label": "compliance_options"
     },
     {
@@ -6313,8 +6313,8 @@
       "source_location": "L10",
       "_origin": "ast",
       "id": "components_projects_projectmetadataform_env_styles",
-      "community": 28,
-      "community_name": "Module 28",
+      "community": 41,
+      "community_name": "Module 41",
       "norm_label": "env_styles"
     },
     {
@@ -6324,8 +6324,8 @@
       "source_location": "L16",
       "_origin": "ast",
       "id": "components_projects_projectmetadataform_formstate",
-      "community": 28,
-      "community_name": "Module 28",
+      "community": 41,
+      "community_name": "Module 41",
       "norm_label": "formstate"
     },
     {
@@ -6335,8 +6335,8 @@
       "source_location": "L24",
       "_origin": "ast",
       "id": "components_projects_projectmetadataform_props",
-      "community": 28,
-      "community_name": "Module 28",
+      "community": 41,
+      "community_name": "Module 41",
       "norm_label": "props"
     },
     {
@@ -6346,8 +6346,8 @@
       "source_location": "L29",
       "_origin": "ast",
       "id": "components_projects_projectmetadataform_fieldcard",
-      "community": 28,
-      "community_name": "Module 28",
+      "community": 41,
+      "community_name": "Module 41",
       "norm_label": "fieldcard()"
     },
     {
@@ -6357,8 +6357,8 @@
       "source_location": "L53",
       "_origin": "ast",
       "id": "components_projects_projectmetadataform_projectmetadataform",
-      "community": 28,
-      "community_name": "Module 28",
+      "community": 41,
+      "community_name": "Module 41",
       "norm_label": "projectmetadataform()"
     },
     {
@@ -6577,8 +6577,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "components_projects_widgets_intelreportcard",
-      "community": 10,
-      "community_name": "API Client Layer",
+      "community": 25,
+      "community_name": "Module 25",
       "norm_label": "intelreportcard.tsx"
     },
     {
@@ -6588,8 +6588,8 @@
       "source_location": "L14",
       "_origin": "ast",
       "id": "components_projects_widgets_intelreportcard_props",
-      "community": 10,
-      "community_name": "API Client Layer",
+      "community": 25,
+      "community_name": "Module 25",
       "norm_label": "props"
     },
     {
@@ -6599,8 +6599,8 @@
       "source_location": "L18",
       "_origin": "ast",
       "id": "components_projects_widgets_intelreportcard_intelreportcard",
-      "community": 10,
-      "community_name": "API Client Layer",
+      "community": 25,
+      "community_name": "Module 25",
       "norm_label": "intelreportcard()"
     },
     {
@@ -6731,8 +6731,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "components_projects_widgets_threatsrollupcard",
-      "community": 31,
-      "community_name": "Module 31",
+      "community": 13,
+      "community_name": "Project Page (Split View)",
       "norm_label": "threatsrollupcard.tsx"
     },
     {
@@ -6742,8 +6742,8 @@
       "source_location": "L7",
       "_origin": "ast",
       "id": "components_projects_widgets_threatsrollupcard_threatssummary",
-      "community": 31,
-      "community_name": "Module 31",
+      "community": 13,
+      "community_name": "Project Page (Split View)",
       "norm_label": "threatssummary"
     },
     {
@@ -6753,8 +6753,8 @@
       "source_location": "L14",
       "_origin": "ast",
       "id": "components_projects_widgets_threatsrollupcard_props",
-      "community": 31,
-      "community_name": "Module 31",
+      "community": 13,
+      "community_name": "Project Page (Split View)",
       "norm_label": "props"
     },
     {
@@ -6764,8 +6764,8 @@
       "source_location": "L18",
       "_origin": "ast",
       "id": "components_projects_widgets_threatsrollupcard_stattileprops",
-      "community": 31,
-      "community_name": "Module 31",
+      "community": 13,
+      "community_name": "Project Page (Split View)",
       "norm_label": "stattileprops"
     },
     {
@@ -6775,8 +6775,8 @@
       "source_location": "L24",
       "_origin": "ast",
       "id": "components_projects_widgets_threatsrollupcard_stattile",
-      "community": 31,
-      "community_name": "Module 31",
+      "community": 13,
+      "community_name": "Project Page (Split View)",
       "norm_label": "stattile()"
     },
     {
@@ -6786,8 +6786,8 @@
       "source_location": "L35",
       "_origin": "ast",
       "id": "components_projects_widgets_threatsrollupcard_threatsrollupcard",
-      "community": 31,
-      "community_name": "Module 31",
+      "community": 13,
+      "community_name": "Project Page (Split View)",
       "norm_label": "threatsrollupcard()"
     },
     {
@@ -6874,8 +6874,8 @@
       "source_location": "L28",
       "_origin": "ast",
       "id": "components_threats_addthreatmodal_addthreatmodal",
-      "community": 12,
-      "community_name": "Threat History / Model Panels",
+      "community": 36,
+      "community_name": "Module 36",
       "norm_label": "addthreatmodal()"
     },
     {
@@ -6951,8 +6951,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "components_threats_strideheatmap",
-      "community": 36,
-      "community_name": "Module 36",
+      "community": 7,
+      "community_name": "Threat Filters + Add Modal",
       "norm_label": "strideheatmap.tsx"
     },
     {
@@ -6973,8 +6973,8 @@
       "source_location": "L17",
       "_origin": "ast",
       "id": "components_threats_strideheatmap_strideheatmap",
-      "community": 7,
-      "community_name": "Threat Filters + Add Modal",
+      "community": 36,
+      "community_name": "Module 36",
       "norm_label": "strideheatmap()"
     },
     {
@@ -7303,8 +7303,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "components_ui_button",
-      "community": 7,
-      "community_name": "Threat Filters + Add Modal",
+      "community": 36,
+      "community_name": "Module 36",
       "norm_label": "button.tsx"
     },
     {
@@ -7314,8 +7314,8 @@
       "source_location": "L5",
       "_origin": "ast",
       "id": "components_ui_button_buttonvariant",
-      "community": 7,
-      "community_name": "Threat Filters + Add Modal",
+      "community": 36,
+      "community_name": "Module 36",
       "norm_label": "buttonvariant"
     },
     {
@@ -7325,8 +7325,8 @@
       "source_location": "L7",
       "_origin": "ast",
       "id": "components_ui_button_buttonprops",
-      "community": 7,
-      "community_name": "Threat Filters + Add Modal",
+      "community": 36,
+      "community_name": "Module 36",
       "norm_label": "buttonprops"
     },
     {
@@ -7336,8 +7336,8 @@
       "source_location": "L12",
       "_origin": "ast",
       "id": "components_ui_button_variant_classes",
-      "community": 7,
-      "community_name": "Threat Filters + Add Modal",
+      "community": 36,
+      "community_name": "Module 36",
       "norm_label": "variant_classes"
     },
     {
@@ -7347,8 +7347,8 @@
       "source_location": "L22",
       "_origin": "ast",
       "id": "components_ui_button_button",
-      "community": 7,
-      "community_name": "Threat Filters + Add Modal",
+      "community": 36,
+      "community_name": "Module 36",
       "norm_label": "button()"
     },
     {
@@ -8073,8 +8073,8 @@
       "source_location": "L10",
       "_origin": "ast",
       "id": "lib_api_getaccesstoken",
-      "community": 54,
-      "community_name": "fetchWithRefresh",
+      "community": 10,
+      "community_name": "API Client Layer",
       "norm_label": "getaccesstoken()"
     },
     {
@@ -8106,8 +8106,8 @@
       "source_location": "L26",
       "_origin": "ast",
       "id": "lib_api_dispatchunauthorized",
-      "community": 54,
-      "community_name": "fetchWithRefresh",
+      "community": 10,
+      "community_name": "API Client Layer",
       "norm_label": "dispatchunauthorized()"
     },
     {
@@ -8150,8 +8150,8 @@
       "source_location": "L76",
       "_origin": "ast",
       "id": "lib_api_fetchwithrefresh",
-      "community": 54,
-      "community_name": "fetchWithRefresh",
+      "community": 10,
+      "community_name": "API Client Layer",
       "norm_label": "fetchwithrefresh()"
     },
     {
@@ -8183,8 +8183,8 @@
       "source_location": "L123",
       "_origin": "ast",
       "id": "lib_api_userprofile",
-      "community": 25,
-      "community_name": "Module 25",
+      "community": 9,
+      "community_name": "AI Activity Page",
       "norm_label": "userprofile"
     },
     {
@@ -8194,8 +8194,8 @@
       "source_location": "L131",
       "_origin": "ast",
       "id": "lib_api_apilogin",
-      "community": 25,
-      "community_name": "Module 25",
+      "community": 9,
+      "community_name": "AI Activity Page",
       "norm_label": "apilogin()"
     },
     {
@@ -8205,8 +8205,8 @@
       "source_location": "L138",
       "_origin": "ast",
       "id": "lib_api_apiregister",
-      "community": 25,
-      "community_name": "Module 25",
+      "community": 9,
+      "community_name": "AI Activity Page",
       "norm_label": "apiregister()"
     },
     {
@@ -8216,8 +8216,8 @@
       "source_location": "L149",
       "_origin": "ast",
       "id": "lib_api_apigetme",
-      "community": 25,
-      "community_name": "Module 25",
+      "community": 9,
+      "community_name": "AI Activity Page",
       "norm_label": "apigetme()"
     },
     {
@@ -8227,8 +8227,8 @@
       "source_location": "L153",
       "_origin": "ast",
       "id": "lib_api_apilogout",
-      "community": 16,
-      "community_name": "Menu Bar + Theme",
+      "community": 9,
+      "community_name": "AI Activity Page",
       "norm_label": "apilogout()"
     },
     {
@@ -8238,8 +8238,8 @@
       "source_location": "L163",
       "_origin": "ast",
       "id": "lib_api_environment",
-      "community": 28,
-      "community_name": "Module 28",
+      "community": 41,
+      "community_name": "Module 41",
       "norm_label": "environment"
     },
     {
@@ -8249,8 +8249,8 @@
       "source_location": "L165",
       "_origin": "ast",
       "id": "lib_api_project",
-      "community": 6,
-      "community_name": "Diagram Page Shell",
+      "community": 29,
+      "community_name": "Module 29",
       "norm_label": "project"
     },
     {
@@ -8293,8 +8293,8 @@
       "source_location": "L197",
       "_origin": "ast",
       "id": "lib_api_apilistprojects",
-      "community": 5,
-      "community_name": "Projects List + Modals",
+      "community": 29,
+      "community_name": "Module 29",
       "norm_label": "apilistprojects()"
     },
     {
@@ -8315,8 +8315,8 @@
       "source_location": "L208",
       "_origin": "ast",
       "id": "lib_api_apigetproject",
-      "community": 13,
-      "community_name": "Project Page (Split View)",
+      "community": 16,
+      "community_name": "Menu Bar + Theme",
       "norm_label": "apigetproject()"
     },
     {
@@ -8326,8 +8326,8 @@
       "source_location": "L212",
       "_origin": "ast",
       "id": "lib_api_apiupdateproject",
-      "community": 13,
-      "community_name": "Project Page (Split View)",
+      "community": 5,
+      "community_name": "Projects List + Modals",
       "norm_label": "apiupdateproject()"
     },
     {
@@ -8337,8 +8337,8 @@
       "source_location": "L232",
       "_origin": "ast",
       "id": "lib_api_apideleteproject",
-      "community": 5,
-      "community_name": "Projects List + Modals",
+      "community": 49,
+      "community_name": "Module 49",
       "norm_label": "apideleteproject()"
     },
     {
@@ -8348,8 +8348,8 @@
       "source_location": "L236",
       "_origin": "ast",
       "id": "lib_api_apicreatediagram",
-      "community": 44,
-      "community_name": "Module 44",
+      "community": 29,
+      "community_name": "Module 29",
       "norm_label": "apicreatediagram()"
     },
     {
@@ -8370,8 +8370,8 @@
       "source_location": "L254",
       "_origin": "ast",
       "id": "lib_api_apigetdiagram",
-      "community": 49,
-      "community_name": "Module 49",
+      "community": 29,
+      "community_name": "Module 29",
       "norm_label": "apigetdiagram()"
     },
     {
@@ -8403,8 +8403,8 @@
       "source_location": "L278",
       "_origin": "ast",
       "id": "lib_api_draftexistserror",
-      "community": 75,
-      "community_name": "DraftExistsError",
+      "community": 5,
+      "community_name": "Projects List + Modals",
       "norm_label": "draftexistserror"
     },
     {
@@ -8414,8 +8414,8 @@
       "source_location": "L280",
       "_origin": "ast",
       "id": "lib_api_draftexistserror_constructor",
-      "community": 75,
-      "community_name": "DraftExistsError",
+      "community": 5,
+      "community_name": "Projects List + Modals",
       "norm_label": ".constructor()"
     },
     {
@@ -8425,8 +8425,8 @@
       "source_location": "L287",
       "_origin": "ast",
       "id": "lib_api_apilistprojectversions",
-      "community": 10,
-      "community_name": "API Client Layer",
+      "community": 5,
+      "community_name": "Projects List + Modals",
       "norm_label": "apilistprojectversions()"
     },
     {
@@ -8436,8 +8436,8 @@
       "source_location": "L291",
       "_origin": "ast",
       "id": "lib_api_apipublishdiagram",
-      "community": 10,
-      "community_name": "API Client Layer",
+      "community": 6,
+      "community_name": "Diagram Page Shell",
       "norm_label": "apipublishdiagram()"
     },
     {
@@ -8447,8 +8447,8 @@
       "source_location": "L298",
       "_origin": "ast",
       "id": "lib_api_apicheckoutversion",
-      "community": 54,
-      "community_name": "fetchWithRefresh",
+      "community": 5,
+      "community_name": "Projects List + Modals",
       "norm_label": "apicheckoutversion()"
     },
     {
@@ -8458,8 +8458,8 @@
       "source_location": "L320",
       "_origin": "ast",
       "id": "lib_api_apigetprojectdraft",
-      "community": 54,
-      "community_name": "fetchWithRefresh",
+      "community": 16,
+      "community_name": "Menu Bar + Theme",
       "norm_label": "apigetprojectdraft()"
     },
     {
@@ -8513,8 +8513,8 @@
       "source_location": "L377",
       "_origin": "ast",
       "id": "lib_api_apigetchathistory",
-      "community": 11,
-      "community_name": "Apply Diagram + Chat Composer",
+      "community": 6,
+      "community_name": "Diagram Page Shell",
       "norm_label": "apigetchathistory()"
     },
     {
@@ -8634,8 +8634,8 @@
       "source_location": "L501",
       "_origin": "ast",
       "id": "lib_api_threatstatus",
-      "community": 7,
-      "community_name": "Threat Filters + Add Modal",
+      "community": 39,
+      "community_name": "Module 39",
       "norm_label": "threatstatus"
     },
     {
@@ -8711,8 +8711,8 @@
       "source_location": "L565",
       "_origin": "ast",
       "id": "lib_api_apideclutter",
-      "community": 10,
-      "community_name": "API Client Layer",
+      "community": 6,
+      "community_name": "Diagram Page Shell",
       "norm_label": "apideclutter()"
     },
     {
@@ -8777,8 +8777,8 @@
       "source_location": "L628",
       "_origin": "ast",
       "id": "lib_api_apicreatethreat",
-      "community": 12,
-      "community_name": "Threat History / Model Panels",
+      "community": 36,
+      "community_name": "Module 36",
       "norm_label": "apicreatethreat()"
     },
     {
@@ -8788,8 +8788,8 @@
       "source_location": "L639",
       "_origin": "ast",
       "id": "lib_api_apideletethreat",
-      "community": 21,
-      "community_name": "Module 21",
+      "community": 12,
+      "community_name": "Threat History / Model Panels",
       "norm_label": "apideletethreat()"
     },
     {
@@ -8799,8 +8799,8 @@
       "source_location": "L644",
       "_origin": "ast",
       "id": "lib_api_apiupdatethreat",
-      "community": 39,
-      "community_name": "Module 39",
+      "community": 12,
+      "community_name": "Threat History / Model Panels",
       "norm_label": "apiupdatethreat()"
     },
     {
@@ -8821,8 +8821,8 @@
       "source_location": "L673",
       "_origin": "ast",
       "id": "lib_api_apilistprojectthreats",
-      "community": 31,
-      "community_name": "Module 31",
+      "community": 16,
+      "community_name": "Menu Bar + Theme",
       "norm_label": "apilistprojectthreats()"
     },
     {
@@ -8832,8 +8832,8 @@
       "source_location": "L698",
       "_origin": "ast",
       "id": "lib_api_apiexportthreatreport",
-      "community": 26,
-      "community_name": "Module 26",
+      "community": 10,
+      "community_name": "API Client Layer",
       "norm_label": "apiexportthreatreport()"
     },
     {
@@ -8909,8 +8909,8 @@
       "source_location": "L768",
       "_origin": "ast",
       "id": "lib_api_posturescorehistoryitem",
-      "community": 19,
-      "community_name": "Module 19",
+      "community": 20,
+      "community_name": "Module 20",
       "norm_label": "posturescorehistoryitem"
     },
     {
@@ -9008,8 +9008,8 @@
       "source_location": "L891",
       "_origin": "ast",
       "id": "lib_api_apilistattacksimulations",
-      "community": 20,
-      "community_name": "Module 20",
+      "community": 18,
+      "community_name": "Module 18",
       "norm_label": "apilistattacksimulations()"
     },
     {
@@ -9030,8 +9030,8 @@
       "source_location": "L902",
       "_origin": "ast",
       "id": "lib_api_apichatevaluate",
-      "community": 54,
-      "community_name": "fetchWithRefresh",
+      "community": 10,
+      "community_name": "API Client Layer",
       "norm_label": "apichatevaluate()"
     },
     {
@@ -9041,8 +9041,8 @@
       "source_location": "L932",
       "_origin": "ast",
       "id": "lib_api_projectsummary",
-      "community": 15,
-      "community_name": "All Projects Dashboard",
+      "community": 28,
+      "community_name": "Module 28",
       "norm_label": "projectsummary"
     },
     {
@@ -9129,8 +9129,8 @@
       "source_location": "L1032",
       "_origin": "ast",
       "id": "lib_api_apigetaisettings",
-      "community": 10,
-      "community_name": "API Client Layer",
+      "community": 1,
+      "community_name": "Home / AI Settings Pages",
       "norm_label": "apigetaisettings()"
     },
     {
@@ -9140,8 +9140,8 @@
       "source_location": "L1036",
       "_origin": "ast",
       "id": "lib_api_apiupdateaisettings",
-      "community": 10,
-      "community_name": "API Client Layer",
+      "community": 1,
+      "community_name": "Home / AI Settings Pages",
       "norm_label": "apiupdateaisettings()"
     },
     {
@@ -9151,8 +9151,8 @@
       "source_location": "L1043",
       "_origin": "ast",
       "id": "lib_api_apigetaimetrics",
-      "community": 10,
-      "community_name": "API Client Layer",
+      "community": 1,
+      "community_name": "Home / AI Settings Pages",
       "norm_label": "apigetaimetrics()"
     },
     {
@@ -9195,8 +9195,8 @@
       "source_location": "L1064",
       "_origin": "ast",
       "id": "lib_api_apigetaimodels",
-      "community": 10,
-      "community_name": "API Client Layer",
+      "community": 1,
+      "community_name": "Home / AI Settings Pages",
       "norm_label": "apigetaimodels()"
     },
     {
@@ -9261,8 +9261,8 @@
       "source_location": "L1104",
       "_origin": "ast",
       "id": "lib_api_aijobtype",
-      "community": 16,
-      "community_name": "Menu Bar + Theme",
+      "community": 9,
+      "community_name": "AI Activity Page",
       "norm_label": "aijobtype"
     },
     {
@@ -9283,8 +9283,8 @@
       "source_location": "L1119",
       "_origin": "ast",
       "id": "lib_api_apisubmitthreatanalysis",
-      "community": 35,
-      "community_name": "PipelineNudge.tsx",
+      "community": 10,
+      "community_name": "API Client Layer",
       "norm_label": "apisubmitthreatanalysis()"
     },
     {
@@ -9294,8 +9294,8 @@
       "source_location": "L1138",
       "_origin": "ast",
       "id": "lib_api_pipelinejobstatus",
-      "community": 35,
-      "community_name": "PipelineNudge.tsx",
+      "community": 3,
+      "community_name": "AI Chat Panel",
       "norm_label": "pipelinejobstatus"
     },
     {
@@ -9316,8 +9316,8 @@
       "source_location": "L1152",
       "_origin": "ast",
       "id": "lib_api_apigetpipelinestatus",
-      "community": 35,
-      "community_name": "PipelineNudge.tsx",
+      "community": 3,
+      "community_name": "AI Chat Panel",
       "norm_label": "apigetpipelinestatus()"
     },
     {
@@ -9327,8 +9327,8 @@
       "source_location": "L1157",
       "_origin": "ast",
       "id": "lib_api_apisubmitposturescore",
-      "community": 35,
-      "community_name": "PipelineNudge.tsx",
+      "community": 3,
+      "community_name": "AI Chat Panel",
       "norm_label": "apisubmitposturescore()"
     },
     {
@@ -9349,8 +9349,8 @@
       "source_location": "L1184",
       "_origin": "ast",
       "id": "lib_api_apicanceljob",
-      "community": 16,
-      "community_name": "Menu Bar + Theme",
+      "community": 9,
+      "community_name": "AI Activity Page",
       "norm_label": "apicanceljob()"
     },
     {
@@ -9437,8 +9437,8 @@
       "source_location": "L1273",
       "_origin": "ast",
       "id": "lib_api_apithreatagentchat",
-      "community": 54,
-      "community_name": "fetchWithRefresh",
+      "community": 10,
+      "community_name": "API Client Layer",
       "norm_label": "apithreatagentchat()"
     },
     {
@@ -9470,8 +9470,8 @@
       "source_location": "L1368",
       "_origin": "ast",
       "id": "lib_api_apiposturescorestream",
-      "community": 54,
-      "community_name": "fetchWithRefresh",
+      "community": 10,
+      "community_name": "API Client Layer",
       "norm_label": "apiposturescorestream()"
     },
     {
@@ -9503,8 +9503,8 @@
       "source_location": "L1426",
       "_origin": "ast",
       "id": "lib_api_apiattackmindstream",
-      "community": 54,
-      "community_name": "fetchWithRefresh",
+      "community": 10,
+      "community_name": "API Client Layer",
       "norm_label": "apiattackmindstream()"
     },
     {
@@ -9547,8 +9547,8 @@
       "source_location": "L1499",
       "_origin": "ast",
       "id": "lib_api_apiexportintelreport",
-      "community": 54,
-      "community_name": "fetchWithRefresh",
+      "community": 10,
+      "community_name": "API Client Layer",
       "norm_label": "apiexportintelreport()"
     },
     {
@@ -9591,8 +9591,8 @@
       "source_location": "L1543",
       "_origin": "ast",
       "id": "lib_api_intelreportlistitem",
-      "community": 10,
-      "community_name": "API Client Layer",
+      "community": 25,
+      "community_name": "Module 25",
       "norm_label": "intelreportlistitem"
     },
     {
@@ -9602,8 +9602,8 @@
       "source_location": "L1549",
       "_origin": "ast",
       "id": "lib_api_intelreport",
-      "community": 10,
-      "community_name": "API Client Layer",
+      "community": 25,
+      "community_name": "Module 25",
       "norm_label": "intelreport"
     },
     {
@@ -9613,8 +9613,8 @@
       "source_location": "L1556",
       "_origin": "ast",
       "id": "lib_api_apicreateintelreport",
-      "community": 10,
-      "community_name": "API Client Layer",
+      "community": 25,
+      "community_name": "Module 25",
       "norm_label": "apicreateintelreport()"
     },
     {
@@ -9624,8 +9624,8 @@
       "source_location": "L1560",
       "_origin": "ast",
       "id": "lib_api_apilistintelreports",
-      "community": 10,
-      "community_name": "API Client Layer",
+      "community": 25,
+      "community_name": "Module 25",
       "norm_label": "apilistintelreports()"
     },
     {
@@ -9635,8 +9635,8 @@
       "source_location": "L1564",
       "_origin": "ast",
       "id": "lib_api_apigetintelreport",
-      "community": 10,
-      "community_name": "API Client Layer",
+      "community": 25,
+      "community_name": "Module 25",
       "norm_label": "apigetintelreport()"
     },
     {
@@ -9679,8 +9679,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "lib_authstore",
-      "community": 16,
-      "community_name": "Menu Bar + Theme",
+      "community": 9,
+      "community_name": "AI Activity Page",
       "norm_label": "authstore.ts"
     },
     {
@@ -9690,8 +9690,8 @@
       "source_location": "L12",
       "_origin": "ast",
       "id": "lib_authstore_savetokens",
-      "community": 25,
-      "community_name": "Module 25",
+      "community": 9,
+      "community_name": "AI Activity Page",
       "norm_label": "savetokens()"
     },
     {
@@ -9723,8 +9723,8 @@
       "source_location": "L34",
       "_origin": "ast",
       "id": "lib_authstore_getaccesstoken",
-      "community": 16,
-      "community_name": "Menu Bar + Theme",
+      "community": 9,
+      "community_name": "AI Activity Page",
       "norm_label": "getaccesstoken()"
     },
     {
@@ -9734,8 +9734,8 @@
       "source_location": "L39",
       "_origin": "ast",
       "id": "lib_authstore_getrefreshtoken",
-      "community": 16,
-      "community_name": "Menu Bar + Theme",
+      "community": 9,
+      "community_name": "AI Activity Page",
       "norm_label": "getrefreshtoken()"
     },
     {
@@ -9745,8 +9745,8 @@
       "source_location": "L44",
       "_origin": "ast",
       "id": "lib_authstore_saveuser",
-      "community": 25,
-      "community_name": "Module 25",
+      "community": 9,
+      "community_name": "AI Activity Page",
       "norm_label": "saveuser()"
     },
     {
@@ -9756,8 +9756,8 @@
       "source_location": "L49",
       "_origin": "ast",
       "id": "lib_authstore_getstoreduser",
-      "community": 48,
-      "community_name": "Module 48",
+      "community": 16,
+      "community_name": "Menu Bar + Theme",
       "norm_label": "getstoreduser()"
     },
     {
@@ -9767,8 +9767,8 @@
       "source_location": "L62",
       "_origin": "ast",
       "id": "lib_authstore_isloggedin",
-      "community": 16,
-      "community_name": "Menu Bar + Theme",
+      "community": 9,
+      "community_name": "AI Activity Page",
       "norm_label": "isloggedin()"
     },
     {
@@ -9899,8 +9899,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "lib_diffengine",
-      "community": 49,
-      "community_name": "Module 49",
+      "community": 23,
+      "community_name": "Module 23",
       "norm_label": "diffengine.ts"
     },
     {
@@ -9910,8 +9910,8 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "lib_diffengine_diffstatus",
-      "community": 41,
-      "community_name": "Module 41",
+      "community": 23,
+      "community_name": "Module 23",
       "norm_label": "diffstatus"
     },
     {
@@ -9921,8 +9921,8 @@
       "source_location": "L8",
       "_origin": "ast",
       "id": "lib_diffengine_nodediff",
-      "community": 49,
-      "community_name": "Module 49",
+      "community": 23,
+      "community_name": "Module 23",
       "norm_label": "nodediff"
     },
     {
@@ -9932,8 +9932,8 @@
       "source_location": "L17",
       "_origin": "ast",
       "id": "lib_diffengine_edgediff",
-      "community": 49,
-      "community_name": "Module 49",
+      "community": 23,
+      "community_name": "Module 23",
       "norm_label": "edgediff"
     },
     {
@@ -9943,8 +9943,8 @@
       "source_location": "L24",
       "_origin": "ast",
       "id": "lib_diffengine_layerdiff",
-      "community": 59,
-      "community_name": "Module 59",
+      "community": 23,
+      "community_name": "Module 23",
       "norm_label": "layerdiff"
     },
     {
@@ -9954,8 +9954,8 @@
       "source_location": "L39",
       "_origin": "ast",
       "id": "lib_diffengine_projectdiff",
-      "community": 59,
-      "community_name": "Module 59",
+      "community": 23,
+      "community_name": "Module 23",
       "norm_label": "projectdiff"
     },
     {
@@ -9965,8 +9965,8 @@
       "source_location": "L51",
       "_origin": "ast",
       "id": "lib_diffengine_nodemodified",
-      "community": 49,
-      "community_name": "Module 49",
+      "community": 23,
+      "community_name": "Module 23",
       "norm_label": "nodemodified()"
     },
     {
@@ -9976,8 +9976,8 @@
       "source_location": "L61",
       "_origin": "ast",
       "id": "lib_diffengine_edgemodified",
-      "community": 49,
-      "community_name": "Module 49",
+      "community": 23,
+      "community_name": "Module 23",
       "norm_label": "edgemodified()"
     },
     {
@@ -9987,8 +9987,8 @@
       "source_location": "L72",
       "_origin": "ast",
       "id": "lib_diffengine_diffbyidmap",
-      "community": 49,
-      "community_name": "Module 49",
+      "community": 23,
+      "community_name": "Module 23",
       "norm_label": "diffbyidmap()"
     },
     {
@@ -9998,8 +9998,8 @@
       "source_location": "L97",
       "_origin": "ast",
       "id": "lib_diffengine_diffprojects",
-      "community": 49,
-      "community_name": "Module 49",
+      "community": 23,
+      "community_name": "Module 23",
       "norm_label": "diffprojects()"
     },
     {
@@ -10009,8 +10009,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "lib_features",
-      "community": 13,
-      "community_name": "Project Page (Split View)",
+      "community": 16,
+      "community_name": "Menu Bar + Theme",
       "norm_label": "features.ts"
     },
     {
@@ -10020,8 +10020,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "lib_features_features",
-      "community": 13,
-      "community_name": "Project Page (Split View)",
+      "community": 16,
+      "community_name": "Menu Bar + Theme",
       "norm_label": "features"
     },
     {
@@ -10372,8 +10372,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "lib_pipelinestate",
-      "community": 35,
-      "community_name": "PipelineNudge.tsx",
+      "community": 3,
+      "community_name": "AI Chat Panel",
       "norm_label": "pipelinestate.ts"
     },
     {
@@ -10383,8 +10383,8 @@
       "source_location": "L5",
       "_origin": "ast",
       "id": "lib_pipelinestate_pipelinephase",
-      "community": 35,
-      "community_name": "PipelineNudge.tsx",
+      "community": 3,
+      "community_name": "AI Chat Panel",
       "norm_label": "pipelinephase"
     },
     {
@@ -10394,8 +10394,8 @@
       "source_location": "L13",
       "_origin": "ast",
       "id": "lib_pipelinestate_pipelinestate",
-      "community": 35,
-      "community_name": "PipelineNudge.tsx",
+      "community": 3,
+      "community_name": "AI Chat Panel",
       "norm_label": "pipelinestate"
     },
     {
@@ -10405,8 +10405,8 @@
       "source_location": "L23",
       "_origin": "ast",
       "id": "lib_pipelinestate_key",
-      "community": 35,
-      "community_name": "PipelineNudge.tsx",
+      "community": 3,
+      "community_name": "AI Chat Panel",
       "norm_label": "key()"
     },
     {
@@ -10416,8 +10416,8 @@
       "source_location": "L25",
       "_origin": "ast",
       "id": "lib_pipelinestate_loadpipelinestate",
-      "community": 35,
-      "community_name": "PipelineNudge.tsx",
+      "community": 3,
+      "community_name": "AI Chat Panel",
       "norm_label": "loadpipelinestate()"
     },
     {
@@ -10427,8 +10427,8 @@
       "source_location": "L36",
       "_origin": "ast",
       "id": "lib_pipelinestate_savepipelinestate",
-      "community": 35,
-      "community_name": "PipelineNudge.tsx",
+      "community": 3,
+      "community_name": "AI Chat Panel",
       "norm_label": "savepipelinestate()"
     },
     {
@@ -10438,8 +10438,8 @@
       "source_location": "L45",
       "_origin": "ast",
       "id": "lib_pipelinestate_clearpipelinestate",
-      "community": 35,
-      "community_name": "PipelineNudge.tsx",
+      "community": 3,
+      "community_name": "AI Chat Panel",
       "norm_label": "clearpipelinestate()"
     },
     {
@@ -10449,8 +10449,8 @@
       "source_location": "L52",
       "_origin": "ast",
       "id": "lib_pipelinestate_advancetonudge",
-      "community": 35,
-      "community_name": "PipelineNudge.tsx",
+      "community": 3,
+      "community_name": "AI Chat Panel",
       "norm_label": "advancetonudge()"
     },
     {
@@ -10537,8 +10537,8 @@
       "source_location": "L14",
       "_origin": "ast",
       "id": "lib_themecontext_usetheme",
-      "community": 73,
-      "community_name": "useTheme",
+      "community": 48,
+      "community_name": "Module 48",
       "norm_label": "usetheme()"
     },
     {
@@ -10603,8 +10603,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "lib_threatbadges",
-      "community": 36,
-      "community_name": "Module 36",
+      "community": 7,
+      "community_name": "Threat Filters + Add Modal",
       "norm_label": "threatbadges.ts"
     },
     {
@@ -10614,8 +10614,8 @@
       "source_location": "L3",
       "_origin": "ast",
       "id": "lib_threatbadges_severity_options",
-      "community": 36,
-      "community_name": "Module 36",
+      "community": 7,
+      "community_name": "Threat Filters + Add Modal",
       "norm_label": "severity_options"
     },
     {
@@ -10636,8 +10636,8 @@
       "source_location": "L5",
       "_origin": "ast",
       "id": "lib_threatbadges_stride_options",
-      "community": 36,
-      "community_name": "Module 36",
+      "community": 7,
+      "community_name": "Threat Filters + Add Modal",
       "norm_label": "stride_options"
     },
     {
@@ -10647,8 +10647,8 @@
       "source_location": "L10",
       "_origin": "ast",
       "id": "lib_threatbadges_stride_label",
-      "community": 36,
-      "community_name": "Module 36",
+      "community": 7,
+      "community_name": "Threat Filters + Add Modal",
       "norm_label": "stride_label"
     },
     {
@@ -10680,8 +10680,8 @@
       "source_location": "L36",
       "_origin": "ast",
       "id": "lib_threatbadges_sev_short",
-      "community": 36,
-      "community_name": "Module 36",
+      "community": 7,
+      "community_name": "Threat Filters + Add Modal",
       "norm_label": "sev_short"
     },
     {
@@ -10691,8 +10691,8 @@
       "source_location": "L41",
       "_origin": "ast",
       "id": "lib_threatbadges_severity_color_rgb",
-      "community": 36,
-      "community_name": "Module 36",
+      "community": 7,
+      "community_name": "Threat Filters + Add Modal",
       "norm_label": "severity_color_rgb"
     },
     {
@@ -11043,8 +11043,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "lib_utils",
-      "community": 28,
-      "community_name": "Module 28",
+      "community": 44,
+      "community_name": "Module 44",
       "norm_label": "utils.ts"
     },
     {
@@ -11054,8 +11054,8 @@
       "source_location": "L2",
       "_origin": "ast",
       "id": "lib_utils_cn",
-      "community": 28,
-      "community_name": "Module 28",
+      "community": 26,
+      "community_name": "Module 26",
       "norm_label": "cn()"
     },
     {
@@ -12236,21 +12236,10 @@
       "norm_label": "key domain notes"
     },
     {
-      "label": "graphify",
-      "file_type": "document",
-      "source_file": "CLAUDE.md",
-      "source_location": "L55",
-      "_origin": "ast",
-      "id": "claude_graphify",
-      "community": 69,
-      "community_name": "Layers \u2014 Frontend (orientation)",
-      "norm_label": "graphify"
-    },
-    {
       "label": "Verification",
       "file_type": "document",
       "source_file": "CLAUDE.md",
-      "source_location": "L60",
+      "source_location": "L48",
       "_origin": "ast",
       "id": "claude_verification",
       "community": 69,
@@ -43398,17 +43387,6 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "CLAUDE.md",
-      "source_location": "L55",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "claude_layers_frontend_orientation",
-      "target": "claude_graphify",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "CLAUDE.md",
       "source_location": "L43",
       "weight": 1.0,
       "_origin": "ast",
@@ -43442,7 +43420,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "CLAUDE.md",
-      "source_location": "L60",
+      "source_location": "L48",
       "weight": 1.0,
       "_origin": "ast",
       "source": "claude_layers_frontend_orientation",
@@ -45035,5 +45013,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "d5f240707b29bf64c96f4483c542f1d495e62e60"
+  "built_at_commit": "8b59e284094a1979f2d9e5a748c18963a2d72647"
 }
