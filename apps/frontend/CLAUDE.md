@@ -44,6 +44,18 @@ security analysis (STRIDE, posture, attack simulation, intel) on them.
 - A Layers project = one backend `Project` + one `Diagram`; `canvasData = { layers: LayerMap, navStack: string[] }`.
 - Versioning: draft/published; publish → read-only; checkout → new draft (latest version only, no existing draft).
 - Two AI consumption patterns — SSE streaming and async job polling (`apiSubmit*` → `apiGetJobStatus`). See `frontend-engineer`.
+- **AI activity logging.** Every AI request/response anywhere in the app — generate, chat,
+  STRIDE, posture, attack, intel, declutter, new-project converse, suggest-flow, both
+  streaming and async jobs — is persisted server-side to the backend `ai_interactions`
+  table (centralized in the backend `LlmService`, so the record is durable and available
+  across sessions). The frontend does **not** log AI calls itself; the `activity` feed and
+  `ai-history` page **read** these rows via `lib/api.ts`. Any new AI feature that routes
+  through the backend's `LlmService` is logged automatically — no client-side wiring needed.
+
+## graphify
+This app has its own knowledge graph at `apps/frontend/graphify-out/` (graphs are per-app,
+not at the repo root). `cd apps/frontend` before running any `graphify` command so it
+resolves this app's graph; run `graphify update .` from here after changing frontend code.
 
 ## Verification
 ```bash

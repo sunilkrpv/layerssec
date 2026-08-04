@@ -72,7 +72,8 @@ Route order: in `threat.controller`, declare `projects/:id/threats/report` **bef
 ## Gotchas (pointers)
 - Posture deterministic threat penalty → `security-analyst` (Posture Scoring Model); applied in `jobs/processors/posture-score.processor.ts`.
 - Job lifecycle + provider/BYO-key wiring → `ai-jobs-engineer`.
-- LLM logging (never log prompt content; pass `promptName`) + `---DIAGRAM---` extraction → `prompt-engineer`.
+- LLM logging (never log prompt content to **stdout**; pass `promptName`) + `---DIAGRAM---` extraction → `prompt-engineer`.
+- **Centralized AI activity logging.** Every LLM call (`invoke` / `invokeWithThinking` / `stream` / `streamConversation`) is persisted to the `ai_interactions` table **inside `LlmService`** — do NOT add per-feature `aiInteraction.create` calls. Pass `userId` (and optional `diagramId`) via `LlmCallConfig`; `buildLlmConfigForUser` stamps `userId` automatically, so any call site that spreads that config is logged for free. Calls without a `userId` (anonymous/system) are intentionally not persisted (the row requires a user FK). The full prompt + response text land in the DB row; stdout still prints only `promptName`.
 - Encryption (AES-256-GCM, never log/expose keys) + PDFKit quirks + immutability guards → `backend-engineer`.
 
 ## Dev Setup
@@ -86,3 +87,8 @@ npm run db:generate    # regen client after schema change
 Env files: `.env.local` (dev, gitignored, loaded first), `.env` (template, gitignored), `.env.example`
 (committed; keys incl. `AI_PROVIDER`, `ANTHROPIC_API_KEY`/`ANTHROPIC_MODEL`, `OPENAI_API_KEY`,
 `OLLAMA_BASE_URL`/`OLLAMA_MODEL`, `DATABASE_URL`/`DIRECT_URL`, `JWT_SECRET`, `ENCRYPTION_KEY`).
+
+## graphify
+This app has its own knowledge graph at `apps/backend/graphify-out/` (graphs are per-app,
+not at the repo root). `cd apps/backend` before running any `graphify` command so it resolves
+this app's graph; run `graphify update .` from here after changing backend code.

@@ -5,6 +5,7 @@ import { AiJobStatus, ThreatStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { LlmService } from '../../ai/llm.service';
 import { UserSettingsService } from '../../user-settings/user-settings.service';
+import { buildLlmConfigForUser } from '../../ai/llm-config.util';
 import { OnboardingService } from '../../onboarding/onboarding.service';
 import { POSTURE_SCORE_QUEUE } from '../queues';
 import {
@@ -103,25 +104,13 @@ export class PostureScoreProcessor extends WorkerHost {
         layers: dto.layers as Parameters<typeof buildPostureScorePrompt>[0]['layers'],
       }) + threatContext;
 
-      const settings = await this.userSettings.getAiSettings(userId);
-      const providerLower = settings.provider?.toLowerCase() as 'anthropic' | 'openai' | 'ollama' | undefined;
-      let apiKey: string | undefined;
-      if (providerLower === 'anthropic' || providerLower === 'openai') {
-        const decrypted = await this.userSettings.getDecryptedApiKey(userId, providerLower);
-        apiKey = decrypted ?? undefined;
-      }
-      const llmConfig = {
-        provider: providerLower,
-        model: settings.model ?? undefined,
-        maxOutputTokens: settings.maxOutputTokens ?? undefined,
-        baseUrl: settings.ollamaBaseUrl ?? undefined,
-        apiKey,
-      };
+      // Stamps userId so LlmService persists the interaction centrally.
+      const llmConfig = await buildLlmConfigForUser(this.userSettings, userId);
 
       const startTime = Date.now();
       const { content, tokensUsed, inputTokens, outputTokens, provider: llmProvider, model: llmModel } = dto.useExtendedThinking
-        ? await this.llm.invokeWithThinking(POSTURE_SCORE_SYSTEM_PROMPT, userMessage, { ...llmConfig, promptName: 'POSTURE_SCORE_SYSTEM_PROMPT' })
-        : await this.llm.invoke(POSTURE_SCORE_SYSTEM_PROMPT, userMessage, { ...llmConfig, promptName: 'POSTURE_SCORE_SYSTEM_PROMPT' });
+        ? await this.llm.invokeWithThinking(POSTURE_SCORE_SYSTEM_PROMPT, userMessage, { ...llmConfig, diagramId: dto.diagramId, promptName: 'POSTURE_SCORE_SYSTEM_PROMPT' })
+        : await this.llm.invoke(POSTURE_SCORE_SYSTEM_PROMPT, userMessage, { ...llmConfig, diagramId: dto.diagramId, promptName: 'POSTURE_SCORE_SYSTEM_PROMPT' });
       const durationMs = Date.now() - startTime;
       this.logger.log(`[PostureScore] job=${aiJobId} llm completed durationMs=${durationMs} tokens=${tokensUsed} (in=${inputTokens} out=${outputTokens}) model=${llmProvider}/${llmModel}`);
 
@@ -191,20 +180,7 @@ export class PostureScoreProcessor extends WorkerHost {
         },
       });
 
-      await this.prisma.aiInteraction.create({
-        data: {
-          userId,
-          diagramId: dto.diagramId,
-          prompt: `[posture-score-job] projectId=${dto.projectId} extended=${dto.useExtendedThinking ?? false}`,
-          response: { score: saved.score, postureScoreId: saved.id },
-          tokensUsed,
-          inputTokens,
-          outputTokens,
-          model: `${llmProvider}/${llmModel}`,
-          durationMs,
-        },
-      });
-
+      // AI interaction persisted centrally by LlmService (see llm.service.ts).
       this.logger.log(`[PostureScore] job=${aiJobId} completed postureScoreId=${saved.id} score=${saved.score} tokens=${tokensUsed} (in=${inputTokens} out=${outputTokens}) model=${llmProvider}/${llmModel}`);
 
       return {

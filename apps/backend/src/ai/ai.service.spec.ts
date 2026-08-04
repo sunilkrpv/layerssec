@@ -165,7 +165,9 @@ describe('AiService', () => {
       });
 
       expect(res.mode).toBe('refuse');
-      expect(prisma.aiInteraction.create).toHaveBeenCalled();
+      // Interaction logging now lives in LlmService.invoke (see llm.service.spec.ts);
+      // AiService just drives the call + chat persistence.
+      expect(llm.invoke).toHaveBeenCalled();
       expect(chat.saveMessages).toHaveBeenCalled();
     });
 
@@ -202,7 +204,8 @@ describe('AiService', () => {
       });
 
       expect(res.mode).toBe('ask');
-      expect(prisma.aiInteraction.create).toHaveBeenCalled();
+      // Persistence moved to LlmService.invoke; AiService still calls the LLM + saves chat.
+      expect(llm.invoke).toHaveBeenCalled();
       expect(chat.saveMessages).toHaveBeenCalled();
     });
   });

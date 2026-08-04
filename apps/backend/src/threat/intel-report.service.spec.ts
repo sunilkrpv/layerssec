@@ -40,10 +40,14 @@ describe('IntelReportService', () => {
 
     const result = await service.generate('p', 'user-id');
 
-    expect(ai.generateIntelReport).toHaveBeenCalledWith(expect.objectContaining({
-      project: expect.objectContaining({ name: 'Acme', techStack: ['Node'] }),
-      diagrams: expect.arrayContaining([expect.objectContaining({ diagramId: 'd1', topThreats: expect.any(Array) })]),
-    }));
+    expect(ai.generateIntelReport).toHaveBeenCalledWith(
+      expect.objectContaining({
+        project: expect.objectContaining({ name: 'Acme', techStack: ['Node'] }),
+        diagrams: expect.arrayContaining([expect.objectContaining({ diagramId: 'd1', topThreats: expect.any(Array) })]),
+      }),
+      // userId is now forwarded so LlmService can log the intel-report interaction.
+      'user-id',
+    );
     expect(prisma.projectIntelReport.create).toHaveBeenCalled();
     expect(result.id).toBe('r1');
   });

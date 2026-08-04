@@ -4,6 +4,7 @@ import { ChatAnthropic } from '@langchain/anthropic';
 import { ChatOllama } from '@langchain/ollama';
 import { ChatOpenAI } from '@langchain/openai';
 import { AIMessage, HumanMessage, SystemMessage } from '@langchain/core/messages';
+import { PrismaService } from '../prisma/prisma.service';
 
 export type LlmProvider = 'anthropic' | 'ollama';
 
@@ -26,6 +27,14 @@ export interface LlmCallConfig {
   baseUrl?: string;
   /** Human-readable name of the system prompt constant. Logged instead of prompt content. */
   promptName?: string;
+  /**
+   * Owning user. When present, every LLM call is persisted to the ai_interactions
+   * table for the activity feed / future-session context. Absent = anonymous/system
+   * call, which is not persisted (the table requires a user FK).
+   */
+  userId?: string;
+  /** Diagram this call relates to, if any — stored on the ai_interactions row. */
+  diagramId?: string | null;
 }
 
 /**
@@ -104,7 +113,10 @@ export class LlmService {
   readonly provider: LlmProvider;
   readonly modelName: string;
 
-  constructor(private readonly config: ConfigService) {
+  constructor(
+    private readonly config: ConfigService,
+    private readonly prisma: PrismaService,
+  ) {
     this.provider = (config.get<string>('AI_PROVIDER') ?? 'anthropic') as LlmProvider;
 
     if (this.provider === 'ollama') {
@@ -204,6 +216,44 @@ export class LlmService {
   }
 
   /**
+   * Persist one AI request/response turn to the ai_interactions table so every
+   * LLM call anywhere in the app is durably recorded for the activity feed and
+   * future-session context. Skipped for anonymous/system calls (no config.userId,
+   * since the table requires a user FK). Best-effort: never throws into the caller.
+   *
+   * The full prompt and response text are stored in the DB (durable, per-user).
+   * Note the stdout logger still prints only promptName — raw content must not be
+   * written to application logs.
+   */
+  private async persistInteraction(
+    config: LlmCallConfig | undefined,
+    userMessage: string,
+    result: { content: string; tokensUsed: number; inputTokens: number; outputTokens: number; provider: string; model: string },
+    durationMs: number,
+  ): Promise<void> {
+    const userId = config?.userId;
+    if (!userId) return;
+    const promptName = config?.promptName ?? 'unnamed';
+    try {
+      await this.prisma.aiInteraction.create({
+        data: {
+          userId,
+          diagramId: config?.diagramId ?? null,
+          prompt: userMessage,
+          response: { content: result.content, promptName, provider: result.provider },
+          tokensUsed: result.tokensUsed,
+          inputTokens: result.inputTokens,
+          outputTokens: result.outputTokens,
+          model: `${result.provider}/${result.model}`,
+          durationMs,
+        },
+      });
+    } catch (err) {
+      this.logger.error(`[LLM] failed to persist aiInteraction (${promptName}): ${String(err)}`);
+    }
+  }
+
+  /**
    * Send a system + user message pair using Claude extended thinking.
    * Falls back to regular invoke() for Ollama (no extended thinking support).
    * budgetTokens controls how much the model is allowed to "think" before responding.
@@ -252,7 +302,9 @@ export class LlmService {
       `[LLM] DONE  ${name} (thinking) | anthropic/${resolvedModel} | in=${inputTokens} out=${outputTokens} total=${tokensUsed} tokens | ${durationMs}ms`,
     );
 
-    return { content, tokensUsed, inputTokens, outputTokens, provider: 'anthropic', model: resolvedModel };
+    const result = { content, tokensUsed, inputTokens, outputTokens, provider: 'anthropic', model: resolvedModel };
+    await this.persistInteraction(config, userMessage, result, durationMs);
+    return result;
   }
 
   /**
@@ -292,7 +344,9 @@ export class LlmService {
       `[LLM] DONE  ${name} | ${resolvedProvider}/${resolvedModel} | in=${inputTokens} out=${outputTokens} total=${tokensUsed} tokens | ${durationMs}ms`,
     );
 
-    return { content, tokensUsed, inputTokens, outputTokens, provider: resolvedProvider, model: resolvedModel };
+    const result = { content, tokensUsed, inputTokens, outputTokens, provider: resolvedProvider, model: resolvedModel };
+    await this.persistInteraction(config, userMessage, result, durationMs);
+    return result;
   }
 
   /**
@@ -307,6 +361,7 @@ export class LlmService {
 
     this.logger.log(`[LLM] STREAM START ${name} | ${resolvedProvider}/${resolvedModel} | chars=${userMessage.length}`);
 
+    let full = '';
     try {
       const chunks = await llmText.stream([
         new SystemMessage(effectiveSystemPrompt),
@@ -314,13 +369,26 @@ export class LlmService {
       ]);
       for await (const chunk of chunks) {
         const text = this.extractText(chunk.content);
-        if (text) yield text;
+        if (text) {
+          full += text;
+          yield text;
+        }
       }
     } catch (err) {
       this.rethrowConnectionError(err, resolvedProvider, resolvedModel);
+    } finally {
+      const durationMs = Date.now() - startMs;
+      this.logger.log(`[LLM] STREAM END  ${name} | ${resolvedProvider}/${resolvedModel} | ${durationMs}ms`);
+      // Streams don't surface token usage — record 0. Only persist a non-empty turn.
+      if (full) {
+        await this.persistInteraction(
+          config,
+          userMessage,
+          { content: full, tokensUsed: 0, inputTokens: 0, outputTokens: 0, provider: resolvedProvider, model: resolvedModel },
+          durationMs,
+        );
+      }
     }
-
-    this.logger.log(`[LLM] STREAM END  ${name} | ${resolvedProvider}/${resolvedModel} | ${Date.now() - startMs}ms`);
   }
 
   /**
@@ -347,13 +415,28 @@ export class LlmService {
       ),
       new HumanMessage(userMessage),
     ];
-    const chunks = await llmText.stream(msgs);
-    for await (const chunk of chunks) {
-      const text = this.extractText(chunk.content);
-      if (text) yield text;
+    let full = '';
+    try {
+      const chunks = await llmText.stream(msgs);
+      for await (const chunk of chunks) {
+        const text = this.extractText(chunk.content);
+        if (text) {
+          full += text;
+          yield text;
+        }
+      }
+    } finally {
+      const durationMs = Date.now() - startMs;
+      this.logger.log(`[LLM] STREAM END  ${name} | ${resolvedProvider}/${resolvedModel} | ${durationMs}ms`);
+      if (full) {
+        await this.persistInteraction(
+          config,
+          userMessage,
+          { content: full, tokensUsed: 0, inputTokens: 0, outputTokens: 0, provider: resolvedProvider, model: resolvedModel },
+          durationMs,
+        );
+      }
     }
-
-    this.logger.log(`[LLM] STREAM END  ${name} | ${resolvedProvider}/${resolvedModel} | ${Date.now() - startMs}ms`);
   }
 
   /**

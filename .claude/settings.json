@@ -20,7 +20,9 @@
       "Bash(git -C /Users/sunil/Development/github/layerssec status)",
       "Bash(cd /Users/sunil/Development/github/layerssec *)",
       "Read(//Users/sunil/.claude/plugins/cache/claude-plugins-official/superpowers/6.1.1/skills/subagent-driven-development/scripts/**)",
-      "Read(//Users/sunil/.claude/plugins/cache/claude-plugins-official/superpowers/6.1.1/skills/subagent-driven-development/**)"
+      "Read(//Users/sunil/.claude/plugins/cache/claude-plugins-official/superpowers/6.1.1/skills/subagent-driven-development/**)",
+      "Bash(graphify query *)",
+      "Bash(echo \"---EXIT $?---\")"
     ]
   },
   "hooks": {

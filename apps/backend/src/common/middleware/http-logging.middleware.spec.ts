@@ -65,6 +65,17 @@ describe('HttpLoggingMiddleware', () => {
     expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('usr_abc'));
   });
 
+  it('resolves userId set after use() runs (guard populates req.user post-middleware)', () => {
+    const next = jest.fn();
+    const req = makeReq();
+    const res = makeRes(200);
+    middleware.use(req, res, next);
+    // JwtAuthGuard runs after middleware and attaches the user before the response finishes.
+    req.user = { id: 'usr_late' };
+    res.emit('finish');
+    expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('usr_late'));
+  });
+
   it('falls back to anon when req.user is absent', () => {
     const next = jest.fn();
     const res = makeRes(200);

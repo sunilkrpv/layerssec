@@ -31,6 +31,7 @@ import { SubmitThreatAnalysisDto } from '../jobs/dto/submit-threat-analysis.dto'
 import { SubmitPostureScoreDto } from '../jobs/dto/submit-posture-score.dto';
 import { LlmService, LlmCallConfig } from './llm.service';
 import { UserSettingsService } from '../user-settings/user-settings.service';
+import { buildLlmConfigForUser } from './llm-config.util';
 import { OnboardingService } from '../onboarding/onboarding.service';
 import { SYSTEM_PROMPT } from './prompts/system-prompt';
 import { buildGeneratePrompt } from './prompts/generate-prompt';
@@ -83,24 +84,8 @@ export class AiService {
     @InjectQueue(ATTACK_SIM_QUEUE) private readonly attackSimQueue: Queue,
   ) {}
 
-  private async buildLlmConfig(userId: string): Promise<LlmCallConfig> {
-    const settings = await this.userSettingsService.getAiSettings(userId);
-    const providerLower = settings.provider?.toLowerCase() as 'anthropic' | 'openai' | 'ollama' | undefined;
-
-    // Fetch decrypted API key server-side — never touches the HTTP response
-    let apiKey: string | undefined;
-    if (providerLower === 'anthropic' || providerLower === 'openai') {
-      const decrypted = await this.userSettingsService.getDecryptedApiKey(userId, providerLower);
-      apiKey = decrypted ?? undefined;
-    }
-
-    return {
-      provider: providerLower,
-      model: settings.model ?? undefined,
-      maxOutputTokens: settings.maxOutputTokens ?? undefined,
-      baseUrl: settings.ollamaBaseUrl ?? undefined,
-      apiKey,
-    };
+  private buildLlmConfig(userId: string): Promise<LlmCallConfig> {
+    return buildLlmConfigForUser(this.userSettingsService, userId);
   }
 
   async generate(
@@ -134,7 +119,7 @@ export class AiService {
     const userMessage = `Generate a diagram for: ${dto.prompt}`;
     const llmConfig = await this.buildLlmConfig(userId);
     const startTime = Date.now();
-    const llmResult = await this.llm.invoke(LAYERS_SYSTEM_PROMPT, userMessage, { ...llmConfig, promptName: 'LAYERS_SYSTEM_PROMPT' });
+    const llmResult = await this.llm.invoke(LAYERS_SYSTEM_PROMPT, userMessage, { ...llmConfig, diagramId: dto.diagramId ?? null, promptName: 'LAYERS_SYSTEM_PROMPT' });
     const durationMs = Date.now() - startTime;
     const raw = extractJsonObject(llmResult.content);
     const diagram = JSON.parse(raw) as {
@@ -155,25 +140,7 @@ export class AiService {
     const projectName = coerceName(diagram.projectName, 60);
     const diagramName = coerceName(diagram.diagramName, 80);
 
-    await this.prisma.aiInteraction.create({
-      data: {
-        userId,
-        diagramId: dto.diagramId ?? null,
-        prompt: `[chat-generate] ${dto.prompt}`,
-        response: {
-          nodeCount: sanitizedNodes.length,
-          edgeCount: (diagram.edges as unknown[]).length,
-          oversize: !!oversizeWarning,
-          projectName,
-          diagramName,
-        },
-        tokensUsed: llmResult.tokensUsed,
-        inputTokens: llmResult.inputTokens,
-        outputTokens: llmResult.outputTokens,
-        model: `${llmResult.provider}/${llmResult.model}`,
-        durationMs,
-      },
-    }).catch((err: unknown) => this.logger.error(`[ChatGenerate] failed to persist aiInteraction: ${String(err)}`));
+    // AI interaction persisted centrally by LlmService.invoke (see llm.service.ts).
 
     if (dto.projectId) {
       const nodeCount = sanitizedNodes.length;
@@ -246,28 +213,8 @@ export class AiService {
       this.logger.log(`[new-project] mode=${result.mode} turn=${turn}`);
     }
 
+    // AI interaction persisted centrally by LlmService.invoke (see llm.service.ts).
     const lastUser = [...dto.messages].reverse().find((m) => m.role === 'user')?.text ?? '';
-    await this.prisma.aiInteraction
-      .create({
-        data: {
-          userId,
-          diagramId: null,
-          prompt: `[new-project] ${lastUser}`,
-          response: {
-            mode: result.mode,
-            ...(result.mode === 'generate'
-              ? { nodeCount: result.nodes.length, edgeCount: result.edges.length, diagramName: result.diagramName }
-              : { message: result.message }),
-          },
-          tokensUsed: llmResult.tokensUsed,
-          inputTokens: llmResult.inputTokens,
-          outputTokens: llmResult.outputTokens,
-          model: `${llmResult.provider}/${llmResult.model}`,
-          durationMs,
-        },
-      })
-      .catch((e: unknown) => this.logger.error(`[new-project] failed to persist aiInteraction: ${String(e)}`));
-
     const assistantContent =
       result.mode === 'generate'
         ? `${result.message} (${result.nodes.length} nodes, ${result.edges.length} edges)`
@@ -329,19 +276,7 @@ export class AiService {
     } finally {
       const durationMs = Date.now() - startTime;
       this.logger.log(`[ChatEvaluate] completed durationMs=${durationMs} chars=${fullResponse.length} model=${resolvedProvider}/${resolvedModel}`);
-      if (fullResponse) {
-        this.prisma.aiInteraction.create({
-          data: {
-            userId,
-            diagramId: null,
-            prompt: `[chat-evaluate] isQA=${isQA} ${userMessageLabel.slice(0, 200)}`,
-            response: { responseLength: fullResponse.length },
-            tokensUsed: 0,
-            model: `${resolvedProvider}/${resolvedModel}`,
-            durationMs,
-          },
-        }).catch((err: unknown) => this.logger.error(`[ChatEvaluate] failed to persist aiInteraction: ${String(err)}`));
-      }
+      // AI interaction persisted centrally by LlmService.stream (see llm.service.ts).
       if (dto.projectId && fullResponse) {
         await this.chat.saveMessages(dto.projectId, userId, [
           { role: 'user', content: userMessageLabel, layerId: dto.layerId, layerName: dto.layerName },
@@ -379,19 +314,7 @@ export class AiService {
       }
     } finally {
       const durationMs = Date.now() - startTime;
-      if (fullResponse) {
-        this.prisma.aiInteraction.create({
-          data: {
-            userId,
-            diagramId: null,
-            prompt: `[chat-ask] ${dto.message.slice(0, 200)}`,
-            response: { responseLength: fullResponse.length },
-            tokensUsed: 0,
-            model: `${resolvedProvider}/${resolvedModel}`,
-            durationMs,
-          },
-        }).catch((err: unknown) => this.logger.error(`[ChatAsk] failed to persist aiInteraction: ${String(err)}`));
-      }
+      // AI interaction persisted centrally by LlmService.streamConversation (see llm.service.ts).
       if (dto.projectId && fullResponse) {
         // Split off optional diagram JSON appended after ---DIAGRAM---
         const DIAGRAM_SEPARATOR = '---DIAGRAM---';
@@ -477,26 +400,13 @@ export class AiService {
         systemPrompt,
         dto.history ?? [],
         dto.message,
-        { ...llmConfig, promptName: 'CONTEXTUAL_SYSTEM_PROMPT' },
+        { ...llmConfig, diagramId: dto.diagramId ?? null, promptName: 'CONTEXTUAL_SYSTEM_PROMPT' },
       )) {
         res.write(chunk);
         fullResponse += chunk;
       }
     } finally {
-      const durationMs = Date.now() - contextualStartTime;
-      if (fullResponse) {
-        this.prisma.aiInteraction.create({
-          data: {
-            userId,
-            diagramId: dto.diagramId ?? null,
-            prompt: `[contextual-ask] ${dto.message.slice(0, 200)}`,
-            response: { responseLength: fullResponse.length },
-            tokensUsed: 0,
-            model: `${resolvedProvider}/${resolvedModel}`,
-            durationMs,
-          },
-        }).catch((err: unknown) => this.logger.error(`[ContextualAsk] failed to persist aiInteraction: ${String(err)}`));
-      }
+      // AI interaction persisted centrally by LlmService.streamConversation (see llm.service.ts).
       if (fullResponse) {
         // Split diagram JSON if present
         const DIAGRAM_SEPARATOR = '---DIAGRAM---';
@@ -579,7 +489,7 @@ export class AiService {
     const llmConfig = await this.buildLlmConfig(userId);
     const startTime = Date.now();
     const { content, tokensUsed, inputTokens, outputTokens, provider: llmProvider, model: llmModel } =
-      await this.llm.invoke(THREAT_ANALYSIS_SYSTEM_PROMPT, userMessage, { ...llmConfig, promptName: 'THREAT_ANALYSIS_SYSTEM_PROMPT' });
+      await this.llm.invoke(THREAT_ANALYSIS_SYSTEM_PROMPT, userMessage, { ...llmConfig, diagramId: dto.diagramId, promptName: 'THREAT_ANALYSIS_SYSTEM_PROMPT' });
     const durationMs = Date.now() - startTime;
     this.logger.log(`[ThreatAnalysis] completed durationMs=${durationMs} tokens=${tokensUsed} (in=${inputTokens} out=${outputTokens}) model=${llmProvider}/${llmModel}`);
 
@@ -600,20 +510,7 @@ export class AiService {
       layerId: dto.layerId,
     }));
 
-    await this.prisma.aiInteraction.create({
-      data: {
-        userId,
-        diagramId: dto.diagramId,
-        prompt: `[threat-analysis] layerId=${dto.layerId} nodes=${dto.nodes.length}`,
-        response: { threatCount: threats.length },
-        tokensUsed,
-        inputTokens,
-        outputTokens,
-        model: `${llmProvider}/${llmModel}`,
-        durationMs,
-      },
-    });
-
+    // AI interaction persisted centrally by LlmService.invoke (see llm.service.ts).
     return { threats };
   }
 
@@ -655,7 +552,7 @@ export class AiService {
     const startTime = Date.now();
     try {
       const { content, tokensUsed, inputTokens, outputTokens, provider: llmProvider, model: llmModel } =
-        await this.llm.invoke(DECLUTTER_SYSTEM_PROMPT, userMessage, { ...llmConfig, promptName: 'DECLUTTER_SYSTEM_PROMPT' });
+        await this.llm.invoke(DECLUTTER_SYSTEM_PROMPT, userMessage, { ...llmConfig, diagramId: dto.diagramId ?? null, promptName: 'DECLUTTER_SYSTEM_PROMPT' });
       const durationMs = Date.now() - startTime;
       this.logger.log(`[Declutter] job=${aiJob.id} completed durationMs=${durationMs} tokens=${tokensUsed} (in=${inputTokens} out=${outputTokens}) model=${llmProvider}/${llmModel}`);
 
@@ -675,24 +572,7 @@ export class AiService {
         data: { status: AiJobStatus.COMPLETED, progress: 100, completedAt: new Date() },
       });
 
-      try {
-        await this.prisma.aiInteraction.create({
-          data: {
-            userId,
-            diagramId: dto.diagramId ?? null,
-            prompt: `[declutter] nodes=${dto.nodes.length}`,
-            response: { nodeCount: Object.keys(result.positions).length, jobId: aiJob.id },
-            tokensUsed,
-            inputTokens,
-            outputTokens,
-            model: `${llmProvider}/${llmModel}`,
-            durationMs,
-          },
-        });
-      } catch (err) {
-        this.logger.error(`[Declutter] failed to persist aiInteraction: ${err instanceof Error ? err.message : String(err)}`);
-      }
-
+      // AI interaction persisted centrally by LlmService.invoke (see llm.service.ts).
       return { ...result, jobId: aiJob.id };
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
@@ -716,8 +596,8 @@ export class AiService {
     const llmConfig = await this.buildLlmConfig(userId);
     const startTime = Date.now();
     const { content, tokensUsed, inputTokens, outputTokens, provider: llmProvider, model: llmModel } = dto.useExtendedThinking
-      ? await this.llm.invokeWithThinking(POSTURE_SCORE_SYSTEM_PROMPT, userMessage, { ...llmConfig, promptName: 'POSTURE_SCORE_SYSTEM_PROMPT' })
-      : await this.llm.invoke(POSTURE_SCORE_SYSTEM_PROMPT, userMessage, { ...llmConfig, promptName: 'POSTURE_SCORE_SYSTEM_PROMPT' });
+      ? await this.llm.invokeWithThinking(POSTURE_SCORE_SYSTEM_PROMPT, userMessage, { ...llmConfig, diagramId: dto.diagramId, promptName: 'POSTURE_SCORE_SYSTEM_PROMPT' })
+      : await this.llm.invoke(POSTURE_SCORE_SYSTEM_PROMPT, userMessage, { ...llmConfig, diagramId: dto.diagramId, promptName: 'POSTURE_SCORE_SYSTEM_PROMPT' });
 
     const durationMs = Date.now() - startTime;
     this.logger.log(`[PostureScore] completed durationMs=${durationMs} tokens=${tokensUsed} (in=${inputTokens} out=${outputTokens}) model=${llmProvider}/${llmModel}`);
@@ -752,20 +632,7 @@ export class AiService {
       this.logger.warn(`Failed to mark firstPostureScoreAt for user ${userId}: ${err.message}`);
     });
 
-    await this.prisma.aiInteraction.create({
-      data: {
-        userId,
-        diagramId: dto.diagramId,
-        prompt: `[posture-score] projectId=${dto.projectId} extended=${dto.useExtendedThinking ?? false}`,
-        response: { score: saved.score, postureScoreId: saved.id },
-        tokensUsed,
-        inputTokens,
-        outputTokens,
-        model: `${llmProvider}/${llmModel}`,
-        durationMs,
-      },
-    });
-
+    // AI interaction persisted centrally by LlmService (see llm.service.ts).
     return saved;
   }
 
@@ -798,7 +665,7 @@ export class AiService {
     try {
       if (dto.useExtendedThinking) {
         this.logger.log('[AttackMind] using extended thinking — blocking invoke');
-        const result = await this.llm.invokeWithThinking(ATTACK_MIND_SYSTEM_PROMPT, userMessage, { ...llmConfig, promptName: 'ATTACK_MIND_SYSTEM_PROMPT' });
+        const result = await this.llm.invokeWithThinking(ATTACK_MIND_SYSTEM_PROMPT, userMessage, { ...llmConfig, diagramId: dto.diagramId, promptName: 'ATTACK_MIND_SYSTEM_PROMPT' });
         fullResponse = result.content;
         tokensUsed = result.tokensUsed;
         inputTokens = result.inputTokens;
@@ -806,27 +673,14 @@ export class AiService {
         res.write(fullResponse);
         this.logger.log(`[AttackMind] extended thinking completed durationMs=${Date.now() - startTime} tokens=${tokensUsed} (in=${inputTokens} out=${outputTokens}) model=${result.provider}/${result.model}`);
       } else {
-        for await (const chunk of this.llm.stream(ATTACK_MIND_SYSTEM_PROMPT, userMessage, { ...llmConfig, promptName: 'ATTACK_MIND_SYSTEM_PROMPT' })) {
+        for await (const chunk of this.llm.stream(ATTACK_MIND_SYSTEM_PROMPT, userMessage, { ...llmConfig, diagramId: dto.diagramId, promptName: 'ATTACK_MIND_SYSTEM_PROMPT' })) {
           res.write(chunk);
           fullResponse += chunk;
         }
         this.logger.log(`[AttackMind] standard stream completed durationMs=${Date.now() - startTime} chars=${fullResponse.length} model=${resolvedProvider}/${resolvedModel}`);
       }
     } finally {
-      const durationMs = Date.now() - startTime;
-      await this.prisma.aiInteraction.create({
-        data: {
-          userId,
-          diagramId: dto.diagramId,
-          prompt: `[attack-mind] projectId=${dto.projectId} extended=${dto.useExtendedThinking ?? false}`,
-          response: { responseLength: fullResponse.length },
-          tokensUsed,
-          inputTokens,
-          outputTokens,
-          model: `${resolvedProvider}/${resolvedModel}`,
-          durationMs,
-        },
-      }).catch((err: unknown) => this.logger.error(`[AttackMind] failed to save aiInteraction: ${String(err)}`));
+      // AI interaction persisted centrally by LlmService (see llm.service.ts).
       res.end();
     }
   }
@@ -1003,7 +857,7 @@ export class AiService {
       // Use stream() not streamConversation() — history is already embedded in userMessage
       // by buildThreatAgentPrompt, so passing dto.messages again would duplicate it.
       let fullResponse = '';
-      for await (const chunk of this.llm.stream(THREAT_AGENT_SYSTEM_PROMPT, userMessage, { ...llmConfig, promptName: 'THREAT_AGENT_SYSTEM_PROMPT' })) {
+      for await (const chunk of this.llm.stream(THREAT_AGENT_SYSTEM_PROMPT, userMessage, { ...llmConfig, diagramId: dto.diagramId, promptName: 'THREAT_AGENT_SYSTEM_PROMPT' })) {
         fullResponse += chunk;
       }
 
@@ -1019,23 +873,7 @@ export class AiService {
       const lastUserMsg = [...dto.messages].reverse().find((m) => m.role === 'user');
       const userContent = lastUserMsg?.content ?? 'Analyze this diagram';
 
-      // Persist conversation turns
-      const llmConfig2 = llmConfig as { provider?: string; model?: string };
-      const agentProvider = llmConfig2.provider ?? this.llm.provider;
-      const agentModel = llmConfig2.model ?? this.llm.modelName;
-      const agentDurationMs = Date.now() - agentStartTime;
-      this.prisma.aiInteraction.create({
-        data: {
-          userId,
-          diagramId: dto.diagramId,
-          prompt: `[threat-agent-chat] ${userContent.slice(0, 200)}`,
-          response: { responseLength: cleanResponse.length },
-          tokensUsed: 0,
-          model: `${agentProvider}/${agentModel}`,
-          durationMs: agentDurationMs,
-        },
-      }).catch((err: unknown) => this.logger.error(`[ThreatAgentChat] failed to persist aiInteraction: ${String(err)}`));
-
+      // AI interaction persisted centrally by LlmService.stream (see llm.service.ts).
       await this.chat.saveMessages(dto.projectId, userId, [
         { role: 'user', content: userContent, layerId: '__threat_analysis__', layerName: 'Threat Analysis' },
         { role: 'assistant', content: cleanResponse, layerId: '__threat_analysis__', layerName: 'Threat Analysis' },
@@ -1337,20 +1175,7 @@ Return 5-7 priorityActions max, ranked by risk impact. severity must be one of: 
       throw new Error('AI returned malformed JSON for intel synthesis');
     }
 
-    this.prisma.aiInteraction.create({
-      data: {
-        userId,
-        diagramId: null,
-        prompt: `[intel-synthesis] project=${dto.projectId} threatModel=${dto.threatModelId} posture=${dto.postureScoreId}`,
-        response: { executiveSummary: result.executiveSummary, actionCount: result.priorityActions.length },
-        tokensUsed,
-        inputTokens,
-        outputTokens,
-        model: `${llmProvider}/${llmModel}`,
-        durationMs,
-      },
-    }).catch((err: unknown) => this.logger.error(`[IntelSynthesis] aiInteraction persist failed: ${String(err)}`));
-
+    // AI interaction persisted centrally by LlmService.invoke (see llm.service.ts).
     return result;
   }
 
@@ -1364,7 +1189,7 @@ Return 5-7 priorityActions max, ranked by risk impact. severity must be one of: 
    * this method operates on caller-provided data and is intended for the persisted
    * multi-flow intel report feature (Task 3.3 + Task 7.1).
    */
-  async generateIntelReport(snapshot: IntelSnapshot): Promise<string> {
+  async generateIntelReport(snapshot: IntelSnapshot, userId?: string): Promise<string> {
     const diagramSummaries = snapshot.diagrams.map(d => {
       const counts = Object.entries(d.severityCounts).map(([k, v]) => `${k}:${v}`).join(', ');
       const top = d.topThreats.map(t => `- [${t.severity}/${t.stride}] ${t.title}`).join('\n');
@@ -1382,7 +1207,7 @@ Return 5-7 priorityActions max, ranked by risk impact. severity must be one of: 
     });
 
     const systemPrompt = 'You are a senior threat-intelligence analyst. Produce a structured markdown intel report.';
-    const { content } = await this.llm.invoke(systemPrompt, formattedPrompt, { promptName: 'intel-synthesis' });
+    const { content } = await this.llm.invoke(systemPrompt, formattedPrompt, { userId, promptName: 'intel-synthesis' });
     return content;
   }
 
@@ -1398,7 +1223,7 @@ Return 5-7 priorityActions max, ranked by risk impact. severity must be one of: 
     const startTime = Date.now();
 
     try {
-      const { content, tokensUsed, inputTokens, outputTokens, provider: llmProvider, model: llmModel } = await this.llm.invoke(SYSTEM_PROMPT, userMessage, { ...llmConfig, promptName: 'SYSTEM_PROMPT' });
+      const { content, tokensUsed, inputTokens, outputTokens, provider: llmProvider, model: llmModel } = await this.llm.invoke(SYSTEM_PROMPT, userMessage, { ...llmConfig, diagramId: diagramId ?? null, promptName: 'SYSTEM_PROMPT' });
 
       // Strip markdown fences if the model wrapped the JSON (Ollama sometimes does)
       const raw = content
@@ -1409,20 +1234,7 @@ Return 5-7 priorityActions max, ranked by risk impact. severity must be one of: 
       const parsed = JSON.parse(raw);
       const durationMs = Date.now() - startTime;
 
-      await this.prisma.aiInteraction.create({
-        data: {
-          userId,
-          diagramId,
-          prompt: originalPrompt,
-          response: parsed,
-          tokensUsed,
-          inputTokens,
-          outputTokens,
-          model: `${llmProvider}/${llmModel}`,
-          durationMs,
-        },
-      });
-
+      // AI interaction persisted centrally by LlmService.invoke (see llm.service.ts).
       return {
         data: parsed,
         usage: {

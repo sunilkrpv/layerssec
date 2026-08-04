@@ -64,7 +64,7 @@ export class IntelReportService {
       diagrams: diagramsPayload,
     };
 
-    const content = await this.ai.generateIntelReport(snapshot);
+    const content = await this.ai.generateIntelReport(snapshot, userId);
 
     return this.prisma.projectIntelReport.create({
       data: {

@@ -5,6 +5,7 @@ import { AiJobStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { LlmService } from '../../ai/llm.service';
 import { UserSettingsService } from '../../user-settings/user-settings.service';
+import { buildLlmConfigForUser } from '../../ai/llm-config.util';
 import { OnboardingService } from '../../onboarding/onboarding.service';
 import { ATTACK_SIM_QUEUE } from '../queues';
 import { ATTACK_MIND_SYSTEM_PROMPT, buildAttackMindPrompt } from '../../ai/prompts/attack-mind-prompt';
@@ -69,26 +70,14 @@ export class AttackSimulationProcessor extends WorkerHost {
         projectContext,
       });
 
-      const settings = await this.userSettings.getAiSettings(userId);
-      const providerLower = settings.provider?.toLowerCase() as 'anthropic' | 'openai' | 'ollama' | undefined;
-      let apiKey: string | undefined;
-      if (providerLower === 'anthropic' || providerLower === 'openai') {
-        const decrypted = await this.userSettings.getDecryptedApiKey(userId, providerLower);
-        apiKey = decrypted ?? undefined;
-      }
-      const llmConfig = {
-        provider: providerLower,
-        model: settings.model ?? undefined,
-        maxOutputTokens: settings.maxOutputTokens ?? undefined,
-        baseUrl: settings.ollamaBaseUrl ?? undefined,
-        apiKey,
-      };
+      // Stamps userId so LlmService persists the interaction centrally.
+      const llmConfig = await buildLlmConfigForUser(this.userSettings, userId);
 
       const startTime = Date.now();
       const { content, tokensUsed, inputTokens, outputTokens, provider: llmProvider, model: llmModel } =
         dto.useExtendedThinking
-          ? await this.llm.invokeWithThinking(ATTACK_MIND_SYSTEM_PROMPT, userMessage, { ...llmConfig, promptName: 'ATTACK_MIND_SYSTEM_PROMPT' })
-          : await this.llm.invoke(ATTACK_MIND_SYSTEM_PROMPT, userMessage, { ...llmConfig, promptName: 'ATTACK_MIND_SYSTEM_PROMPT' });
+          ? await this.llm.invokeWithThinking(ATTACK_MIND_SYSTEM_PROMPT, userMessage, { ...llmConfig, diagramId: dto.diagramId, promptName: 'ATTACK_MIND_SYSTEM_PROMPT' })
+          : await this.llm.invoke(ATTACK_MIND_SYSTEM_PROMPT, userMessage, { ...llmConfig, diagramId: dto.diagramId, promptName: 'ATTACK_MIND_SYSTEM_PROMPT' });
       const durationMs = Date.now() - startTime;
       this.logger.log(`[AttackSim] job=${aiJobId} llm completed durationMs=${durationMs} tokens=${tokensUsed} (in=${inputTokens} out=${outputTokens}) model=${llmProvider}/${llmModel}`);
 
@@ -132,20 +121,7 @@ export class AttackSimulationProcessor extends WorkerHost {
         },
       });
 
-      this.prisma.aiInteraction.create({
-        data: {
-          userId,
-          diagramId: dto.diagramId,
-          prompt: `[attack-mind-job] entryPoint=${dto.entryPointNodeId ?? 'auto'} extended=${dto.useExtendedThinking ?? false}`,
-          response: { contentLength: content.length, simulationId: saved.id },
-          tokensUsed,
-          inputTokens,
-          outputTokens,
-          model: `${llmProvider}/${llmModel}`,
-          durationMs,
-        },
-      }).catch((err: unknown) => this.logger.error(`[AttackSim] failed to persist aiInteraction: ${String(err)}`));
-
+      // AI interaction persisted centrally by LlmService (see llm.service.ts).
       this.logger.log(`[AttackSim] job=${aiJobId} completed simulationId=${saved.id} chars=${content.length}`);
 
       return {

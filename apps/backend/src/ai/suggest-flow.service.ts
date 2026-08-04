@@ -1,6 +1,8 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { LlmService } from './llm.service';
+import { UserSettingsService } from '../user-settings/user-settings.service';
+import { buildLlmConfigForUser } from './llm-config.util';
 import { suggestFlowPrompt } from './prompts/suggest-flow.prompt';
 import { SuggestFlowDto } from './dto/suggest-flow.dto';
 
@@ -11,7 +13,11 @@ const SYSTEM_PROMPT =
 
 @Injectable()
 export class SuggestFlowService {
-  constructor(private prisma: PrismaService, private llm: LlmService) {}
+  constructor(
+    private prisma: PrismaService,
+    private llm: LlmService,
+    private userSettings: UserSettingsService,
+  ) {}
 
   async suggest(userId: string, dto: SuggestFlowDto) {
     const project = await this.prisma.project.findUnique({
@@ -34,7 +40,11 @@ export class SuggestFlowService {
       existingFlows: project.diagrams.map((d) => d.name).join(', ') || '(none)',
     });
 
-    const response = await this.llm.invoke(SYSTEM_PROMPT, userMessage, { promptName: 'suggest-flow' });
+    const llmConfig = await buildLlmConfigForUser(this.userSettings, userId);
+    const response = await this.llm.invoke(SYSTEM_PROMPT, userMessage, {
+      ...llmConfig,
+      promptName: 'suggest-flow',
+    });
     const raw = response.content;
     const m = DIAGRAM_MARKER.exec(raw);
     if (!m) throw new Error('LLM response missing ---DIAGRAM--- markers');
